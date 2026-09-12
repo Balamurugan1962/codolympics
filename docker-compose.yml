@@ -1,0 +1,76 @@
+# The whole contest on one machine (NFR-J-08): Postgres, the sandbox, the
+# judge API and the web app. Four services.
+#
+#   cp .env.example .env      # fill in the secrets
+#   docker compose up -d --build
+#   open http://<this machine>:3000
+#
+# go-judge and judge-api publish no ports; only the web app is reachable.
+
+services:
+  postgres:
+    image: postgres:16.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: contest
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: contest
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contest"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  go-judge:
+    build: ./worker
+    image: fyp-judge-worker:1.0
+    restart: unless-stopped
+    privileged: true
+    cgroup: host
+    cpuset: "${GO_JUDGE_CPUSET:-0-3}"   # pinning keeps timings comparable; do not remove
+    command: ["-http-addr=0.0.0.0:5050", "-release", "-silent"]
+    networks: [internal]
+
+  judge-api:
+    build: ./judge
+    image: judge-api:1.0
+    restart: unless-stopped
+    depends_on: [go-judge]
+    environment:
+      JUDGE_GO_JUDGE_URL: http://go-judge:5050
+      JUDGE_PROBLEMS_DIR: /problems
+      JUDGE_SERVICE_TOKEN: ${JUDGE_SERVICE_TOKEN:?set JUDGE_SERVICE_TOKEN in .env}
+    volumes:
+      - problems:/problems:ro          # read-only: the judge never writes here
+    networks: [internal]
+
+  web:
+    build: ./web
+    image: contest-web:1.0
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      judge-api: { condition: service_started }
+    environment:
+      DATABASE_URL: postgres://contest:${POSTGRES_PASSWORD}@postgres:5432/contest
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL to the address participants use}
+      JUDGE_URL: http://judge-api:8000
+      JUDGE_SERVICE_TOKEN: ${JUDGE_SERVICE_TOKEN}
+      PROBLEMS_DIR: /problems
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+    volumes:
+      - problems:/problems             # read-write: uploads land here
+    ports:
+      - "3000:3000"
+    networks: [internal]
+
+volumes:
+  pgdata:
+  problems:
+
+networks:
+  internal:

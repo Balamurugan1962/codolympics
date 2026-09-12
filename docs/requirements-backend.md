@@ -1,7 +1,7 @@
 # Backend — Requirements
 
 **Component:** contest backend (+ PostgreSQL, Redis)
-**Status:** requirements agreed, not implemented
+**Status:** implemented — see `judge/` and `web/`; run `web/tests/e2e/smoke.ts` for the end-to-end proof
 **Related:** [requirements-judge.md](requirements-judge.md) · [requirements-frontend.md](requirements-frontend.md)
 
 ---

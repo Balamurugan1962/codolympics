@@ -1,7 +1,7 @@
 # Judge Service — Requirements
 
 **Component:** `judge-api` + `go-judge`
-**Status:** requirements agreed, not implemented
+**Status:** implemented — see `judge/` and `web/`; run `web/tests/e2e/smoke.ts` for the end-to-end proof
 **Related:** [requirements-backend.md](requirements-backend.md) · [openapi.yaml](../judge/openapi.yaml)
 
 ---
