@@ -1,141 +1,367 @@
 "use client";
 
-/** One problem: its versions on the judge, validate → publish, and the contest-facing details. */
+/**
+ * One problem, as a pipeline: package uploaded → validated → described →
+ * published. The strip at the top says which stage it is at; the tabs below
+ * hold the work for each. Publishing mid-contest rejudges, and says so.
+ */
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { ProblemPreview } from "@/components/admin/problem-preview";
+import { HintsEditor, QuestionBasicsFields, detailsIssues, EMPTY_DETAILS, hintIssues, type QuestionDetails } from "@/components/admin/question-details-form";
 import { Icon } from "@/components/icons";
 import { ReasonAction } from "@/components/reason-action";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/card";
+import { FileDrop } from "@/components/ui/file-drop";
+import { FormGrid } from "@/components/ui/form";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import { Checklist, Summary, SummaryItem } from "@/components/ui/summary";
+import { Table, Td, Th, Tr } from "@/components/ui/table";
+import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
 import type { P, Q } from "../page";
 
 type Report = { ok: boolean; issues: string[]; reference: { verdict: string; first_fail: number | null; passed: number; max_time_ms: number } | null; wrong_solution: { verdict: string } | null; checker: { compiled: boolean; output: string } | null };
+type Tab = "package" | "details" | "preview";
 
 export default function ProblemPage() {
   const { id } = useParams<{ id: string }>();
+  const search = useSearchParams();
+  const router = useRouter();
   const [problem, setProblem] = useState<P | null | undefined>(undefined);
   const [question, setQuestion] = useState<Q | null | undefined>(undefined);
+  const [tab, setTab] = useState<Tab>((search.get("tab") as Tab) || "package");
+
   const load = useCallback(async () => {
     const [p, q] = await Promise.all([api.get<{ problems: P[] }>("/api/admin/problems"), api.get<{ questions: Q[] }>("/api/admin/questions")]);
-    setProblem(p.problems.find((x) => x.problem_id === id) ?? null); setQuestion(q.questions.find((x) => x.id === id) ?? null);
+    setProblem(p.problems.find((x) => x.problem_id === id) ?? null);
+    setQuestion(q.questions.find((x) => x.id === id) ?? null);
   }, [id]);
   useEffect(() => { void load(); }, [load]);
-  if (problem === undefined) return <CardSkeleton lines={10} />;
+  function goTab(t: Tab) { setTab(t); router.replace(`/admin/problems/${encodeURIComponent(id)}?tab=${t}`, { scroll: false }); }
+
+  if (problem === undefined || question === undefined) return <PageBody width="wide"><CardSkeleton lines={10} /></PageBody>;
+  const hackOnly = Boolean(problem?.hack_only);
+  const validated = Boolean(problem?.validated || question?.validated);
+  const stages = [
+    { key: "package", label: "Package", done: Boolean(problem), detail: problem ? `${problem.versions.length} version${problem.versions.length === 1 ? "" : "s"} · latest ${problem.versions.at(-1)}` : "no package on the judge" },
+    { key: "validate", label: "Validated", done: validated, detail: validated ? "the reference passes every test" : "not yet proven" },
+    ...(hackOnly ? [] : [{ key: "details", label: "Details", done: Boolean(question), detail: question ? `${question.hints.length} hint${question.hints.length === 1 ? "" : "s"} · ${question.sampleCount} sample${question.sampleCount === 1 ? "" : "s"}` : "nothing for participants yet" }]),
+    { key: "publish", label: "Published", done: Boolean(problem?.current), detail: problem?.current ? `${problem.current} is live` : "no live version" },
+  ];
+  const currentStage = stages.findIndex((s) => !s.done);
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader eyebrow={<Link href="/admin/problems" className="hover:text-ink">← Problems</Link>} title={<span className="flex items-center gap-2">{question?.title ?? id} <span className="font-mono text-sm font-normal text-faint">{id}</span></span>}
-        description={problem ? `${problem.testcases} testcases · ${problem.compare} · ${problem.time_limit_ms} ms / ${problem.memory_limit_mb} MB · live ${problem.current ?? "none"}` : "No package on the judge for this id."}
-        actions={<>{problem?.hack_only && <Badge tone="blue">hacking package</Badge>}{question?.status === "void" && <Badge tone="red">voided</Badge>}{(problem?.validated || question?.validated) ? <Badge tone="green">validated</Badge> : <Badge tone="amber">not validated</Badge>}</>} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        {problem ? <Versions id={id} problem={problem} onChange={load} /> : <Alert tone="warning" title="Upload a package first">Go back to Problems and upload a zip with this id.</Alert>}
-        {!problem?.hack_only && <Details id={id} question={question ?? null} onChange={load} />}
+    <PageBody width="wide">
+      <PageHeader
+        breadcrumb={<Link href="/admin/problems" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Problems</Link>}
+        title={<span className="flex flex-wrap items-center gap-2">{question?.title ?? id}{hackOnly && <Badge tone="blue">Hacking</Badge>}{question?.status === "void" && <Badge tone="red">Void</Badge>}{question?.status === "sold" && <Badge tone="grey">Sold</Badge>}</span>}
+        description={<span className="font-mono text-[12px]">{id}</span>}
+        actions={
+          <div className="flex items-center gap-3">
+            {problem && (validated ? <StatusDot tone="green">Validated</StatusDot> : <StatusDot tone="amber">Not validated</StatusDot>)}
+            {problem?.current ? <StatusDot tone="green">Live {problem.current}</StatusDot> : <StatusDot tone="grey">Not published</StatusDot>}
+          </div>
+        }
+      />
+
+      <ol className="mb-5 grid gap-px overflow-hidden rounded-box border border-line bg-line sm:grid-cols-2 lg:grid-cols-4" aria-label="Stages">
+        {stages.map((s, i) => {
+          const now = i === currentStage;
+          const target: Tab = s.key === "details" ? "details" : "package";
+          return (
+            <li key={s.key}>
+              <button type="button" onClick={() => goTab(target)} className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-page ${now ? "bg-green-tint/50" : "bg-card"}`}>
+                <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${s.done ? "bg-green text-white" : now ? "bg-navy text-white" : "border border-line-2 text-faint"}`}>
+                  {s.done ? <Icon.Check size={11} strokeWidth={3} /> : i + 1}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-semibold">{s.label}</span>
+                  <span className="block truncate text-[11.5px] text-muted">{s.detail}</span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="mb-4">
+        <Tabs value={tab} onChange={goTab} tabs={[{ value: "package", label: "Package" }, ...(hackOnly ? [] : [{ value: "details" as Tab, label: "Details & hints" }, { value: "preview" as Tab, label: "Preview" }])]} />
       </div>
+
+      {tab === "package" && (problem
+        ? <Package id={id} problem={problem} question={question} onChange={load} />
+        : <NoPackage id={id} onChange={load} />)}
+      {tab === "details" && <Details id={id} question={question} testcases={problem?.testcases ?? null} onChange={load} />}
+      {tab === "preview" && <Preview id={id} problem={problem} question={question} />}
+    </PageBody>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function NoPackage({ id, onChange }: { id: string; onChange: () => void }) {
+  return (
+    <Section title="No package on the judge" description="Details exist for this id but the judge has nothing to run. Upload the package to continue.">
+      <UploadVersion id={id} onChange={onChange} />
+    </Section>
+  );
+}
+
+function UploadVersion({ id, onChange, next }: { id: string; onChange: () => void; next?: string }) {
+  const { toast } = useToast();
+  const [file, setFile] = useState<File | null>(null);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function upload() {
+    if (!file) return;
+    setBusy(true);
+    const form = new FormData(); form.set("id", id); form.set("reason", reason.trim()); form.set("package", file);
+    try {
+      const r = await api.post<{ version: string }>("/api/admin/problems", form);
+      toast({ title: `Uploaded as ${r.version}`, description: "Validate it, then publish.", tone: "success" });
+      setFile(null); setReason(""); onChange();
+    } catch (err) { toast({ title: "Upload failed", description: errorMessage(err), tone: "error" }); } finally { setBusy(false); }
+  }
+  return (
+    <div className="space-y-4">
+      <FileDrop file={file} onFile={setFile} label={next ? `Drop a zip to add ${next}` : "Drop the package zip here, or browse"} hint="problem.json and tests/ at the root" />
+      {file && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <Field label="Reason" className="flex-1" help="What changed in this version. Goes into the audit log.">
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. fixed testcase 7's answer" />
+          </Field>
+          <Button onClick={upload} loading={busy} disabled={reason.trim().length < 3} icon={<Icon.Upload size={14} />}>Upload</Button>
+        </div>
+      )}
     </div>
   );
 }
 
-function Versions({ id, problem, onChange }: { id: string; problem: P; onChange: () => void }) {
+function Package({ id, problem, question, onChange }: { id: string; problem: P; question: Q | null; onChange: () => void }) {
   const { toast } = useToast();
   const [version, setVersion] = useState(problem.versions.at(-1) ?? "");
   const [report, setReport] = useState<Report | null>(null);
   const [reference, setReference] = useState(""); const [wrong, setWrong] = useState(""); const [lang, setLang] = useState("cpp");
-  const [blast, setBlast] = useState<number>(0);
+  const [languages, setLanguages] = useState<{ key: string; name: string }[]>([]);
+  const [blast, setBlast] = useState(0);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { void api.post<{ submissions: number }>(`/api/admin/problems/${id}/blast-radius`, {}).then((r) => setBlast(r.submissions)).catch(() => setBlast(0)); }, [id]);
+  const nextVersion = `v${Number(problem.versions.at(-1)?.slice(1) ?? 0) + 1}`;
+  useEffect(() => {
+    void api.post<{ submissions: number }>(`/api/admin/problems/${id}/blast-radius`, {}).then((r) => setBlast(r.submissions)).catch(() => setBlast(0));
+    void api.get<{ languages: { key: string; name: string }[] }>("/api/languages").then((r) => setLanguages(r.languages)).catch(() => undefined);
+  }, [id]);
+  useEffect(() => { setVersion((v) => (problem.versions.includes(v) ? v : problem.versions.at(-1) ?? "")); }, [problem.versions]);
 
   async function validate() {
     setBusy(true);
-    try { setReport(await api.post<Report>(`/api/admin/problems/${id}/validate`, { version, reference_source: reference || undefined, wrong_source: wrong || undefined, language: reference || wrong ? lang : undefined })); onChange(); }
-    catch (err) { toast({ title: "Validation failed to run", description: errorMessage(err), tone: "error" }); } finally { setBusy(false); }
+    try {
+      setReport(await api.post<Report>(`/api/admin/problems/${id}/validate`, { version, reference_source: reference || undefined, wrong_source: wrong || undefined, language: reference || wrong ? lang : undefined }));
+      onChange();
+    } catch (err) { toast({ title: "Validation could not run", description: errorMessage(err), tone: "error" }); } finally { setBusy(false); }
   }
 
+  const validated = problem.validated || question?.validated;
+  const stale = problem.current && version !== problem.current;
+
   return (
-    <Card>
-      <CardHeader title="Versions on the judge" description="Validate a version, then publish it. Publishing mid-contest rejudges every submission." />
-      <CardBody className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted">Version</span>
-          <div className="w-28"><Select value={version} onChange={(e) => { setVersion(e.target.value); setReport(null); }}>{problem.versions.map((v) => <option key={v}>{v}</option>)}</Select></div>
-          {problem.current === version ? <Badge tone="green">live</Badge> : <Badge tone="grey">not live</Badge>}
-          {problem.has_reference && <Badge tone="blue">stored reference</Badge>}
+    <div className="space-y-4">
+      <Section title="Versions" description="Each upload is a complete package. Only the live one is judged; the others wait." padded={false}>
+        <Table>
+          <thead><tr><Th>Version</Th><Th>Status</Th><Th className="hidden sm:table-cell">Notes</Th><Th className="w-32"><span className="sr-only">Select</span></Th></tr></thead>
+          <tbody>
+            {[...problem.versions].reverse().map((v) => (
+              <Tr key={v} selected={v === version}>
+                <Td className="font-mono text-[12.5px] font-semibold">{v}</Td>
+                <Td>{v === problem.current ? <StatusDot tone="green">Live</StatusDot> : <StatusDot tone="grey">Not live</StatusDot>}</Td>
+                <Td className="hidden text-muted sm:table-cell">{v === problem.versions.at(-1) ? "latest upload" : ""}</Td>
+                <Td align="right">{v === version ? <span className="text-[12px] font-semibold text-green-dark">Selected</span> : <Button size="sm" variant="ghost" onClick={() => { setVersion(v); setReport(null); }}>Select</Button>}</Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
+        <div className="border-t border-line px-5 py-4">
+          <div className="mb-2 text-[12px] font-semibold text-muted">Add a version</div>
+          <UploadVersion id={id} onChange={onChange} next={nextVersion} />
         </div>
-        <details className="rounded-box border border-line">
-          <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">Optional: supply solutions to validate against</summary>
-          <div className="space-y-3 border-t border-line p-3">
-            <Field label="Reference solution" hint={problem.has_reference ? "The package stores one; leave empty to use it." : "Runs against every testcase."}><Textarea rows={4} className="font-mono text-xs" value={reference} onChange={(e) => setReference(e.target.value)} /></Field>
-            <Field label="Known-wrong solution" hint="If it is accepted, the testcases do not catch it."><Textarea rows={3} className="font-mono text-xs" value={wrong} onChange={(e) => setWrong(e.target.value)} /></Field>
-            <div className="w-40"><Select value={lang} onChange={(e) => setLang(e.target.value)}>{["cpp", "c", "python", "pypy", "java", "javascript"].map((l) => <option key={l}>{l}</option>)}</Select></div>
+      </Section>
+
+      <Section
+        title={<span className="flex items-center gap-2">Validate <span className="font-mono text-[12px] font-normal text-faint">{version}</span></span>}
+        description="Prove the package before it goes live. The reference solution is the part that matters — it must pass every test within the limits. A wrong solution should fail, proving the tests bite."
+        footer={<Button onClick={validate} loading={busy} disabled={!version} icon={<Icon.Play size={14} />}>Run validation</Button>}
+      >
+        <Summary cols={4} className="mb-5">
+          <SummaryItem label="Testcases">{problem.testcases}</SummaryItem>
+          <SummaryItem label="Limits">{problem.time_limit_ms} ms · {problem.memory_limit_mb} MB</SummaryItem>
+          <SummaryItem label="Comparison">{problem.compare}</SummaryItem>
+          <SummaryItem label="Reference">{problem.has_reference ? "stored in the package" : "supply one below"}</SummaryItem>
+        </Summary>
+        {problem.has_reference && !reference && <div className="mb-4"><Alert tone="info">This package carries its own reference solution; validation uses it unless you paste another one below.</Alert></div>}
+        <FormGrid cols={2}>
+          <Field label={problem.has_reference ? "Reference solution (optional override)" : "Reference solution"} help="Must be accepted on every test.">
+            <Textarea rows={7} className="font-mono text-[12px]" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Paste source…" />
+          </Field>
+          <Field label="Wrong solution" hint="optional" help="Should fail at least one test; otherwise the tests are too weak.">
+            <Textarea rows={7} className="font-mono text-[12px]" value={wrong} onChange={(e) => setWrong(e.target.value)} placeholder="Paste a deliberately wrong source…" />
+          </Field>
+        </FormGrid>
+        {(reference || wrong) && (
+          <div className="mt-4 max-w-xs">
+            <Field label="Language of the pasted sources">
+              <Select value={lang} onChange={(e) => setLang(e.target.value)}>
+                {languages.length === 0 && <option value={lang}>{lang}</option>}
+                {languages.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}
+              </Select>
+            </Field>
           </div>
-        </details>
-        <Button variant="secondary" onClick={validate} loading={busy} disabled={!version} icon={<Icon.Play />}>Validate {version}</Button>
-        {report && (
-          <Alert tone={report.ok ? "success" : "error"} title={report.ok ? "Validation passed" : "Validation failed"}>
-            {report.issues.length > 0 && <ul className="list-disc pl-5">{report.issues.map((i) => <li key={i}>{i}</li>)}</ul>}
-            {report.reference && <p>Reference solution: <strong>{report.reference.verdict}</strong>{report.reference.first_fail !== null && <> — first fails at testcase <strong>{report.reference.first_fail}</strong>, so that answer file or the solution is wrong</>} · slowest test {report.reference.max_time_ms.toFixed(0)} ms</p>}
-            {report.wrong_solution && <p>Known-wrong solution: <strong>{report.wrong_solution.verdict}</strong>{report.wrong_solution.verdict === "AC" && " — the testcases do not catch it"}</p>}
-            {report.checker && !report.checker.compiled && <p>Checker: {report.checker.output}</p>}
-          </Alert>
         )}
-      </CardBody>
-      <CardFooter className="flex-wrap justify-between gap-y-3">
-        <span className="text-xs text-muted">{blast ? <span className="font-semibold text-red">Publishing rejudges {blast} submission(s).</span> : "No submissions yet — publishing is immediate."}</span>
-        <div className="flex flex-wrap items-center gap-2">
-          {blast > 0 && <span className="text-xs text-faint">After rejudge:</span>}
-          {blast > 0 && (["stand", "refund", "void"] as const).map((o) => <ReasonAction key={o} label={o[0].toUpperCase() + o.slice(1)} title={`After the rejudge: ${o}`} description={o === "refund" ? "The owner keeps the question and gets the price back." : o === "void" ? "Nobody scores it; the owner is refunded the price and hints." : "Verdicts stand as rejudged."} onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/rejudge-outcome`, { reason, outcome: o }); toast({ title: `Recorded: ${o}`, tone: "success" }); }} />)}
-          <ReasonAction label={`Publish ${version}`} variant="primary" title={`Publish ${version}?`} description={blast ? <span className="font-semibold text-red">This rejudges {blast} submission(s). The number is confirmed with the publish.</span> : "The symlink is swapped atomically; the judge sees the new version immediately."}
-            onConfirm={async (reason) => { await api.post(`/api/admin/problems/${id}/publish`, { version, reason, confirmed_rejudge: blast }); toast({ title: `Published ${version}`, tone: "success" }); onChange(); }} />
-        </div>
-      </CardFooter>
-    </Card>
+        {report && (
+          <div className="mt-5">
+            <Alert tone={report.ok ? "success" : "error"} title={report.ok ? `${version} is valid` : `${version} has problems`}>
+              <Checklist items={[
+                ...(report.reference ? [{ ok: report.reference.verdict === "AC", label: `Reference: ${report.reference.verdict}`, detail: `${report.reference.passed} passed · slowest ${report.reference.max_time_ms} ms${report.reference.first_fail !== null ? ` · first failure on test ${report.reference.first_fail}` : ""}` }] : []),
+                ...(report.wrong_solution ? [{ ok: report.wrong_solution.verdict !== "AC", label: `Wrong solution: ${report.wrong_solution.verdict}`, detail: report.wrong_solution.verdict === "AC" ? "it passed everything — the tests do not catch it" : "rejected, as it should be" }] : []),
+                ...(report.checker ? [{ ok: report.checker.compiled, label: report.checker.compiled ? "Checker compiles" : "Checker does not compile", detail: report.checker.output || undefined }] : []),
+                ...report.issues.map((i) => ({ ok: false, label: i })),
+              ]} />
+            </Alert>
+          </div>
+        )}
+      </Section>
+
+      <Section
+        title="Publish"
+        description={problem.current ? `${problem.current} is live. Publishing ${version} swaps it atomically.` : "Nothing is live yet. Publishing makes this version the one the judge runs."}
+        footer={
+          <ReasonAction
+            label={problem.current === version ? `${version} is live` : `Publish ${version}`} variant="primary" size="md" disabled={!version || problem.current === version}
+            title={`Publish ${version}?`}
+            description={blast > 0
+              ? <span>This rejudges <strong>{blast}</strong> submission{blast === 1 ? "" : "s"} already made on this question. Verdicts may change; you will be asked what to do with the outcome.</span>
+              : "No submissions exist for this question yet, so nothing is rejudged."}
+            onConfirm={async (reason) => {
+              const r = await api.post<{ rejudged: number }>(`/api/admin/problems/${id}/publish`, { version, reason, confirmed_rejudge: blast });
+              toast({ title: `${version} is live`, description: r.rejudged ? `${r.rejudged} submission(s) are being rejudged.` : undefined, tone: "success" });
+              onChange();
+            }}
+          />
+        }
+      >
+        <Checklist items={[
+          { ok: Boolean(validated) && !stale, label: validated ? "Validated" : "Not validated", detail: validated ? "the reference passed" : "publishing without validation is allowed but unwise" },
+          { ok: blast === 0, label: blast === 0 ? "No submissions affected" : `${blast} submission${blast === 1 ? "" : "s"} would be rejudged`, detail: blast ? "the number you confirm must match this" : undefined },
+        ]} />
+        {blast > 0 && question && question.status !== "void" && (
+          <div className="mt-5 border-t border-line pt-4">
+            <div className="mb-2 text-[12px] font-semibold text-muted">After a rejudge</div>
+            <p className="mb-3 text-[12.5px] text-muted">If verdicts changed and someone was disadvantaged, choose what happens. Every choice is audit-logged.</p>
+            <div className="flex flex-wrap gap-2">
+              {(["stand", "refund", "void"] as const).map((o) => (
+                <ReasonAction key={o} label={o === "stand" ? "Let verdicts stand" : o === "refund" ? "Refund the owner" : "Void the question"} variant={o === "void" ? "danger" : "secondary"}
+                  title={o === "stand" ? "Let the new verdicts stand?" : o === "refund" ? "Refund the owner?" : "Void this question?"}
+                  description={o === "stand" ? "The rejudged verdicts count as they are." : o === "refund" ? "The owner keeps the question and gets the price back." : "Scores for nobody; the owner is refunded the price and every hint bought."}
+                  onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/rejudge-outcome`, { reason, outcome: o }); toast({ title: "Recorded", tone: "success" }); onChange(); }} />
+              ))}
+            </div>
+          </div>
+        )}
+      </Section>
+    </div>
   );
 }
 
-function Details({ id, question, onChange }: { id: string; question: Q | null; onChange: () => void }) {
+// ---------------------------------------------------------------------------
+
+function Details({ id, question, testcases, onChange }: { id: string; question: Q | null; testcases: number | null; onChange: () => void }) {
   const { toast } = useToast();
-  const [q, setQ] = useState({ title: question?.title ?? "", difficulty: question?.difficulty ?? "easy", score: question?.score ?? 100, base_price: question?.basePrice ?? 100, statement_md: question?.statementMd ?? "", sample_count: question?.sampleCount ?? 1, auction_order: question?.auctionOrder ?? 0, hints: question?.hints.map((h) => ({ price: h.price, body_md: h.bodyMd })) ?? [] });
-  const [reason, setReason] = useState(""); const [busy, setBusy] = useState(false);
+  const initial: QuestionDetails = question
+    ? { title: question.title, difficulty: question.difficulty as QuestionDetails["difficulty"], score: question.score, base_price: question.basePrice, auction_order: question.auctionOrder, statement_md: question.statementMd, sample_count: question.sampleCount, hints: question.hints.map((h) => ({ price: h.price, body_md: h.bodyMd })) }
+    : EMPTY_DETAILS;
+  const [d, setD] = useState<QuestionDetails>(initial);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const dirty = JSON.stringify(d) !== JSON.stringify(initial);
+  const issues = [...detailsIssues(d, testcases), ...hintIssues(d.hints)];
+
   async function save() {
     setBusy(true);
-    try { await api.post("/api/admin/questions", { id, ...q, reason }); toast({ title: "Details saved", tone: "success" }); setReason(""); onChange(); }
+    try { await api.post("/api/admin/questions", { id, reason: reason.trim(), ...d }); toast({ title: "Details saved", tone: "success" }); setReason(""); onChange(); }
     catch (err) { toast({ title: "Not saved", description: errorMessage(err), tone: "error" }); } finally { setBusy(false); }
   }
+
   return (
-    <Card>
-      <CardHeader title="What participants see" description="Title, statement, tier, price and hints. The judge never sees any of this." />
-      <CardBody>
-        <Field label="Title"><Input value={q.title} onChange={(e) => setQ({ ...q, title: e.target.value })} /></Field>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Field label="Tier"><Select value={q.difficulty} onChange={(e) => setQ({ ...q, difficulty: e.target.value })}><option>easy</option><option>medium</option><option>hard</option></Select></Field>
-          <Field label="Score"><Input type="number" value={q.score} onChange={(e) => setQ({ ...q, score: Number(e.target.value) })} /></Field>
-          <Field label="Base price"><Input type="number" value={q.base_price} onChange={(e) => setQ({ ...q, base_price: Number(e.target.value) })} /></Field>
-          <Field label="Auction order"><Input type="number" value={q.auction_order} onChange={(e) => setQ({ ...q, auction_order: Number(e.target.value) })} /></Field>
+    <div className={`space-y-4 ${dirty ? "pb-20" : ""}`}>
+      {!question && <Alert tone="info" title="No details yet">Participants would see nothing for this problem. Fill these in and save.</Alert>}
+      <Section title="Question" description="What participants see when they win it. The judge never reads any of this.">
+        <QuestionBasicsFields d={d} onChange={setD} testcases={testcases} />
+      </Section>
+      <Section title="Hints" description="Author-written text, unlocked in order. Hidden testcases are never for sale, at any price.">
+        <HintsEditor hints={d.hints} onChange={(hints) => setD({ ...d, hints })} />
+      </Section>
+      {question && question.status !== "void" && (
+        <Section title="Void" description="Removes the question from play. It scores for nobody; the owner is refunded the price and every hint bought for it.">
+          <ReasonAction label="Void this question" variant="danger" title={`Void ${id}?`} description="This cannot be undone."
+            onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/void`, { reason }); toast({ title: "Question voided", tone: "success" }); onChange(); }} />
+        </Section>
+      )}
+
+      {(dirty || !question) && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 backdrop-blur lg:left-60">
+          <div className="mx-auto flex max-w-[1440px] flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+            <span className="text-[13px] font-semibold">{question ? "Unsaved changes" : "Save the details"}</span>
+            {issues.length > 0 && <span className="text-[12px] text-red">{issues[0]}</span>}
+            <div className="flex flex-1 items-center gap-2 sm:justify-end">
+              <Input className="sm:max-w-xs" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason — recorded in the audit log" />
+              {question && <Button variant="ghost" onClick={() => setD(initial)}>Discard</Button>}
+              <Button onClick={save} loading={busy} disabled={reason.trim().length < 3 || issues.length > 0} icon={<Icon.Check size={14} />}>Save</Button>
+            </div>
+          </div>
         </div>
-        <Field label="Statement (Markdown)"><Textarea rows={10} value={q.statement_md} onChange={(e) => setQ({ ...q, statement_md: e.target.value })} /></Field>
-        <Field label="Samples: first K testcases" hint="Shown free; the text is read from the package so it can never disagree with what is judged."><Input type="number" className="w-24" value={q.sample_count} onChange={(e) => setQ({ ...q, sample_count: Number(e.target.value) })} /></Field>
-        <div className="mb-3">
-          <div className="mb-1 flex items-center justify-between text-[13px] font-semibold text-muted">Hints, unlocked in order <Button size="sm" variant="ghost" onClick={() => setQ({ ...q, hints: [...q.hints, { price: 50, body_md: "" }] })}>+ Add hint</Button></div>
-          {q.hints.length === 0 && <p className="text-xs text-faint">No hints. Participants with money and no idea will have nothing to buy.</p>}
-          {q.hints.map((h, i) => (
-            <div key={i} className="mb-2 flex gap-2"><span className="mt-2 w-5 text-xs text-faint">{i + 1}.</span><Input className="w-24" type="number" value={h.price} aria-label="Price" onChange={(e) => setQ({ ...q, hints: q.hints.map((x, j) => (j === i ? { ...x, price: Number(e.target.value) } : x)) })} /><Textarea rows={2} value={h.body_md} placeholder="Hint text (Markdown)" onChange={(e) => setQ({ ...q, hints: q.hints.map((x, j) => (j === i ? { ...x, body_md: e.target.value } : x)) })} /><Button size="sm" variant="ghost" aria-label="Remove hint" onClick={() => setQ({ ...q, hints: q.hints.filter((_, j) => j !== i) })}><Icon.X /></Button></div>
-          ))}
-        </div>
-        <Field label="Reason"><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. initial details" /></Field>
-      </CardBody>
-      <CardFooter className="justify-between">
-        {question && question.status !== "void" ? <ReasonAction label="Void question" variant="danger" title={`Void ${id}?`} description="Scores for nobody. The owner is refunded the price and every hint by default." onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/void`, { reason }); toast({ title: "Question voided", tone: "success" }); onChange(); }} /> : <span />}
-        <Button onClick={save} loading={busy} disabled={reason.length < 3 || !q.title} icon={<Icon.Check />}>Save details</Button>
-      </CardFooter>
-    </Card>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function Preview({ id, problem, question }: { id: string; problem: P | null; question: Q | null }) {
+  const [samples, setSamples] = useState<{ input: string; output: string }[] | null>(null);
+  const count = question?.sampleCount ?? 0;
+  useEffect(() => {
+    if (!problem) { setSamples([]); return; }
+    void api.post<{ samples: { input: string; output: string }[] }>(`/api/admin/problems/${id}/samples`, { count, version: problem.current ?? problem.versions.at(-1) }).then((r) => setSamples(r.samples)).catch(() => setSamples([]));
+  }, [id, problem, count]);
+
+  if (!question) return <Section padded={false}><div className="p-8 text-center text-[13px] text-muted">No details to preview yet — add them under Details & hints.</div></Section>;
+  return (
+    <div className="space-y-4">
+      <Alert tone="info">This is the workspace's problem pane, rendered from the saved details and the {problem?.current ? "live" : "latest"} package.</Alert>
+      <ProblemPreview
+        title={question.title} difficulty={question.difficulty} score={question.score} statementMd={question.statementMd}
+        timeLimitMs={problem?.time_limit_ms ?? null} memoryLimitMb={problem?.memory_limit_mb ?? null}
+        testcases={problem?.testcases ?? null} sampleCount={question.sampleCount} samples={samples ?? []}
+      />
+      <Section title="Hints, in the order they unlock" description="The owner sees only the next price until it is bought.">
+        {question.hints.length === 0 ? <p className="text-[13px] text-muted">None.</p> : (
+          <ol className="divide-y divide-line">
+            {question.hints.map((h) => (
+              <li key={h.idx} className="flex gap-4 py-2.5 text-[13px]">
+                <span className="w-24 shrink-0 font-semibold tabular-nums text-muted">Hint {h.idx + 1} · {h.price}</span>
+                <span className="min-w-0 flex-1 whitespace-pre-wrap">{h.bodyMd}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Section>
+    </div>
   );
 }

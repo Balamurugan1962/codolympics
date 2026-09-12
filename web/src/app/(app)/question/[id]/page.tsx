@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useContest } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { Markdown } from "@/components/markdown";
+import { StatementView } from "@/components/problems/statement-view";
 import { Badge, VerdictBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -143,27 +144,8 @@ export default function WorkspacePage() {
       <div className="px-4"><Tabs value={tab} onChange={setTab} tabs={[{ value: "problem", label: "Problem" }, { value: "submissions", label: `Submissions${q.history.length ? ` (${q.history.length})` : ""}` }, { value: "hints", label: `Hints ${q.hints.revealed.length}/${q.hints.total}` }]} /></div>
       <div className="pane min-h-0 flex-1 overflow-auto p-4">
         {tab === "problem" && (
-          <div className="space-y-5">
-            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
-              <span>Time limit <strong className="text-ink">{q.time_limit_ms ? `${q.time_limit_ms / 1000} s` : "—"}</strong></span>
-              <span>Memory <strong className="text-ink">{q.memory_limit_mb ? `${q.memory_limit_mb} MB` : "—"}</strong></span>
-              <span>Hidden tests <strong className="text-ink">{q.hidden_testcases ?? "—"}</strong></span>
-              <span>Input via <strong className="text-ink">stdin</strong>, output to <strong className="text-ink">stdout</strong></span>
-            </div>
-            <Markdown>{q.statement_md}</Markdown>
-            {q.samples.length > 0 && (
-              <section>
-                <h3 className="mb-2 text-sm font-semibold">Samples</h3>
-                <div className="space-y-3">{q.samples.map((s, i) => (
-                  <div key={i} className="grid grid-cols-2 gap-2">
-                    <SampleBox label={`Input ${i + 1}`} text={s.input} onCopied={() => toast({ title: "Copied", tone: "info", duration: 1500 })} />
-                    <SampleBox label={`Output ${i + 1}`} text={s.output} onCopied={() => toast({ title: "Copied", tone: "info", duration: 1500 })} />
-                  </div>
-                ))}</div>
-                <p className="mt-2 text-xs text-faint">Hidden tests are never shown, for free or for payment. Failing a sample usually means an output-format mistake.</p>
-              </section>
-            )}
-          </div>
+          <StatementView statementMd={q.statement_md} timeLimitMs={q.time_limit_ms} memoryLimitMb={q.memory_limit_mb} hiddenTestcases={q.hidden_testcases} samples={q.samples}
+            onCopied={() => toast({ title: "Copied", tone: "info", duration: 1500 })} />
         )}
         {tab === "submissions" && <History history={q.history} sampleCount={q.sample_count} onRestore={(h) => { void api.get<{ source?: string }>(`/api/questions/${id}`); void h; }} />}
         {tab === "hints" && (
@@ -225,16 +207,6 @@ export default function WorkspacePage() {
         <p className="text-sm">Reveal hint <strong>{(q.hints.next?.idx ?? 0) + 1}</strong> for <strong>{q.hints.next?.price}</strong> coins? This cannot be undone.</p>
         <div className="mt-4 flex justify-end gap-2"><Button variant="secondary" onClick={() => setHintDialog(false)}>Cancel</Button><Button onClick={buyHint} loading={busy}>Buy for {q.hints.next?.price}</Button></div>
       </Dialog>
-    </div>
-  );
-}
-
-function SampleBox({ label, text, onCopied }: { label: string; text: string; onCopied: () => void }) {
-  return (
-    <div className="min-w-0">
-      <div className="mb-1 flex items-center justify-between text-xs font-semibold text-muted">{label}
-        <button className="flex items-center gap-1 text-green-dark hover:underline" onClick={() => { navigator.clipboard?.writeText(text); onCopied(); }}><Icon.Copy size={12} /> Copy</button></div>
-      <pre className="max-h-40 overflow-auto rounded-box border border-line bg-page p-2 text-xs">{text}</pre>
     </div>
   );
 }

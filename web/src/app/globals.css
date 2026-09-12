@@ -67,6 +67,7 @@
 /* --- motion, focus, scroll -------------------------------------------- */
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drawer-in { from { transform: translateX(16px); opacity: .6; } to { transform: none; opacity: 1; } }
 @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(27,169,76,.45); } 100% { box-shadow: 0 0 0 12px rgba(27,169,76,0); } }
 .animate-fade-in { animation: fade-in .15s ease-out; }
 .pulse-once { animation: pulse-ring .6s ease-out 1; }
