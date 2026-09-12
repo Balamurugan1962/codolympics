@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+
+# Contest data — problem packages and testcases are large and not source
+/data/
+/storage/
+*.tar.gz
+
+# Runtime
+*.log
+*.db
+*.sqlite3

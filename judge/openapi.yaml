@@ -1,0 +1,798 @@
+openapi: 3.1.0
+
+info:
+  title: Judge Service API
+  version: "1.0.0"
+  description: |
+    Code judging for the auction-based coding competition.
+
+    This service answers exactly one question: **does this source code pass this
+    problem?** It knows nothing about auctions, balances, question ownership,
+    hints or scoring — all of that belongs to the backend.
+
+    ### Submit, then poll
+    `POST /submit` returns `202` with a job handle; poll `GET /jobs/{job_id}`
+    until `state` is `done`. Judging takes anywhere from under a second to well
+    over a minute, depending on how close the solution runs to its time limit.
+
+    Job state is held **in memory only**. Nothing is persisted — keep
+    submissions in your own database.
+
+    ### Deployment
+    Runs on the internal network only. It fronts `go-judge`, which executes
+    untrusted code in a sandbox and must never be exposed directly.
+
+    ### Leaking answers
+    `Judgement.jury_detail` contains the expected output for the failing test.
+    Never render it to a contestant. See the field description.
+
+servers:
+  - url: http://judge-api:8000
+    description: Internal Docker network
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Judging
+  - name: Metadata
+
+paths:
+  /health:
+    get:
+      tags: [Metadata]
+      summary: Liveness and capacity
+      description: The only unauthenticated endpoint. Use it for container health checks.
+      security: []
+      responses:
+        "200":
+          description: Service state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+              examples:
+                healthy:
+                  value:
+                    status: ok
+                    go_judge: ok
+                    problems: 25
+                    busy: 1
+                    capacity: 4
+                degraded:
+                  summary: Sandbox unreachable — contest is down
+                  value:
+                    status: degraded
+                    go_judge: unreachable
+                    problems: 25
+                    busy: 0
+                    capacity: 4
+
+  /languages:
+    get:
+      tags: [Metadata]
+      summary: Supported languages
+      description: |
+        Drive the submission language dropdown from this endpoint so the UI and
+        the judge cannot drift apart.
+
+        Every language gets the **same** time limit, as on Codeforces — there are
+        no per-language multipliers. Interpreted languages are therefore at a
+        real disadvantage on tight problems; set limits generously relative to
+        the intended solution, and say so in the contest rules so participants
+        can factor it into their bidding.
+      responses:
+        "200":
+          description: Available languages
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [languages]
+                properties:
+                  languages:
+                    type: array
+                    items: { $ref: "#/components/schemas/Language" }
+              example:
+                languages:
+                  - { key: c,          name: "C (GCC 14)",          compiled: true }
+                  - { key: cpp,        name: "C++ (GCC 14)",        compiled: true }
+                  - { key: python,     name: "Python 3.13",         compiled: false }
+                  - { key: java,       name: "Java 21",             compiled: true }
+                  - { key: javascript, name: "JavaScript (Node 20)", compiled: false }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /problems/{problem_id}:
+    get:
+      tags: [Metadata]
+      summary: Problem metadata
+      description: |
+        Call this at **auction setup** to confirm every question you are about to
+        sell actually exists and has testcases. Discovering a missing problem
+        after a participant has paid for it is unrecoverable mid-contest.
+      parameters:
+        - name: problem_id
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[A-Za-z0-9._-]+$" }
+          example: hard-03
+      responses:
+        "200":
+          description: Problem metadata
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProblemInfo" }
+              example:
+                problem_id: hard-03
+                testcases: 87
+                time_limit_ms: 2000
+                memory_limit_mb: 256
+                compare: checker
+                early_exit: true
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/ProblemNotFound" }
+
+  /problems:
+    get:
+      tags: [Metadata]
+      summary: List all problems
+      operationId: listProblems
+      description: |
+        Everything the admin dashboard needs to show the state of the problem
+        set: counts, sizes, versions and whether each one has been validated.
+        This is the "file manager" view — a page in your admin UI, not a
+        separate service.
+      responses:
+        "200":
+          description: All problems known to the judge.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [problems]
+                properties:
+                  problems:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProblemInfo" }
+              example:
+                problems:
+                  - { problem_id: easy-01, testcases: 24, bytes: 8310422, version: v2,
+                      time_limit_ms: 1000, memory_limit_mb: 256, compare: tokens,
+                      early_exit: true, validated: true, modified_at: "2026-09-09T14:02:11Z" }
+                  - { problem_id: hard-03, testcases: 87, bytes: 149002133, version: v3,
+                      time_limit_ms: 1000, memory_limit_mb: 256, compare: checker,
+                      early_exit: true, validated: false, modified_at: "2026-09-10T09:41:55Z" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /problems/{problem_id}/validate:
+    post:
+      tags: [Metadata]
+      summary: Validate a problem before the contest
+      operationId: validateProblem
+      description: |
+        Checks the problem is actually usable: every `.in` has a matching answer
+        file, `problem.json` parses, and the checker compiles.
+
+        If a `reference_source` is supplied it is run against **every** testcase.
+        This is the part that matters — it proves the answer files are correct.
+        A `reference.first_fail` of 61 means testcase 61's answer file is wrong,
+        found on a Tuesday rather than during the contest.
+
+        Run it for all problems as the last step of deployment, and wire it to a
+        "Validate" button in the admin UI.
+      parameters:
+        - name: problem_id
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[A-Za-z0-9._-]+$" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reference_source:
+                  type: string
+                  description: A known-correct solution. Omit to run structural checks only.
+                language: { type: string, example: cpp }
+                wrong_source:
+                  type: string
+                  description: |
+                    Optionally, a known-*incorrect* solution. If this is
+                    accepted, the testcases fail to catch a bad answer — a test
+                    set that passes everything is worse than useless.
+      responses:
+        "200":
+          description: "Validation report. A false `ok` is a normal result, not an error."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationReport" }
+              examples:
+                bad_answer_file:
+                  summary: Reference solution fails — an answer file is wrong
+                  value:
+                    problem_id: hard-03
+                    ok: false
+                    testcases: 87
+                    version: v3
+                    issues: []
+                    checker: { compiled: true }
+                    reference: { verdict: WA, first_fail: 61, passed: 60 }
+                    wrong_solution: null
+                structural:
+                  summary: Missing answer file
+                  value:
+                    problem_id: hard-03
+                    ok: false
+                    testcases: 86
+                    version: v3
+                    issues: ["00042.in has no matching answer file"]
+                    checker: { compiled: true }
+                    reference: null
+                    wrong_solution: null
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/ProblemNotFound" }
+
+  /problems/{problem_id}/testcases/{index}:
+    get:
+      tags: [Metadata]
+      summary: Read one testcase (for paid hint reveals)
+      operationId: getTestcase
+      description: |
+        Returns a testcase's input and expected answer.
+
+        **This exists so your backend can sell a testcase as a paid hint.** The
+        judge does not know or care who paid — it serves bytes to an
+        authenticated caller. Access control is entirely your backend's job.
+
+        **Always pass `version`**, taken from the submission's stored
+        `problem_version`. Without it you get whatever is current, which after a
+        mid-contest edit is not the testcase their submission failed on — and
+        they paid for that specific one.
+
+        Never expose this endpoint to contestants directly.
+      parameters:
+        - name: problem_id
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[A-Za-z0-9._-]+$" }
+        - name: index
+          in: path
+          required: true
+          description: Zero-based, matching `first_fail` in a judgement.
+          schema: { type: integer, minimum: 0 }
+          example: 12
+        - name: version
+          in: query
+          required: false
+          description: Problem version, from the submission's `problem_version`.
+          schema: { type: string }
+          example: v3
+      responses:
+        "200":
+          description: The testcase.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Testcase" }
+              example:
+                problem_id: hard-03
+                index: 12
+                version: v3
+                input: "3\n1 2\n5 7\n10 20\n"
+                answer: "3\n12\n30\n"
+                truncated: false
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/ProblemNotFound" }
+
+  /submit:
+    post:
+      tags: [Judging]
+      summary: Queue a submission for judging
+      operationId: submit
+      description: |
+        Accepts a submission and returns immediately with a job handle. Poll
+        `GET /jobs/{job_id}` for progress and the final verdict.
+
+        **Why not synchronous:** judging time scales with the solution's own
+        runtime. A correct solution that sits just under a 2s limit across ~100
+        testcases takes ~38s, and a Python one with its 3x multiplier can exceed
+        100s. Those are exactly the submissions that deserve to pass, and they
+        are the ones a blocking call would lose to a proxy timeout.
+
+        The judge stores nothing durably. Keep the source in your own database
+        so a rejudge — or recovery after a judge restart — is just resubmitting.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubmitRequest" }
+            examples:
+              cpp:
+                value:
+                  problem_id: hard-03
+                  language: cpp
+                  source: "#include <iostream>\nint main(){int t;std::cin>>t;while(t--){long long a,b;std::cin>>a>>b;std::cout<<a+b<<'\\n';}}"
+                  submission_id: sub_8f21c
+      responses:
+        "202":
+          description: Accepted for judging. Poll the job for the result.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobHandle" }
+              example:
+                job_id: job_01JQ8XKZ3M
+                submission_id: sub_8f21c
+                state: queued
+                poll_after_ms: 500
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/ProblemNotFound" }
+        "429": { $ref: "#/components/responses/Busy" }
+        "503": { $ref: "#/components/responses/SandboxDown" }
+
+  /jobs/{job_id}:
+    get:
+      tags: [Judging]
+      summary: Poll a judging job
+      operationId: getJob
+      description: |
+        Returns the job's current state. Poll roughly once a second; the
+        response carries `poll_after_ms` as a hint.
+
+        `state` is `queued`, `running`, or `done`. Only when it is `done` is
+        `result` present — and a failing verdict is still a completed job, not
+        an error.
+
+        **Jobs are held in memory** with a TTL (default 10 minutes after
+        completion). A restarted judge loses in-flight jobs and this returns
+        `404`; resubmit from your stored source.
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema: { type: string }
+          example: job_01JQ8XKZ3M
+      responses:
+        "200":
+          description: Current job state.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobState" }
+              examples:
+                queued:
+                  summary: Waiting for a judging slot
+                  value:
+                    job_id: job_01JQ8XKZ3M
+                    submission_id: sub_8f21c
+                    state: queued
+                    progress: { done: 0, total: 87 }
+                    poll_after_ms: 500
+                    result: null
+                running:
+                  summary: Compiled, now running testcases
+                  value:
+                    job_id: job_01JQ8XKZ3M
+                    submission_id: sub_8f21c
+                    state: running
+                    progress: { done: 34, total: 87 }
+                    poll_after_ms: 1000
+                    result: null
+                done_accepted:
+                  summary: Finished — accepted
+                  value:
+                    job_id: job_01JQ8XKZ3M
+                    submission_id: sub_8f21c
+                    state: done
+                    progress: { done: 87, total: 87 }
+                    poll_after_ms: null
+                    result:
+                      submission_id: sub_8f21c
+                      verdict: AC
+                      passed: 87
+                      total: 87
+                      first_fail: null
+                      max_time_ms: 412.3
+                      max_memory_kb: 34120
+                      compile_output: ""
+                      message: all testcases passed
+                      jury_detail: ""
+                      duration_ms: 3310
+                done_wrong_answer:
+                  summary: Finished — wrong answer, stopped early
+                  value:
+                    job_id: job_01JQ8XKZ3N
+                    submission_id: sub_8f21d
+                    state: done
+                    progress: { done: 12, total: 87 }
+                    poll_after_ms: null
+                    result:
+                      submission_id: sub_8f21d
+                      verdict: WA
+                      passed: 11
+                      total: 87
+                      first_fail: 12
+                      max_time_ms: 88.1
+                      max_memory_kb: 12040
+                      compile_output: ""
+                      message: wrong answer on test 12
+                      jury_detail: "token 2: expected '41', got '39'"
+                      duration_ms: 402
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/JobNotFound" }
+    delete:
+      tags: [Judging]
+      summary: Cancel a job
+      operationId: cancelJob
+      description: |
+        Cancels a queued or running job. Use it when a participant resubmits
+        before the previous judgement finished — otherwise a few people
+        resubmitting during a slow problem can saturate every judging slot with
+        results nobody will read.
+
+        Cancelling an already-finished job is a no-op.
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: "Cancelled, or already finished." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/JobNotFound" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Shared secret between the backend and the judge.
+
+  schemas:
+    Verdict:
+      type: string
+      enum: [AC, WA, TLE, MLE, OLE, RE, CE, IE]
+      description: |
+        * `AC`  accepted — every testcase passed
+        * `WA`  wrong answer
+        * `TLE` time limit exceeded
+        * `MLE` memory limit exceeded
+        * `OLE` output limit exceeded
+        * `RE`  runtime error — crash or non-zero exit
+        * `CE`  compilation failed
+        * `IE`  internal error — **our** fault (broken checker, sandbox fault).
+                Never score this against the contestant; retry or investigate.
+
+    SubmitRequest:
+      type: object
+      required: [problem_id, language, source]
+      properties:
+        problem_id:
+          type: string
+          pattern: "^[A-Za-z0-9._-]+$"
+          description: Must match a directory under the testcase root.
+          example: hard-03
+        language:
+          type: string
+          description: A `key` from `GET /languages`.
+          example: cpp
+        source:
+          type: string
+          maxLength: 262144
+          description: Source code, UTF-8, max 256 KB.
+        submission_id:
+          type: string
+          maxLength: 64
+          description: |
+            Your identifier, echoed back unchanged. The judge is stateless and
+            does not deduplicate — resubmitting the same id judges again.
+          example: sub_8f21c
+
+    Judgement:
+      type: object
+      required: [verdict, passed, total, max_time_ms, max_memory_kb, message, duration_ms]
+      properties:
+        submission_id:
+          type: [string, "null"]
+          description: Echoed from the request.
+        verdict: { $ref: "#/components/schemas/Verdict" }
+        passed:
+          type: integer
+          description: |
+            Testcases passed before judging stopped. With `early_exit` enabled
+            this is "tests before the first failure", **not** a count of every
+            passing test in the set.
+          example: 11
+        total:
+          type: integer
+          description: Testcases the problem has.
+          example: 87
+        first_fail:
+          type: [integer, "null"]
+          description: |
+            Zero-based index of the first failing testcase, or `null` for `AC`
+            and `CE`. Safe to show contestants — it is the test *number*, never
+            its contents.
+          example: 12
+        max_time_ms:
+          type: number
+          description: Slowest single testcase, CPU milliseconds.
+          example: 412.3
+        max_memory_kb:
+          type: integer
+          description: Peak memory across testcases.
+          example: 34120
+        compile_output:
+          type: string
+          description: |
+            Compiler stdout+stderr, truncated to 4 KB. Safe to show the
+            contestant — it is their own code's diagnostics.
+        message:
+          type: string
+          description: Human-readable summary. **Safe to show contestants.**
+          example: wrong answer on test 12
+        jury_detail:
+          type: string
+          description: |
+            **NEVER SHOW THIS TO A CONTESTANT.** Contains the expected output
+            for the failing test (e.g. `expected '41', got '39'`), which hands
+            them the answer. Admin dashboard only.
+
+            This matters especially here: hints are bought with virtual money,
+            so leaking answers through error messages undermines the auction.
+        problem_version:
+          type: string
+          description: |
+            Exactly which version of the problem this was judged against.
+
+            **Store this on every submission.** Problems can be edited during a
+            contest, and without it a paid testcase reveal may show a testcase
+            from a different version than the one the submission actually
+            failed on — and rejudge disputes become unresolvable.
+          example: v3
+        duration_ms:
+          type: integer
+          description: Wall-clock time spent judging, for your own monitoring.
+          example: 1843
+
+    JobHandle:
+      type: object
+      required: [job_id, state]
+      properties:
+        job_id:
+          type: string
+          description: Poll `GET /jobs/{job_id}` with this.
+          example: job_01JQ8XKZ3M
+        submission_id:
+          type: [string, "null"]
+          description: Echoed from the request.
+        state:
+          type: string
+          enum: [queued]
+          description: Always `queued` on acceptance.
+        poll_after_ms:
+          type: integer
+          description: Suggested delay before the first poll.
+          example: 500
+
+    JobState:
+      type: object
+      required: [job_id, state, progress]
+      properties:
+        job_id: { type: string, example: job_01JQ8XKZ3M }
+        submission_id:
+          type: [string, "null"]
+          description: Echoed from the request.
+        state:
+          type: string
+          enum: [queued, running, done]
+          description: |
+            * `queued`  waiting for a judging slot
+            * `running` compiling or running testcases
+            * `done`    finished — `result` is populated
+
+            A job that failed to compile or was rejected is still `done`; the
+            outcome lives in `result.verdict`. There is no `failed` state.
+        progress: { $ref: "#/components/schemas/Progress" }
+        poll_after_ms:
+          type: [integer, "null"]
+          description: Suggested delay before the next poll; `null` when done.
+          example: 1000
+        result:
+          oneOf:
+            - $ref: "#/components/schemas/Judgement"
+            - type: "null"
+          description: The verdict. `null` until `state` is `done`.
+
+    Progress:
+      type: object
+      required: [done, total]
+      properties:
+        done:
+          type: integer
+          description: |
+            Testcases judged so far. Surface this to contestants as
+            "running test 34/87" — without it a 38s judgement is an
+            indistinguishable spinner and people resubmit, doubling your load.
+          example: 34
+        total:
+          type: integer
+          description: Testcases the problem has.
+          example: 87
+
+    Language:
+      type: object
+      required: [key, name]
+      properties:
+        key: { type: string, example: cpp }
+        name: { type: string, example: "C++ (GCC 14)" }
+        compiled:
+          type: boolean
+          description: Whether the language has a compile step (affects CE verdicts).
+          example: true
+
+    ProblemInfo:
+      type: object
+      required: [problem_id, testcases, time_limit_ms, memory_limit_mb, compare]
+      properties:
+        problem_id: { type: string, example: hard-03 }
+        testcases:
+          type: integer
+          description: Number of input files. Note each file may itself contain many sub-cases (`t`).
+          example: 87
+        time_limit_ms: { type: integer, example: 2000 }
+        memory_limit_mb: { type: integer, example: 256 }
+        compare:
+          type: string
+          enum: [tokens, exact, checker]
+          description: |
+            * `tokens`  whitespace-insensitive comparison (the default)
+            * `exact`   byte-exact but for trailing whitespace
+            * `checker` a testlib-style program decides — for problems with
+                        more than one valid answer
+        early_exit:
+          type: boolean
+          description: Stop at the first failing testcase.
+          example: true
+        version:
+          type: string
+          description: Current published version. Record it on every submission.
+          example: v3
+        bytes:
+          type: integer
+          description: Total size of the testcase data, for the admin dashboard.
+          example: 149002133
+        validated:
+          type: boolean
+          description: Whether the last validate run passed.
+          example: true
+        modified_at:
+          type: string
+          format: date-time
+
+    ValidationReport:
+      type: object
+      required: [problem_id, ok, testcases, issues]
+      properties:
+        problem_id: { type: string }
+        ok:
+          type: boolean
+          description: True only if there are no issues and every supplied solution behaved as expected.
+        testcases: { type: integer }
+        version: { type: string, example: v3 }
+        issues:
+          type: array
+          items: { type: string }
+          description: Structural problems — unmatched files, unparseable config.
+          example: ["00042.in has no matching answer file"]
+        checker:
+          type: [object, "null"]
+          properties:
+            compiled: { type: boolean }
+            output: { type: string }
+        reference:
+          type: [object, "null"]
+          description: Result of running the reference solution over every testcase.
+          properties:
+            verdict: { $ref: "#/components/schemas/Verdict" }
+            first_fail: { type: [integer, "null"] }
+            passed: { type: integer }
+        wrong_solution:
+          type: [object, "null"]
+          description: |
+            Result for the known-incorrect solution. If its verdict is `AC`,
+            the testcases do not catch a wrong answer — treat that as a failure.
+          properties:
+            verdict: { $ref: "#/components/schemas/Verdict" }
+            first_fail: { type: [integer, "null"] }
+
+    Testcase:
+      type: object
+      required: [problem_id, index, input, answer]
+      properties:
+        problem_id: { type: string }
+        index: { type: integer, example: 12 }
+        version: { type: string, example: v3 }
+        input: { type: string }
+        answer: { type: string }
+        truncated:
+          type: boolean
+          description: True if the testcase exceeded the response size cap and was cut.
+
+    Health:
+      type: object
+      required: [status, go_judge]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        go_judge:
+          type: string
+          enum: [ok, unreachable]
+          description: Sandbox reachability. `unreachable` means nothing can be judged.
+        problems: { type: integer, description: Problems discovered on disk. }
+        busy: { type: integer, description: Judgements in flight. }
+        capacity: { type: integer, description: Concurrent judgement limit. }
+
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          enum:
+            - invalid_request
+            - unknown_language
+            - source_too_large
+            - unauthorized
+            - problem_not_found
+            - job_not_found
+            - busy
+            - sandbox_unavailable
+        message: { type: string }
+
+  responses:
+    BadRequest:
+      description: Malformed request, unknown language, or oversized source.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            error: unknown_language
+            message: "unknown language 'rust'; available: c, cpp, java, javascript, python"
+    Unauthorized:
+      description: Missing or bad bearer token. Treat as a configuration bug, not user error.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: unauthorized, message: invalid or missing bearer token }
+    ProblemNotFound:
+      description: |
+        No such problem. During a contest this is serious — it means a question
+        being auctioned has no testcases behind it.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: problem_not_found, message: "no such problem: hard-99" }
+    JobNotFound:
+      description: |
+        No such job. Either the TTL expired, or the judge restarted and lost
+        in-flight jobs. Resubmit from your stored source — this is expected
+        behaviour, not an outage on its own.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: job_not_found, message: "no such job: job_01JQ8XKZ3M (expired or judge restarted)" }
+    Busy:
+      description: All judging slots in use. Retry with backoff.
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Seconds to wait.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: busy, message: "judge at capacity (4/4), retry shortly" }
+    SandboxDown:
+      description: go-judge is unreachable. Nothing can be judged — alert loudly.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: sandbox_unavailable, message: "cannot reach go-judge at http://go-judge:5050" }
