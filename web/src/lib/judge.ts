@@ -118,8 +118,8 @@ export const judge = {
   languages: async () => (await call<{ languages: Language[] }>("GET", "/languages")).languages,
   problems: async () => (await call<{ problems: ProblemInfo[] }>("GET", "/problems")).problems,
   problem: (id: string) => call<ProblemInfo>("GET", `/problems/${encodeURIComponent(id)}`),
-  validate: (id: string, req: { reference_source?: string; wrong_source?: string; language?: string }) =>
-    call<ValidationReport>("POST", `/problems/${encodeURIComponent(id)}/validate`, req),
+  validate: (id: string, req: { reference_source?: string; wrong_source?: string; language?: string }, version?: string) =>
+    call<ValidationReport>("POST", `/problems/${encodeURIComponent(id)}/validate${version ? `?version=${encodeURIComponent(version)}` : ""}`, req),
   testcase: (id: string, index: number, version?: string) =>
     call<{ input: string; answer: string; truncated: boolean; version: string }>(
       "GET",
