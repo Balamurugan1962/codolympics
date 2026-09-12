@@ -331,6 +331,79 @@ paths:
         "429": { $ref: "#/components/responses/Busy" }
         "503": { $ref: "#/components/responses/SandboxDown" }
 
+  /hack:
+    post:
+      tags: [Judging]
+      summary: Does this input break the given solution?
+      operationId: hack
+      description: |
+        Phase 1's Hacking section. The participant reads a deliberately flawed
+        solution and submits a **test input** they believe breaks it.
+
+        Three runs, in order: the problem's validator on the input (an invalid
+        input is not a hack), the problem's **stored reference solution** to get
+        the correct answer, then the given solution compared against it. It is
+        `hacked` if the given solution gets a wrong answer, exceeds a limit, or
+        crashes.
+
+        The problem must carry a reference solution (`problem.json` →
+        `reference`). Anything wrong with the problem itself — reference missing
+        or failing, given solution not compiling — is `IE`, and `hacked` is
+        `null`: the participant is neither credited nor penalised.
+
+        **Never show a participant `verdict`.** Whether it was a wrong answer or
+        a timeout tells them the shape of the bug; that turns the judge into an
+        oracle for probing the solution instead of a check on reading it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HackRequest" }
+      responses:
+        "202":
+          description: Accepted. Poll the job; `result` is a HackResult.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobHandle" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/ProblemNotFound" }
+        "429": { $ref: "#/components/responses/Busy" }
+        "503": { $ref: "#/components/responses/SandboxDown" }
+
+  /validate-answers:
+    post:
+      tags: [Judging]
+      summary: Score a list of answers with a supplied validator
+      operationId: validateAnswers
+      description: |
+        Phase 1's validator-scored questions — "find as many valid passwords as
+        you can" — where there is no fixed answer key. The validator is a Python
+        file defining `check(entry)`; each entry is a Reader over one submitted
+        answer, using the same API as checkers.
+
+        Runs in the sandbox under its own limits, because a typo in an
+        administrator's validator must not be able to hang the contest.
+
+        If the validator itself cannot run, `status` is `IE` and `results` is
+        empty. **Treat that as "nothing was checked"** — never as every entry
+        being invalid, or one bad validator zeroes every participant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnswersRequest" }
+      responses:
+        "202":
+          description: Accepted. Poll the job; `result` is an AnswersResult.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobHandle" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/Busy" }
+        "503": { $ref: "#/components/responses/SandboxDown" }
+
   /jobs/{job_id}:
     get:
       tags: [Judging]
@@ -601,8 +674,12 @@ components:
         result:
           oneOf:
             - $ref: "#/components/schemas/Judgement"
+            - $ref: "#/components/schemas/HackResult"
+            - $ref: "#/components/schemas/AnswersResult"
             - type: "null"
-          description: The verdict. `null` until `state` is `done`.
+          description: |
+            `null` until `state` is `done`. Then a Judgement for `/submit`, a
+            HackResult for `/hack`, an AnswersResult for `/validate-answers`.
 
     Progress:
       type: object
@@ -672,6 +749,12 @@ components:
         modified_at:
           type: string
           format: date-time
+        has_reference:
+          type: boolean
+          description: Whether the package stores a reference solution — required for `/hack`.
+        hack_only:
+          type: boolean
+          description: A problem that exists only to be hacked; it has no testcases of its own.
 
     ValidationReport:
       type: object
@@ -709,6 +792,93 @@ components:
             verdict: { $ref: "#/components/schemas/Verdict" }
             first_fail: { type: [integer, "null"] }
 
+    HackRequest:
+      type: object
+      required: [problem_id, language, source, input]
+      properties:
+        problem_id:
+          type: string
+          pattern: "^[A-Za-z0-9._-]+$"
+          description: A problem whose package stores a reference solution.
+        language:
+          type: string
+          description: Language of the given solution.
+        source:
+          type: string
+          maxLength: 262144
+          description: The given (deliberately flawed) solution.
+        input:
+          type: string
+          maxLength: 262144
+          description: The participant's test input, max 256 KB.
+        submission_id:
+          type: string
+          maxLength: 64
+
+    HackResult:
+      type: object
+      required: [valid_input, message]
+      properties:
+        submission_id: { type: [string, "null"] }
+        valid_input:
+          type: boolean
+          description: False means the input broke a constraint; nothing was run.
+        invalid_reason:
+          type: string
+          description: Which constraint. Safe to show — it concerns their own input.
+        hacked:
+          type: [boolean, "null"]
+          description: Whether the given solution failed. `null` when the input was invalid or the problem is broken.
+        verdict:
+          oneOf:
+            - $ref: "#/components/schemas/Verdict"
+            - type: "null"
+          description: |
+            The given solution's verdict on this input. **Never show a
+            participant** — it reveals the shape of the bug. `IE` means the
+            problem, not the participant, is at fault.
+        message: { type: string }
+        problem_version: { type: string }
+        duration_ms: { type: integer }
+
+    AnswersRequest:
+      type: object
+      required: [validator, entries]
+      properties:
+        validator:
+          type: string
+          maxLength: 262144
+          description: Python source defining `check(entry)`.
+        entries:
+          type: array
+          items: { type: string }
+          description: The submitted answers. Combined size max 256 KB.
+        submission_id:
+          type: string
+          maxLength: 64
+
+    AnswersResult:
+      type: object
+      required: [status, results]
+      properties:
+        submission_id: { type: [string, "null"] }
+        status:
+          type: string
+          enum: [ok, IE]
+          description: "`IE` means the validator itself failed; `results` is then empty and nothing was checked."
+        results:
+          type: array
+          items:
+            type: object
+            required: [valid]
+            properties:
+              valid: { type: boolean }
+              error:
+                type: [string, "null"]
+                description: Why the validator rejected or errored on this entry.
+        message: { type: string }
+        duration_ms: { type: integer }
+
     Testcase:
       type: object
       required: [problem_id, index, input, answer]
@@ -745,6 +915,7 @@ components:
             - invalid_request
             - unknown_language
             - source_too_large
+            - input_too_large
             - unauthorized
             - problem_not_found
             - job_not_found

@@ -14,6 +14,9 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from typing import Callable
+
+from pydantic import BaseModel
 
 from .config import settings
 from .gojudge import SandboxUnavailable
@@ -21,6 +24,12 @@ from .judge import Cancelled, Judge
 from .languages import Language
 from .models import Judgement
 from .problems import Problem
+
+# A unit of work: given a progress callback and a cancellation check, produce a
+# result. Judgements, hacks and answer scoring are all this shape.
+Work = Callable[[Callable[[int], None], Callable[[], bool]], BaseModel]
+# How to describe an internal failure in the result type this job produces.
+OnError = Callable[[str], BaseModel]
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +44,7 @@ class Job:
     total: int
     state: str = "queued"           # queued | running | done
     done: int = 0
-    result: Judgement | None = None
+    result: BaseModel | None = None
     cancelled: bool = False
     finished_at: float | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
@@ -90,15 +99,39 @@ class JobQueue:
         source: str,
         submission_id: str | None,
     ) -> Job:
+        """Queue an ordinary judgement of `source` against the problem's testcases."""
+        def work(on_progress, is_cancelled):
+            return self.judge.run(
+                problem=problem,
+                language=language,
+                source=source,
+                submission_id=submission_id,
+                on_progress=on_progress,
+                is_cancelled=is_cancelled,
+            )
+
+        def on_error(message):
+            return _internal_error(submission_id, problem, message)
+
+        return self.submit_work(problem.total, submission_id, work, on_error)
+
+    def submit_work(
+        self,
+        total: int,
+        submission_id: str | None,
+        work: Work,
+        on_error: OnError,
+    ) -> Job:
+        """Queue any unit of work. `on_error` shapes an IE result for this job type."""
         self._sweep_expired()
         job = Job(
             job_id="job_" + uuid.uuid4().hex[:12],
             submission_id=submission_id,
-            total=problem.total,
+            total=total,
         )
         with self._lock:
             self._jobs[job.job_id] = job
-        self._pool.submit(self._execute, job, problem, language, source)
+        self._pool.submit(self._execute, job, work, on_error)
         return job
 
     def get(self, job_id: str) -> Job | None:
@@ -123,9 +156,9 @@ class JobQueue:
 
     # --- the worker --------------------------------------------------------
 
-    def _execute(self, job: Job, problem: Problem, language: Language, source: str) -> None:
+    def _execute(self, job: Job, work: Work, on_error: OnError) -> None:
         if job.cancelled:
-            self._finish(job, _cancelled_judgement(job, problem))
+            self._finish(job, on_error("cancelled"))
             return
 
         job.state = "running"
@@ -134,29 +167,21 @@ class JobQueue:
             job.done = done
 
         try:
-            judgement = self.judge.run(
-                problem=problem,
-                language=language,
-                source=source,
-                submission_id=job.submission_id,
-                on_progress=on_progress,
-                is_cancelled=lambda: job.cancelled,
-            )
+            result = work(on_progress, lambda: job.cancelled)
         except Cancelled:
-            judgement = _cancelled_judgement(job, problem)
+            result = on_error("cancelled")
         except SandboxUnavailable as exc:
-            # The sandbox died mid-judgement. IE, never scored against the
-            # contestant (US-J2-02).
-            log.error("sandbox unavailable while judging %s: %s", job.job_id, exc)
-            judgement = _internal_error(job, problem, "sandbox became unavailable")
+            # The sandbox died mid-job. IE, never scored against anyone (US-J2-02).
+            log.error("sandbox unavailable during %s: %s", job.job_id, exc)
+            result = on_error("sandbox became unavailable")
         except Exception as exc:  # noqa: BLE001 - a judge bug must not kill the worker
-            log.exception("judging %s failed", job.job_id)
-            judgement = _internal_error(job, problem, f"judge error: {type(exc).__name__}")
+            log.exception("job %s failed", job.job_id)
+            result = on_error(f"judge error: {type(exc).__name__}")
 
-        self._finish(job, judgement)
+        self._finish(job, result)
 
-    def _finish(self, job: Job, judgement: Judgement) -> None:
-        job.result = judgement
+    def _finish(self, job: Job, result: BaseModel) -> None:
+        job.result = result
         job.done = min(job.done, job.total) if job.total else 0
         job.state = "done"
         job.finished_at = time.monotonic()
@@ -179,25 +204,16 @@ class JobQueue:
                 del self._jobs[job_id]
 
 
-def _cancelled_judgement(job: Job, problem: Problem) -> Judgement:
-    """A cancelled job still completes -- the backend simply ignores the result."""
+def _internal_error(submission_id: str | None, problem: Problem, message: str) -> Judgement:
+    """An IE judgement. Cancellation uses it too: a cancelled job still completes,
+    and the backend simply ignores the result."""
     return Judgement(
-        submission_id=job.submission_id,
+        submission_id=submission_id,
         verdict="IE",
-        passed=job.done,
+        passed=0,
         total=problem.total,
-        message="cancelled",
-        problem_version=problem.version,
-    )
-
-
-def _internal_error(job: Job, problem: Problem, message: str) -> Judgement:
-    return Judgement(
-        submission_id=job.submission_id,
-        verdict="IE",
-        passed=job.done,
-        total=problem.total,
-        message="internal error while judging; this is not your fault",
+        message="cancelled" if message == "cancelled"
+                else "internal error while judging; this is not your fault",
         jury_detail=message,
         problem_version=problem.version,
     )

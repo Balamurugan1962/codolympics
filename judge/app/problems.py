@@ -12,6 +12,8 @@ On-disk layout, versioned (recommended -- required for mid-contest edits):
           tests/00001.ans
           checker.py           optional, only for compare: checker
           validator.py         optional, checked by POST /validate
+          solution.cpp         optional reference solution, named in problem.json;
+                               used by /validate and required by /hack. NEVER served.
 
 Unversioned, for problems that will never be edited:
 
@@ -57,6 +59,12 @@ class Problem:
     compare: str
     early_exit: bool
     float_tolerance: float
+    # A stored correct solution: `"reference": {"language": "cpp", "file": "solution.cpp"}`.
+    # Nothing ever serves its source (US-J7-02).
+    reference_language: str | None = None
+    reference_file: str | None = None
+    # A problem that exists only to be hacked has no testcases of its own.
+    hack_only: bool = False
     testcases: list[Testcase] = field(default_factory=list)
 
     @property
@@ -70,6 +78,14 @@ class Problem:
     @property
     def validator_key(self) -> str:
         return f"{self.root}/validator.py"
+
+    @property
+    def has_reference(self) -> bool:
+        return bool(self.reference_language and self.reference_file)
+
+    @property
+    def reference_key(self) -> str:
+        return f"{self.root}/{self.reference_file}"
 
 
 class ProblemNotFound(Exception):
@@ -140,6 +156,7 @@ class ProblemStore:
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise ProblemBroken(f"{config_key} is not valid JSON: {exc}") from exc
 
+        reference = config.get("reference") or {}
         return Problem(
             problem_id=problem_id,
             version=version,
@@ -149,6 +166,9 @@ class ProblemStore:
             compare=str(config.get("compare", "tokens")),
             early_exit=bool(config.get("early_exit", True)),
             float_tolerance=float(config.get("float_tolerance", 1e-6)),
+            reference_language=reference.get("language"),
+            reference_file=reference.get("file"),
+            hack_only=bool(config.get("hack_only", False)),
             testcases=self._testcases(root),
         )
 
@@ -215,6 +235,8 @@ class ProblemStore:
             "bytes": total_bytes,
             "validated": validated,
             "modified_at": _iso(newest) if newest else None,
+            "has_reference": problem.has_reference,
+            "hack_only": problem.hack_only,
         }
 
 

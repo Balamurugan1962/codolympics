@@ -96,6 +96,32 @@ class Judge:
             for file_id in cached_file_ids:
                 self.sandbox.delete(file_id)
 
+    def run_single(
+        self,
+        problem: Problem,
+        language: Language,
+        source: str,
+        input_text: str,
+        answer_text: str | None,
+    ) -> "SingleRun":
+        """Run one source against one input supplied by the caller.
+
+        With `answer_text`, the output is compared and a verdict produced. Without
+        it, an accepted run reports AC and carries its stdout -- which is how a
+        reference solution's answer is obtained. Used by /hack (US-J7-01).
+        """
+        cached_file_ids: list[str] = []
+        try:
+            prepared, compile_output = self._prepare(language, source)
+            if prepared is None:
+                return SingleRun("CE", compile_output, "")
+            cached_file_ids = [entry["fileId"] for entry in prepared.values()]
+            outcome = self._execute(problem, language, prepared, input_text, answer_text)
+            return SingleRun(outcome.verdict, outcome.detail, outcome.stdout, outcome.time_ms, outcome.memory_kb)
+        finally:
+            for file_id in cached_file_ids:
+                self.sandbox.delete(file_id)
+
     # --- step one: get something runnable ---------------------------------
 
     def _prepare(self, language: Language, source: str) -> tuple[dict[str, dict] | None, str]:
@@ -199,14 +225,28 @@ class Judge:
     def _run_one(
         self, problem: Problem, language: Language, prepared: dict[str, dict], testcase: Testcase
     ) -> "_Outcome":
-        """Execute one testcase and decide its verdict."""
+        """Execute one stored testcase and decide its verdict."""
         try:
             input_text = self.storage.read_text(testcase.input_key)
             answer_text = self.storage.read_text(testcase.answer_key)
         except (OSError, UnicodeDecodeError) as exc:
             # Unreadable test data is our problem, never the contestant's.
             return _Outcome("IE", f"cannot read testcase {testcase.index}: {exc}")
+        return self._execute(problem, language, prepared, input_text, answer_text)
 
+    def _execute(
+        self,
+        problem: Problem,
+        language: Language,
+        prepared: dict[str, dict],
+        input_text: str,
+        answer_text: str | None,
+    ) -> "_Outcome":
+        """Run the prepared artefact on one input and decide the verdict.
+
+        `answer_text` of None means "just run it": an accepted run is AC and the
+        outcome carries its stdout.
+        """
         result = self.sandbox.run([gojudge.command(
             args=language.run_args,
             env=language.env,
@@ -224,9 +264,12 @@ class Judge:
                 result.memory_kb,
             )
 
+        if answer_text is None:
+            return _Outcome("AC", "", result.time_ms, result.memory_kb, result.stdout)
+
         if problem.compare == "checker":
             checked = self.python.check(problem, input_text, result.stdout, answer_text)
-            return _Outcome(checked.verdict, checked.detail, result.time_ms, result.memory_kb)
+            return _Outcome(checked.verdict, checked.detail, result.time_ms, result.memory_kb, result.stdout)
 
         comparison = compare.compare(
             problem.compare, result.stdout, answer_text, problem.float_tolerance
@@ -236,17 +279,34 @@ class Judge:
             comparison.detail,
             result.time_ms,
             result.memory_kb,
+            result.stdout,
         )
 
 
 class _Outcome:
-    """One testcase's result, before it is folded into the judgement."""
+    """One run's result, before it is folded into a judgement."""
 
-    __slots__ = ("verdict", "detail", "time_ms", "memory_kb")
+    __slots__ = ("verdict", "detail", "time_ms", "memory_kb", "stdout")
 
-    def __init__(self, verdict: str, detail: str = "", time_ms: float = 0.0, memory_kb: int = 0):
+    def __init__(self, verdict: str, detail: str = "", time_ms: float = 0.0,
+                 memory_kb: int = 0, stdout: str = ""):
         self.verdict = verdict
         self.detail = detail
+        self.time_ms = time_ms
+        self.memory_kb = memory_kb
+        self.stdout = stdout
+
+
+class SingleRun:
+    """Result of run_single: a verdict, plus stdout when the run was accepted."""
+
+    __slots__ = ("verdict", "detail", "stdout", "time_ms", "memory_kb")
+
+    def __init__(self, verdict: str, detail: str = "", stdout: str = "",
+                 time_ms: float = 0.0, memory_kb: int = 0):
+        self.verdict = verdict
+        self.detail = detail
+        self.stdout = stdout
         self.time_ms = time_ms
         self.memory_kb = memory_kb
 

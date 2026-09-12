@@ -171,3 +171,40 @@ class SandboxedPython:
         if result.status not in ("Accepted", "Nonzero Exit Status"):
             return False, f"validator {result.status.lower()}"
         return result.exit_status == 0, message
+
+    # --- answer scoring (Phase 1) ------------------------------------------
+
+    def score_entries(self, validator_source: str, entries: list[str]) -> tuple[list[dict] | None, str]:
+        """Run a supplied validator over a list of answers (US-J7-03).
+
+        Returns (results, message). `results` is None when the validator itself
+        could not run -- the caller must report that as IE, never as "all
+        invalid", or an administrator's typo would zero every participant.
+        """
+        import json
+
+        copy_in = {
+            "checker_runtime.py": self._runtime_file("checker_runtime.py"),
+            "answers_runtime.py": self._runtime_file("answers_runtime.py"),
+            "validator.py": {"content": validator_source},
+            "entries.json": {"content": json.dumps(entries)},
+        }
+
+        result = self.sandbox.run([gojudge.command(
+            args=["/usr/bin/python3", "answers_runtime.py"],
+            env=SANDBOX_ENV,
+            time_limit_ms=settings.checker_time_limit_ms,
+            memory_mb=settings.checker_memory_mb,
+            copy_in=copy_in,
+            stdout_max=settings.max_input_bytes * 4,
+        )])[0]
+
+        message = (result.stderr or "").strip()
+        if result.status not in ("Accepted", "Nonzero Exit Status"):
+            return None, f"validator {result.status.lower()}"
+        if result.exit_status != 0:
+            return None, message or f"validator exited {result.exit_status}"
+        try:
+            return json.loads(result.stdout), message
+        except json.JSONDecodeError:
+            return None, "validator produced unreadable output"

@@ -285,3 +285,81 @@ class TestValidation:
         report = client.post("/problems/bounded/validate", json={}).json()
         assert report["ok"] is False
         assert any("00002.in" in issue for issue in report["issues"])
+
+
+class TestHackingForReal:
+    """US-J7-01 against a real sandbox: a genuinely flawed C++ solution."""
+
+    FLAWED = ("#include <iostream>\nint main(){long long a,b;std::cin>>a>>b;"
+              "std::cout<<(a<0||b<0? a-b : a+b)<<'\\n';}")   # wrong when negative
+    VALIDATOR = ("def validate(inp):\n"
+                 "    inp.int(-1000, 1000)\n"
+                 "    inp.int(-1000, 1000)\n"
+                 "    inp.eof()\n")
+
+    def problem(self, root):
+        write_problem(root, "hackme", [], reference=("cpp", SOLUTIONS["cpp"]),
+                      hack_only=True, validator=self.VALIDATOR)
+
+    def hack(self, client, input_text):
+        response = client.post("/hack", json={
+            "problem_id": "hackme", "language": "cpp",
+            "source": self.FLAWED, "input": input_text,
+        })
+        assert response.status_code == 202, response.text
+        return wait_for_job(client, response.json()["job_id"], timeout_s=120)["result"]
+
+    def test_breaking_input_is_a_hack(self, e2e_client):
+        client, root = e2e_client
+        self.problem(root)
+        result = self.hack(client, "-2 3\n")
+        assert result["valid_input"] is True
+        assert result["hacked"] is True
+        assert result["verdict"] == "WA"
+
+    def test_handled_input_is_not_a_hack(self, e2e_client):
+        client, root = e2e_client
+        self.problem(root)
+        result = self.hack(client, "2 3\n")
+        assert result["hacked"] is False
+
+    def test_constraint_violation_names_the_constraint(self, e2e_client):
+        client, root = e2e_client
+        self.problem(root)
+        result = self.hack(client, "5000 1\n")
+        assert result["valid_input"] is False
+        assert "maximum" in result["invalid_reason"]
+        assert result["hacked"] is None
+
+
+class TestAnswerScoringForReal:
+    """US-J7-03: the 'crack the password' rules, run as a real validator."""
+
+    VALIDATOR = (
+        "def check(entry):\n"
+        "    d = entry.rest().strip()\n"
+        "    if len(d) != 4 or not d.isdigit() or len(set(d)) != 4: return False\n"
+        "    a, b, c, e = (int(x) for x in d)\n"
+        "    return a > b and b % 2 == 0 and c in (2,3,5,7) and e > a\n"
+    )
+
+    def test_entries_scored_by_the_rules(self, e2e_client):
+        client, _ = e2e_client
+        response = client.post("/validate-answers", json={
+            "validator": self.VALIDATOR,
+            "entries": ["5239", "1111", "abcd", "9821", "3 4"],
+        })
+        assert response.status_code == 202
+        result = wait_for_job(client, response.json()["job_id"], timeout_s=60)["result"]
+        assert result["status"] == "ok"
+        # 5>2, 2 even, 3 prime, 9>5 -> valid.  9821: 9>8, 8 even, 2 prime, 1>9 fails.
+        assert [r["valid"] for r in result["results"]] == [True, False, False, False, False]
+
+    def test_syntax_error_in_validator_is_ie_not_zero(self, e2e_client):
+        client, _ = e2e_client
+        response = client.post("/validate-answers", json={
+            "validator": "def check(entry) return True", "entries": ["1234"],
+        })
+        result = wait_for_job(client, response.json()["job_id"], timeout_s=60)["result"]
+        assert result["status"] == "IE"
+        assert result["results"] == []

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import threading
 
+from . import languages
 from .checker import SandboxedPython
 from .judge import Judge
 from .languages import Language
@@ -77,8 +78,20 @@ class Validator:
         checker_report = self._check_checker(problem, issues)
         issues.extend(self._input_issues(problem))
 
+        # A stored reference solution is used when the request does not supply
+        # one (US-J7-02). Hack-only problems have no testcases to run it over,
+        # so for them the check is simply that it exists and is readable.
+        if reference_source is None and problem.has_reference:
+            language = languages.get(problem.reference_language or "")
+            if language is None:
+                issues.append(f"reference language {problem.reference_language!r} is not offered")
+            elif not self.storage.exists(problem.reference_key):
+                issues.append(f"reference solution {problem.reference_file} is missing")
+            else:
+                reference_source = self.storage.read_text(problem.reference_key)
+
         reference = None
-        if reference_source and language:
+        if reference_source and language and problem.testcases:
             reference = self._run_solution(problem, language, reference_source)
             if reference.verdict != "AC":
                 issues.append(_reference_issue(reference))
@@ -113,8 +126,10 @@ class Validator:
         issues = []
         for orphan in self.store.unmatched_inputs(problem.root):
             issues.append(f"{orphan} has no matching answer file")
-        if problem.total == 0:
+        if problem.total == 0 and not problem.hack_only:
             issues.append("problem has no testcases")
+        if problem.hack_only and not problem.has_reference:
+            issues.append("a hack-only problem must store a reference solution")
         if problem.compare not in {"tokens", "exact", "float", "yesno", "checker"}:
             issues.append(f"unknown compare mode: {problem.compare!r}")
         if problem.time_limit_ms <= 0:

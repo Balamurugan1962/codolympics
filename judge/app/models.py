@@ -39,6 +39,52 @@ class Judgement(BaseModel):
     duration_ms: int = 0
 
 
+class HackRequest(BaseModel):
+    """A test input against a given solution (US-J7-01)."""
+    problem_id: str = Field(pattern=r"^[A-Za-z0-9._-]+$")
+    language: str
+    source: str
+    input: str
+    submission_id: str | None = Field(default=None, max_length=64)
+
+
+class HackResult(BaseModel):
+    submission_id: str | None = None
+    # False means the input broke a constraint and nothing was run.
+    valid_input: bool
+    invalid_reason: str = ""
+    # None when the input was invalid or the problem itself is broken (IE).
+    hacked: bool | None = None
+    # The given solution's verdict on this input. Never show a participant this;
+    # it turns the judge into an oracle for probing the solution.
+    verdict: Verdict | None = None
+    message: str = ""
+    problem_version: str = ""
+    duration_ms: int = 0
+
+
+class AnswersRequest(BaseModel):
+    """Score a list of entries with a supplied validator (US-J7-03)."""
+    validator: str
+    entries: list[str]
+    submission_id: str | None = Field(default=None, max_length=64)
+
+
+class EntryResult(BaseModel):
+    valid: bool
+    error: str | None = None
+
+
+class AnswersResult(BaseModel):
+    submission_id: str | None = None
+    # "ok" or "IE". On IE, `results` is empty: nothing was checked, and the
+    # caller must not treat that as every entry being invalid.
+    status: Literal["ok", "IE"]
+    results: list[EntryResult] = Field(default_factory=list)
+    message: str = ""
+    duration_ms: int = 0
+
+
 class Progress(BaseModel):
     done: int
     total: int
@@ -57,7 +103,7 @@ class JobState(BaseModel):
     state: JobStateName
     progress: Progress
     poll_after_ms: int | None = None
-    result: Judgement | None = None
+    result: Judgement | HackResult | AnswersResult | None = None
 
 
 class Language(BaseModel):
@@ -81,6 +127,8 @@ class ProblemInfo(BaseModel):
     bytes: int = 0
     validated: bool = False
     modified_at: str | None = None
+    has_reference: bool = False
+    hack_only: bool = False
 
 
 class ProblemList(BaseModel):

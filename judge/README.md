@@ -136,6 +136,29 @@ testcase, ignoring `early_exit`. A `reference.first_fail` of 61 means testcase
 
 Do this for all 25 problems as the last deployment step.
 
+## Hacking and answer scoring (Phase 1)
+
+Two endpoints exist for the qualifying round. Both run *something supplied in the
+request* in the sandbox, rather than a submission against stored testcases.
+
+**`POST /hack`** — does this input break the given solution? The problem's
+package must store a reference solution:
+
+```json
+{ "time_limit_ms": 1000, "memory_limit_mb": 256, "hack_only": true,
+  "reference": { "language": "cpp", "file": "solution.cpp" } }
+```
+
+The validator runs first (an invalid input is not a hack), then the reference to
+get the correct answer, then the given solution against it. **`verdict` is for
+administrators only** — telling a participant it was a timeout rather than a
+wrong answer tells them the shape of the bug.
+
+**`POST /validate-answers`** — score a list of entries with a Python
+`check(entry)`; `entry` is a reader over one answer. `status: IE` means the
+validator itself failed and **nothing was checked** — never treat it as every
+entry being invalid.
+
 ## Adding a language
 
 One entry in [app/languages.py](app/languages.py), plus its toolchain in
@@ -147,11 +170,11 @@ UI cannot drift.
 
 ```bash
 python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/pytest                       # 119 tests, no Docker needed
+.venv/bin/pytest                       # 135 tests, no Docker needed
 
 docker run -d --name gj --privileged --cgroupns=host \
   --cpuset-cpus=0-3 -p 5050:5050 fyp-judge-worker:1.0
-JUDGE_E2E_URL=http://localhost:5050 .venv/bin/pytest    # + 26 real ones
+JUDGE_E2E_URL=http://localhost:5050 .venv/bin/pytest    # + 31 real ones
 ```
 
 The end-to-end file is the one that runs real code in the real sandbox —

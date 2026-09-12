@@ -80,6 +80,7 @@ def test_error_codes_match_the_spec(spec):
         errors.invalid_request("x").code,
         errors.unknown_language("x", ["y"]).code,
         errors.source_too_large(1, 2).code,
+        errors.input_too_large(1, 2).code,
         errors.unauthorized().code,
         errors.problem_not_found("x").code,
         errors.job_not_found("x").code,

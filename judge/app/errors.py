@@ -36,6 +36,12 @@ def source_too_large(size: int, limit: int) -> ApiError:
     )
 
 
+def input_too_large(size: int, limit: int) -> ApiError:
+    return ApiError(
+        400, "input_too_large", f"input is {size} bytes; the limit is {limit}"
+    )
+
+
 def unauthorized() -> ApiError:
     return ApiError(401, "unauthorized", "invalid or missing bearer token")
 

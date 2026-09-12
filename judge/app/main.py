@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import secrets
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request, Response
@@ -18,10 +19,16 @@ from .checker import SandboxedPython
 from .config import settings
 from .errors import ApiError
 from .gojudge import GoJudge, SandboxUnavailable
+from .hack import run_hack
 from .jobs import JobQueue
 from .judge import Judge
 from .models import (
+    AnswersRequest,
+    AnswersResult,
+    EntryResult,
     ErrorBody,
+    HackRequest,
+    HackResult,
     Health,
     JobHandle,
     JobState,
@@ -287,16 +294,83 @@ def submit(body: SubmitRequest) -> JobHandle:
         raise errors.unknown_language(body.language, languages.keys())
 
     problem = _load_problem(body.problem_id)
-
-    # Refuse rather than accept a job we cannot judge: a verdict must never be
-    # recorded against a participant because the sandbox was down (US-J2-02).
-    if not services.sandbox.reachable():
-        raise errors.sandbox_unavailable(services.sandbox.url)
-
-    if not services.queue.has_room():
-        raise errors.busy(services.queue.counts()[1], services.queue.queue_limit)
+    _require_capacity()
 
     job = services.queue.submit(problem, language, body.source, body.submission_id)
+    return JobHandle(job_id=job.job_id, submission_id=job.submission_id)
+
+
+@app.post(
+    "/hack",
+    response_model=JobHandle,
+    status_code=202,
+    tags=["Judging"],
+    dependencies=[Depends(require_token)],
+)
+def hack(body: HackRequest) -> JobHandle:
+    """Does this input break the given solution? (US-J7-01)"""
+    _check_size(body.source, settings.max_source_bytes, errors.source_too_large)
+    _check_size(body.input, settings.max_input_bytes, errors.input_too_large)
+
+    language = languages.get(body.language)
+    if language is None:
+        raise errors.unknown_language(body.language, languages.keys())
+
+    problem = _load_problem(body.problem_id)
+    if not problem.has_reference:
+        raise errors.invalid_request(
+            f"{body.problem_id} has no reference solution, so it cannot be hacked"
+        )
+    _require_capacity()
+
+    def work(on_progress, is_cancelled):
+        return run_hack(
+            services.judge, services.python, services.storage,
+            problem, language, body.source, body.input, body.submission_id,
+        )
+
+    def on_error(message):
+        return HackResult(
+            submission_id=body.submission_id, valid_input=True, hacked=None,
+            verdict="IE", message=message, problem_version=problem.version,
+        )
+
+    job = services.queue.submit_work(3, body.submission_id, work, on_error)
+    return JobHandle(job_id=job.job_id, submission_id=job.submission_id)
+
+
+@app.post(
+    "/validate-answers",
+    response_model=JobHandle,
+    status_code=202,
+    tags=["Judging"],
+    dependencies=[Depends(require_token)],
+)
+def validate_answers(body: AnswersRequest) -> JobHandle:
+    """Score a list of answers with a supplied validator (US-J7-03)."""
+    _check_size(body.validator, settings.max_source_bytes, errors.source_too_large)
+    _check_size("\n".join(body.entries), settings.max_input_bytes, errors.input_too_large)
+    _require_capacity()
+
+    def work(on_progress, is_cancelled):
+        started = time.monotonic()
+        results, message = services.python.score_entries(body.validator, body.entries)
+        elapsed = int((time.monotonic() - started) * 1000)
+        if results is None:
+            return AnswersResult(submission_id=body.submission_id, status="IE",
+                                 message=message, duration_ms=elapsed)
+        return AnswersResult(
+            submission_id=body.submission_id,
+            status="ok",
+            results=[EntryResult(valid=bool(r.get("valid")), error=r.get("error")) for r in results],
+            message=message,
+            duration_ms=elapsed,
+        )
+
+    def on_error(message):
+        return AnswersResult(submission_id=body.submission_id, status="IE", message=message)
+
+    job = services.queue.submit_work(1, body.submission_id, work, on_error)
     return JobHandle(job_id=job.job_id, submission_id=job.submission_id)
 
 
@@ -351,6 +425,24 @@ def _load_problem(problem_id: str, version: str | None = None):
         raise errors.invalid_request(str(exc)) from None
     except OSError as exc:
         raise errors.invalid_request(f"cannot read problem {problem_id}: {exc}") from None
+
+
+def _check_size(text: str, limit: int, make_error) -> None:
+    size = len(text.encode("utf-8"))
+    if size > limit:
+        raise make_error(size, limit)
+
+
+def _require_capacity() -> None:
+    """Refuse rather than accept a job we cannot run.
+
+    A verdict must never be recorded against a participant because the sandbox
+    was down (US-J2-02), and a full queue answers 429 with Retry-After (US-J6-03).
+    """
+    if not services.sandbox.reachable():
+        raise errors.sandbox_unavailable(services.sandbox.url)
+    if not services.queue.has_room():
+        raise errors.busy(services.queue.counts()[1], services.queue.queue_limit)
 
 
 def _is_validated(problem_id: str) -> bool:

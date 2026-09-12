@@ -39,6 +39,7 @@ class Settings(BaseSettings):
 
     # --- limits ------------------------------------------------------------
     max_source_bytes: int = 262_144        # 256 KB, matches the OpenAPI spec
+    max_input_bytes: int = 262_144         # cap on a supplied hack input or answer list
     compile_output_bytes: int = 4_096      # truncate compiler diagnostics
     output_limit_mb: int = 64              # a run producing more than this is OLE
     testcase_response_bytes: int = 1_048_576   # 1 MB cap on GET /testcases
