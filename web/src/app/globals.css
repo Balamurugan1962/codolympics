@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/*
+ * HackerRank-style design tokens. Light content on a pale page, a dark navy
+ * top bar, green for actions and success.
+ *
+ * Fonts are the system stack on purpose: the hall has no internet, and this
+ * needs no font files at all. Everything else the page needs is bundled.
+ */
+@theme {
+  --color-navy: #0e141e;
+  --color-navy-2: #1c2b3a;
+  --color-ink: #0e141e;
+  --color-muted: #39424e;
+  --color-faint: #7d8792;
+  --color-page: #f7f8fa;
+  --color-card: #ffffff;
+  --color-line: #e3e6ea;
+  --color-line-2: #c9cfd6;
+
+  --color-green: #1ba94c;
+  --color-green-dark: #158a3d;
+  --color-green-bright: #00ea64;
+  --color-green-tint: #e8f7ee;
+
+  --color-red: #d0342c;
+  --color-red-tint: #fbe9e8;
+  --color-amber: #f2a900;
+  --color-amber-tint: #fdf3d8;
+  --color-blue: #0f74d6;
+  --color-blue-tint: #e7f1fc;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --radius-box: 4px;
+}
+
+@layer base {
+  html { color-scheme: light; }
+  body {
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -0.01em; }
+  code, pre, kbd { font-family: var(--font-mono); }
+}
+
+/* Markdown statements: tables, code blocks and formulae must read well. */
+.prose-statement :is(h1,h2,h3) { margin: 1.25em 0 .5em; }
+.prose-statement p { margin: .6em 0; }
+.prose-statement pre {
+  background: var(--color-page); border: 1px solid var(--color-line);
+  border-radius: var(--radius-box); padding: .75rem; overflow-x: auto; font-size: 13px;
+}
+.prose-statement code { background: var(--color-page); padding: .1em .3em; border-radius: 3px; font-size: 13px; }
+.prose-statement pre code { background: none; padding: 0; }
+.prose-statement table { border-collapse: collapse; margin: .75em 0; }
+.prose-statement th, .prose-statement td { border: 1px solid var(--color-line); padding: .35em .6em; }
+.prose-statement ul, .prose-statement ol { padding-left: 1.4em; margin: .5em 0; }
+.prose-statement strong { font-weight: 600; }

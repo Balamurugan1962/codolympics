@@ -1,0 +1,45 @@
+{
+  "name": "contest-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Auction-based coding competition: Phase 1 qualifier and Phase 2 auction contest",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx src/db/seed.ts",
+    "auth:schema": "pnpm dlx @better-auth/cli@latest generate --config src/lib/auth.ts --output src/db/auth-schema.ts -y"
+  },
+  "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.7.4",
+    "@monaco-editor/react": "4.7.0",
+    "better-auth": "1.7.4",
+    "drizzle-orm": "0.45.2",
+    "monaco-editor": "0.56.0",
+    "next": "16.3.5",
+    "postgres": "3.4.9",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zod": "4.6.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "drizzle-kit": "0.31.10",
+    "tailwindcss": "4.3.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3",
+    "vitest": "5.0.0"
+  },
+  "engines": { "node": ">=22" },
+  "packageManager": "pnpm@10.25.0"
+}

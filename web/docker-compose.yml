@@ -1,0 +1,25 @@
+# Postgres for the contest app. The judge stack lives in ../judge/docker-compose.yml.
+#
+#   docker compose up -d
+#   pnpm db:migrate
+
+services:
+  postgres:
+    image: postgres:16.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: contest
+      POSTGRES_PASSWORD: contest
+      POSTGRES_DB: contest
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contest"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
