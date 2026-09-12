@@ -185,6 +185,11 @@ paths:
           in: path
           required: true
           schema: { type: string, pattern: "^[A-Za-z0-9._-]+$" }
+        - name: version
+          in: query
+          required: false
+          description: Validate this uploaded version rather than the published one.
+          schema: { type: string }
       requestBody:
         required: false
         content:

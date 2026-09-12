@@ -211,10 +211,12 @@ def get_problem(problem_id: str) -> ProblemInfo:
     tags=["Metadata"],
     dependencies=[Depends(require_token)],
 )
-def validate_problem(problem_id: str, body: ValidateRequest | None = None) -> ValidationReport:
+def validate_problem(problem_id: str, body: ValidateRequest | None = None, version: str | None = None) -> ValidationReport:
+    """`version` validates an uploaded-but-unpublished version, so a problem
+    can be proven before it goes live (US-B8-01)."""
     _reject_bad_id(problem_id)
     body = body or ValidateRequest()
-    problem = _load_problem(problem_id)
+    problem = _load_problem(problem_id, version)
 
     language = None
     if body.reference_source or body.wrong_source:

@@ -298,6 +298,20 @@ class TestJobs:
 # --- jury testcase access (US-J5-03) ---------------------------------------
 
 
+class TestValidateVersion:
+    def test_an_unpublished_version_can_be_validated(self, client, problems_dir):
+        write_problem(problems_dir, "ver", [("1\n", "1\n")], version="v1")
+        # v2 exists on disk but `current` still points at v1.
+        (problems_dir / "ver" / "v2" / "tests").mkdir(parents=True)
+        (problems_dir / "ver" / "v2" / "problem.json").write_text("{}")
+        (problems_dir / "ver" / "v2" / "tests" / "00001.in").write_text("2\n")
+        (problems_dir / "ver" / "v2" / "tests" / "00001.ans").write_text("2\n")
+
+        report = client.post("/problems/ver/validate?version=v2", json={}).json()
+        assert report["version"] == "v2"
+        assert report["ok"] is True
+
+
 class TestTestcaseAccess:
     def test_returns_input_and_answer(self, client):
         body = client.get("/problems/sum/testcases/1").json()
