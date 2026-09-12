@@ -76,13 +76,18 @@ src/
   app/api/               route handlers: check, call the engine, respond
   app/(app)/             signed-in pages; layout loads state and opens SSE
   app/(auth)/            sign-in and registration
-  components/            shell (brand, nav, phase stepper, live toasts),
+  components/            shell (participants and evaluators), admin/ (the
+                         console sidebar, the problem, puzzle and hacking
+                         builders), phase1/ and problems/ (question views
+                         shared by participants and admin previews),
                          editor (Monaco, bundled), SSE provider, countdown,
                          markdown, logo, icons, the ReasonAction dialog
-  components/ui/         button, card, input, badge, alert, table, tabs,
-                         dialog, menu, toast, skeleton, empty-state,
-                         page-header, stat, stepper, countdown-ring,
-                         split-pane, kbd -- all hand-rolled, ~40 lines each
+  components/ui/         page (body, header, section, toolbar), wizard,
+                         button, card, input, form, choice, markdown-editor,
+                         file-drop, list-editor, summary, badge, alert,
+                         table, tabs, dialog, drawer, menu, toast, skeleton,
+                         empty-state, stat, stepper, countdown-ring,
+                         split-pane, kbd -- all hand-rolled
 tests/                   scoring, leak contracts, concurrent bidding, e2e
 ```
 
@@ -108,7 +113,9 @@ and nothing else ever locks in a different order.
 page loads nothing from outside the contest server.
 
 **The UI follows a few rules everywhere.** One primary action per screen; the
-phase stepper always visible; a toast for every outcome (bid accepted, outbid,
+phase stepper always visible; anything an administrator creates (a problem, a
+puzzle, a hacking question) is a stepped form that ends in a preview of exactly
+what participants will see, and nothing goes live without its self-test; a toast for every outcome (bid accepted, outbid,
 verdict, announcement); skeletons while loading and empty states that say what
 to do next; `Ctrl+Enter` submits code, `←`/`→` move between puzzles, `J`/`K`
 move through the grading queue; two-pane layouts collapse to tabs below 1024px.

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { body, errors, json, route } from "@/lib/api";
-import { markValidated, publishVersion, validateVersion } from "@/lib/problems";
+import { markValidated, publishVersion, samplesFor, validateVersion } from "@/lib/problems";
 import { requireApiViewer } from "@/lib/session";
 import { submissionCount } from "@/lib/submissions";
 
@@ -19,6 +19,11 @@ export const POST = route<Ctx>(async (req, { params }) => {
     }
     case "blast-radius":
       return json({ submissions: await submissionCount(id) });
+    case "samples": {
+      // The administrator's preview: the same first-K testcases the owner will see.
+      const b = await body(req, z.object({ version: z.string().regex(/^v\d+$/).optional(), count: z.number().int().min(0).max(20) }));
+      return json({ samples: await samplesFor(id, b.count, b.version) });
+    }
     case "publish": {
       const b = await body(req, z.object({ version: z.string().regex(/^v\d+$/), reason: z.string().min(3), confirmed_rejudge: z.number().int().min(0) }));
       return json(await publishVersion(viewer.id, { id, version: b.version, reason: b.reason, confirmedRejudge: b.confirmed_rejudge }));

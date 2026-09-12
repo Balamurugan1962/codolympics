@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Icon } from "@/components/icons";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
@@ -23,25 +23,33 @@ export default function LoginPage() {
     const { error } = await authClient.signIn.username({ username: username.trim().replace(/\s+/g, "_").toLowerCase(), password });
     setBusy(false);
     // Never say which field was wrong (US-F1-01).
-    if (error) { setError("Sign-in failed. Check your display name and password."); return; }
+    if (error) { setError(error.status === 429 ? "Too many attempts. Wait a moment and try again." : "Sign-in failed. Check your display name and password."); return; }
     router.push("/"); router.refresh();
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader title="Sign in" />
-      <CardBody>
-        <form onSubmit={submit}>
-          {error && <div className="mb-4"><Alert tone="error">{error}</Alert></div>}
-          <Field label="Display name"><Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" required /></Field>
-          <Field label="Password"><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required /></Field>
-          <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
-        </form>
-        <p className="mt-4 text-center text-sm text-muted">
-          New here? <Link href="/register" className="font-semibold text-green-dark">Register</Link>
-        </p>
-        <p className="mt-2 text-center text-xs text-faint">Signing in here ends any session you have open elsewhere.</p>
-      </CardBody>
-    </Card>
+    <div className="animate-fade-in">
+      <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Sign in</h1>
+      <p className="mt-1 text-[13px] text-muted">Use the display name you registered with.</p>
+
+      <form onSubmit={submit} className="mt-7 space-y-4">
+        {error && <Alert tone="error">{error}</Alert>}
+        <Field label="Display name">
+          <Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" required placeholder="e.g. Bala" />
+        </Field>
+        <Field label="Password">
+          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required placeholder="••••••••" />
+        </Field>
+        <Button type="submit" size="lg" className="w-full" loading={busy}>Sign in</Button>
+      </form>
+
+      <p className="mt-6 text-center text-[13px] text-muted">
+        First time here? <Link href="/register" className="font-semibold text-green-dark hover:underline">Register</Link>
+      </p>
+      <p className="mt-5 flex items-start gap-2 rounded-box bg-page px-3 py-2.5 text-[11.5px] leading-relaxed text-muted">
+        <Icon.Info size={14} className="mt-0.5 shrink-0 text-faint" />
+        Signing in here ends any session you have open on another machine. That is deliberate — one seat per person.
+      </p>
+    </div>
   );
 }

@@ -1,10 +1,14 @@
-/** Never a blank page: say what this is, why it is empty, and what to do next. */
-export function EmptyState({ icon, title, body, action }: { icon?: React.ReactNode; title: string; body?: React.ReactNode; action?: React.ReactNode }) {
+import type { ReactNode } from "react";
+
+/** Never a blank area: what this is, why it is empty, and the way out. */
+export function EmptyState({ icon, title, body, action, compact = false }: {
+  icon?: ReactNode; title: string; body?: ReactNode; action?: ReactNode; compact?: boolean;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-box border border-dashed border-line-2 bg-card px-6 py-12 text-center">
-      {icon && <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-page text-muted">{icon}</div>}
-      <div className="text-[15px] font-semibold">{title}</div>
-      {body && <div className="mt-1 max-w-md text-sm text-muted">{body}</div>}
+    <div className={`flex flex-col items-center justify-center px-6 text-center ${compact ? "py-8" : "py-14"}`}>
+      {icon && <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-page text-faint">{icon}</div>}
+      <div className="text-[14px] font-semibold">{title}</div>
+      {body && <div className="mt-1 max-w-sm text-[12.5px] leading-relaxed text-muted">{body}</div>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

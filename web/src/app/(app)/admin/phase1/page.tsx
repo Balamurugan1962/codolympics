@@ -1,297 +1,358 @@
 "use client";
 
 /**
- * Phase 1 authoring and review: Section A puzzles, Section B hacking
- * questions, and the leaderboard from which the administrator selects who
- * advances (requirements-phase1.md, Epics P2, P3, P6).
+ * Phase 1: the puzzle set, the hacking set, and the review that decides who
+ * advances. Each question moves draft → ready → live; nothing goes live
+ * without passing its self-test.
  */
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { CATEGORY_LABEL, GRADING_LABEL, KIND_LABEL, stateOf, type Hack, type Puzzle, type QuestionState, type Standing } from "@/components/admin/phase1-types";
 import { Icon } from "@/components/icons";
 import { ReasonAction } from "@/components/reason-action";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Field, Input, Select, Textarea } from "@/components/ui/input";
-import { Table, Td, Th } from "@/components/ui/table";
-import { PageHeader } from "@/components/ui/page-header";
+import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Field, SearchInput, Select, Textarea } from "@/components/ui/input";
+import { Menu } from "@/components/ui/menu";
+import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
+import { CardSkeleton } from "@/components/ui/skeleton";
+import { Stat, StatRow } from "@/components/ui/stat";
+import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
-type Puzzle = { id: number; title: string; bodyMd: string; category: string; kind: string; grading: string; points: number; explainPoints: number; orderIndex: number; published: boolean; voided: boolean; ready: boolean; config: Record<string, unknown>; answerKey: Record<string, unknown> | null; modelAnswer: string | null; validatorPy: string | null; pointsPerEntry: number | null; maxEntries: number; formatRegex: string | null; formatHint: string | null };
-type Hack = { id: number; title: string; statementMd: string; constraintsMd: string; problemId: string; givenSource: string; givenLanguage: string; hackPoints: number; failPenalty: number; orderIndex: number; published: boolean; voided: boolean; ready: boolean };
-type Standing = { participant_id: string; name: string; points: number; provisional: boolean; submitted_at: string | null; disqualified: boolean; advanced: boolean | null; rank: number };
+type Tab = "puzzles" | "hacking" | "review";
 
 export default function Phase1AdminPage() {
-  const [tab, setTab] = useState<"puzzles" | "hacking" | "review">("puzzles");
+  const search = useSearchParams();
+  const router = useRouter();
+  const [tab, setTab] = useState<Tab>((search.get("tab") as Tab) || "puzzles");
+  function goTab(t: Tab) { setTab(t); router.replace(`/admin/phase1?tab=${t}`, { scroll: false }); }
   return (
-    <div className="space-y-4 animate-fade-in">
-      <PageHeader title="Phase 1" description="Author the puzzles and hacking questions, prove each one works, publish. After the round, grade and select who advances." />
-      <Tabs value={tab} onChange={setTab} tabs={[{ value: "puzzles", label: "Section A — Puzzles" }, { value: "hacking", label: "Section B — Hacking" }, { value: "review", label: "Review & advance" }]} />
-      {tab === "puzzles" && <PuzzleAdmin />}
-      {tab === "hacking" && <HackAdmin />}
+    <PageBody width="wide">
+      <PageHeader
+        title="Phase 1"
+        description="The qualifying round: Section A puzzles, then Section B hacking. Author each question, prove it works, publish it. After the round, select who advances."
+        actions={tab === "puzzles"
+          ? <Link href="/admin/phase1/puzzles/new"><Button icon={<Icon.Plus size={14} />}>New puzzle</Button></Link>
+          : tab === "hacking" ? <Link href="/admin/phase1/hacking/new"><Button icon={<Icon.Plus size={14} />}>New hacking question</Button></Link> : undefined}
+      />
+      <div className="mb-4">
+        <Tabs value={tab} onChange={goTab} tabs={[{ value: "puzzles", label: "Section A · Puzzles" }, { value: "hacking", label: "Section B · Hacking" }, { value: "review", label: "Review & advance" }]} />
+      </div>
+      {tab === "puzzles" && <PuzzleList />}
+      {tab === "hacking" && <HackList />}
       {tab === "review" && <Review />}
-    </div>
+    </PageBody>
+  );
+}
+
+const STATE: Record<QuestionState, { label: string; tone: "green" | "amber" | "blue" | "grey" }> = {
+  draft: { label: "Draft", tone: "amber" }, ready: { label: "Ready", tone: "blue" }, live: { label: "Live", tone: "green" }, void: { label: "Void", tone: "grey" },
+};
+
+function useQuestionActions(section: "puzzles" | "hacking", reload: () => Promise<void>) {
+  const { toast } = useToast();
+  return {
+    publish: async (id: number, reason: string) => { await api.post(`/api/admin/phase1/${section}/${id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await reload(); },
+    unpublish: async (id: number, reason: string) => { await api.post(`/api/admin/phase1/${section}/${id}/unpublish`, { reason }); toast({ title: "Unpublished", tone: "success" }); await reload(); },
+    void: async (id: number, reason: string) => { await api.post(`/api/admin/phase1/${section}/${id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await reload(); },
+    remove: async (id: number, reason: string) => { await api.del(`/api/admin/phase1/${section}/${id}`, { reason }); toast({ title: "Deleted", tone: "success" }); await reload(); },
+  };
+}
+
+type Pending = { kind: "publish" | "unpublish" | "void" | "remove"; id: number; title: string };
+
+function ActionDialog({ pending, onClose, run }: { pending: Pending | null; onClose: () => void; run: (kind: Pending["kind"], id: number, reason: string) => Promise<void> }) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { setReason(""); setError(null); }, [pending]);
+  if (!pending) return null;
+  const copy = {
+    publish: { title: `Publish “${pending.title}”?`, body: "Participants see it as soon as the section opens. It has passed its self-test.", label: "Publish", danger: false },
+    unpublish: { title: `Unpublish “${pending.title}”?`, body: "It disappears from the section. Answers already saved are kept.", label: "Unpublish", danger: false },
+    void: { title: `Void “${pending.title}”?`, body: "It scores for nobody and every total is recomputed. This cannot be undone.", label: "Void", danger: true },
+    remove: { title: `Delete “${pending.title}”?`, body: "Only drafts can be deleted. This cannot be undone.", label: "Delete", danger: true },
+  }[pending.kind];
+  return (
+    <Dialog open onClose={onClose} title={copy.title}>
+      <p className="mb-4 text-[13px] text-muted">{copy.body}</p>
+      <Field label="Reason" help="Recorded in the audit log.">
+        <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
+      </Field>
+      {error && <div className="mt-3"><Alert tone="error">{error}</Alert></div>}
+      <div className="mt-5 flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        <Button variant={copy.danger ? "danger" : "primary"} loading={busy} disabled={reason.trim().length < 3}
+          onClick={async () => { setBusy(true); setError(null); try { await run(pending.kind, pending.id, reason.trim()); onClose(); } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); } }}>
+          {copy.label}
+        </Button>
+      </div>
+    </Dialog>
   );
 }
 
 // ---------------------------------------------------------------------------
 
-const EMPTY_PUZZLE = { title: "", body_md: "", category: "pattern", kind: "fill_blank", grading: "auto", points: 10, explain_points: 0, order_index: 0, options: "", items: "", partial_credit: false, tolerance: "", case_sensitive: false, key_option: "", key_options: "", key_accepted: "", key_value: "", key_order: "", key_members: "", model_answer: "", validator_py: "def check(entry):\n    s = entry.rest().strip()\n    return len(s) == 4 and s.isdigit()\n", points_per_entry: 1, max_entries: 100, format_regex: "", format_hint: "" };
-
-function PuzzleAdmin() {
-  const [rows, setRows] = useState<Puzzle[]>([]);
-  const [sel, setSel] = useState<number | "new" | null>(null);
+function PuzzleList() {
+  const router = useRouter();
+  const [rows, setRows] = useState<Puzzle[] | null>(null);
+  const [filter, setFilter] = useState("");
+  const [state, setState] = useState<"all" | QuestionState>("all");
+  const [pending, setPending] = useState<Pending | null>(null);
   const load = useCallback(async () => setRows((await api.get<{ questions: Puzzle[] }>("/api/admin/phase1/puzzles")).questions), []);
   useEffect(() => { void load(); }, [load]);
-  const current = typeof sel === "number" ? rows.find((r) => r.id === sel) ?? null : null;
+  const act = useQuestionActions("puzzles", load);
+
+  if (!rows) return <CardSkeleton lines={8} />;
+  const shown = rows.filter((r) => state === "all" || stateOf(r) === state).filter((r) => !filter || r.title.toLowerCase().includes(filter.toLowerCase()));
+  const live = rows.filter((r) => stateOf(r) === "live");
+  const points = live.reduce((s, r) => s + r.points + r.explainPoints, 0);
+
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <Card>
-        <CardHeader title="Puzzles" action={<Button size="sm" onClick={() => setSel("new")}>+ New</Button>} />
-        <CardBody className="space-y-1 p-2">{rows.map((r) => (
-          <button key={r.id} onClick={() => setSel(r.id)} className={`flex w-full items-center justify-between rounded-box px-3 py-2 text-left text-sm ${sel === r.id ? "bg-green-tint font-semibold" : "hover:bg-page"}`}>
-            <span>{r.orderIndex}. {r.title}</span><span className="flex gap-1">{r.voided ? <Badge tone="red">void</Badge> : r.published ? <Badge tone="green">live</Badge> : r.ready ? <Badge tone="blue">ready</Badge> : <Badge tone="amber">draft</Badge>}</span>
-          </button>
-        ))}</CardBody>
-      </Card>
-      <div className="lg:col-span-2">{sel === null ? <EmptyState icon={<Icon.Puzzle size={22} />} title={rows.length ? "Pick a puzzle to edit" : "No puzzles yet"} body="Each question must pass its self-test before it can be published." action={<Button size="sm" onClick={() => setSel("new")}>New puzzle</Button>} /> : <PuzzleEditor key={String(sel)} existing={current} onChange={async () => { await load(); }} onCreated={(id) => setSel(id)} />}</div>
+    <div className="space-y-4">
+      {rows.length > 0 && (
+        <StatRow cols={4}>
+          <Stat label="Puzzles" value={rows.length} icon={<Icon.Puzzle size={13} />} hint={`${rows.filter((r) => stateOf(r) === "draft").length} still draft`} />
+          <Stat label="Live" value={live.length} tone="green" icon={<Icon.Check size={13} />} hint="published and in the section" />
+          <Stat label="Points available" value={points} icon={<Icon.Trophy size={13} />} hint="across live puzzles, reasoning included" />
+          <Stat label="Need an evaluator" value={live.filter((r) => r.grading === "manual" || r.explainPoints > 0).length} icon={<Icon.Users size={13} />} hint="manually graded or with reasoning" />
+        </StatRow>
+      )}
+      {rows.length === 0 ? (
+        <Section padded={false}>
+          <EmptyState icon={<Icon.Puzzle size={20} />} title="No puzzles yet" body="Section A is logical puzzles: multiple choice, short answers, sequences, lists — or written answers an evaluator marks. Each must pass its self-test before it can be published."
+            action={<Link href="/admin/phase1/puzzles/new"><Button size="sm" icon={<Icon.Plus size={14} />}>Create the first puzzle</Button></Link>} />
+        </Section>
+      ) : (
+        <Section padded={false}>
+          <Toolbar actions={<span className="text-[12px] text-muted">{shown.length} of {rows.length}</span>}>
+            <SearchInput className="w-64" placeholder="Filter by title" value={filter} onChange={(e) => setFilter(e.target.value)} />
+            <div className="w-36">
+              <Select value={state} onChange={(e) => setState(e.target.value as typeof state)} aria-label="State">
+                <option value="all">All states</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="live">Live</option><option value="void">Void</option>
+              </Select>
+            </div>
+          </Toolbar>
+          <Table>
+            <thead>
+              <tr>
+                <Th className="w-12" align="right">#</Th>
+                <Th>Puzzle</Th>
+                <Th className="hidden md:table-cell">Kind</Th>
+                <Th className="hidden lg:table-cell">Graded by</Th>
+                <Th align="right">Points</Th>
+                <Th>State</Th>
+                <Th className="w-12"><span className="sr-only">Actions</span></Th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r) => {
+                const s = stateOf(r);
+                return (
+                  <Tr key={r.id} className={r.voided ? "opacity-60" : ""}>
+                    <Td align="right" className="text-faint">{r.orderIndex}</Td>
+                    <Td>
+                      <Link href={`/admin/phase1/puzzles/${r.id}`} className="group block">
+                        <div className="font-semibold group-hover:text-green-dark">{r.title}</div>
+                        <div className="text-[11.5px] text-faint">{CATEGORY_LABEL[r.category]} · {r.bodyMd.replace(/\s+/g, " ").slice(0, 80)}{r.bodyMd.length > 80 ? "…" : ""}</div>
+                      </Link>
+                    </Td>
+                    <Td className="hidden md:table-cell"><Badge tone="outline">{KIND_LABEL[r.kind]}</Badge></Td>
+                    <Td className="hidden text-muted lg:table-cell">{GRADING_LABEL[r.grading]}{r.explainPoints > 0 && <span className="text-faint"> + reasoning</span>}</Td>
+                    <Td align="right" className="font-medium">{r.points}{r.explainPoints > 0 && <span className="text-faint"> +{r.explainPoints}</span>}</Td>
+                    <Td><StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot></Td>
+                    <Td>
+                      <Menu items={[
+                        { label: "Edit", onSelect: () => router.push(`/admin/phase1/puzzles/${r.id}`) },
+                        ...(s === "live" ? [{ label: "Unpublish", onSelect: () => setPending({ kind: "unpublish", id: r.id, title: r.title }) }] : []),
+                        ...(s === "ready" ? [{ label: "Publish", onSelect: () => setPending({ kind: "publish", id: r.id, title: r.title }) }] : []),
+                        ...(s === "draft" ? [{ label: "Publish (run the self-test first)", disabled: true, onSelect: () => undefined }] : []),
+                        ...(!r.voided ? [{ label: "Void", danger: true, onSelect: () => setPending({ kind: "void", id: r.id, title: r.title }) }] : []),
+                        ...(!r.published ? [{ label: "Delete", danger: true, onSelect: () => setPending({ kind: "remove", id: r.id, title: r.title }) }] : []),
+                      ]} />
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </Table>
+          {shown.length === 0 && <EmptyState compact title="Nothing matches" body="Try another filter." />}
+        </Section>
+      )}
+      <ActionDialog pending={pending} onClose={() => setPending(null)} run={(k, id, reason) => act[k](id, reason)} />
     </div>
   );
-}
-
-function PuzzleEditor({ existing, onChange, onCreated }: { existing: Puzzle | null; onChange: () => Promise<void>; onCreated: (id: number) => void }) {
-  const [f, setF] = useState(() => existing ? fromPuzzle(existing) : EMPTY_PUZZLE);
-  const [reason, setReason] = useState("");
-  const [msg, setMsg] = useState<{ tone: "success" | "error" | "warning"; text: string } | null>(null);
-  const [trial, setTrial] = useState(""); const [shouldPass, setShouldPass] = useState(""); const [shouldFail, setShouldFail] = useState("");
-  const csv = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
-  const nums = (s: string) => csv(s.replace(/,/g, "\n")).map(Number);
-
-  function payload() {
-    const cfg: Record<string, unknown> = { partialCredit: f.partial_credit, caseSensitive: f.case_sensitive };
-    if (f.kind.startsWith("mcq")) cfg.options = csv(f.options);
-    if (f.kind === "sequence") cfg.items = csv(f.items);
-    if (f.kind === "numeric" && f.tolerance !== "") cfg.tolerance = Number(f.tolerance);
-    let key: Record<string, unknown> | null = null;
-    if (f.grading === "auto") {
-      key = {};
-      if (f.kind === "mcq_single") key.option = Number(f.key_option);
-      if (f.kind === "mcq_multi") key.options = nums(f.key_options);
-      if (f.kind === "fill_blank") key.accepted = csv(f.key_accepted);
-      if (f.kind === "numeric") key.value = Number(f.key_value);
-      if (f.kind === "sequence") key.order = nums(f.key_order);
-      if (f.kind === "set") key.members = csv(f.key_members);
-    }
-    return { reason, title: f.title, body_md: f.body_md, category: f.category, kind: f.kind, grading: f.grading, points: f.points, explain_points: f.explain_points, order_index: f.order_index, config: cfg, answer_key: key, model_answer: f.model_answer || null, validator_py: f.grading === "validator" ? f.validator_py : null, points_per_entry: f.grading === "validator" ? f.points_per_entry : null, max_entries: f.max_entries, format_regex: f.format_regex || null, format_hint: f.format_hint || null };
-  }
-
-  async function save() {
-    setMsg(null);
-    try {
-      if (existing) { await api.patch(`/api/admin/phase1/puzzles/${existing.id}`, payload()); setMsg({ tone: "success", text: "Saved. Re-run the self-test before publishing." }); }
-      else { const r = await api.post<{ id: number }>("/api/admin/phase1/puzzles", payload()); onCreated(r.id); }
-      await onChange();
-    } catch (err) { setMsg({ tone: "error", text: errorMessage(err) }); }
-  }
-  async function test() {
-    if (!existing) return;
-    setMsg(null);
-    try {
-      const body = f.grading === "validator" ? { should_pass: csv(shouldPass), should_fail: csv(shouldFail) } : { answer: parseTrial(f.kind, trial) };
-      const r = await api.post<{ ready: boolean; detail: string }>(`/api/admin/phase1/puzzles/${existing.id}/test`, body);
-      setMsg({ tone: r.ready ? "success" : "warning", text: r.detail }); await onChange();
-    } catch (err) { setMsg({ tone: "error", text: errorMessage(err) }); }
-  }
-
-  return (
-    <Card>
-      <CardHeader title={existing ? `Edit: ${existing.title}` : "New puzzle"} action={existing && <span className="flex gap-2">
-        {existing.published
-          ? <ReasonAction label="Unpublish" title="Unpublish?" onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${existing.id}/unpublish`, { reason }); await onChange(); }} />
-          : <ReasonAction label="Publish" variant="primary" title="Publish?" disabled={!existing.ready} onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${existing.id}/publish`, { reason }); await onChange(); }} />}
-        {!existing.voided && <ReasonAction label="Void" variant="danger" title="Void this question?" description="Scores for nobody; every total is recomputed." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${existing.id}/void`, { reason }); await onChange(); }} />}
-      </span>} />
-      <CardBody>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Title"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
-          <div className="grid grid-cols-3 gap-2">
-            <Field label="Category"><Select value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}><option value="pattern">pattern</option><option value="detective">detective</option><option value="constraint">constraint</option></Select></Field>
-            <Field label="Kind"><Select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{["mcq_single", "mcq_multi", "fill_blank", "numeric", "sequence", "set", "long_text"].map((k) => <option key={k}>{k}</option>)}</Select></Field>
-            <Field label="Grading"><Select value={f.grading} onChange={(e) => setF({ ...f, grading: e.target.value })}><option value="auto">auto</option><option value="validator">validator</option><option value="manual">manual</option></Select></Field>
-          </div>
-        </div>
-        <Field label="Body (Markdown — tables and code blocks render)"><Textarea rows={6} value={f.body_md} onChange={(e) => setF({ ...f, body_md: e.target.value })} /></Field>
-        <div className="grid grid-cols-4 gap-2">
-          <Field label="Points"><Input type="number" value={f.points} onChange={(e) => setF({ ...f, points: Number(e.target.value) })} /></Field>
-          <Field label="Explanation points" hint="0 = no explanation asked"><Input type="number" value={f.explain_points} onChange={(e) => setF({ ...f, explain_points: Number(e.target.value) })} /></Field>
-          <Field label="Order"><Input type="number" value={f.order_index} onChange={(e) => setF({ ...f, order_index: Number(e.target.value) })} /></Field>
-          <Field label="Max entries (set/validator)"><Input type="number" value={f.max_entries} onChange={(e) => setF({ ...f, max_entries: Number(e.target.value) })} /></Field>
-        </div>
-        {f.kind.startsWith("mcq") && <Field label="Options, one per line"><Textarea rows={4} value={f.options} onChange={(e) => setF({ ...f, options: e.target.value })} /></Field>}
-        {f.kind === "sequence" && <Field label="Items to order, one per line (in any order)"><Textarea rows={4} value={f.items} onChange={(e) => setF({ ...f, items: e.target.value })} /></Field>}
-        <div className="grid grid-cols-3 gap-2">
-          <Field label="Format regex (checked in the browser)" hint='e.g. ^\d{4}$'><Input value={f.format_regex} onChange={(e) => setF({ ...f, format_regex: e.target.value })} /></Field>
-          <Field label="Format hint" hint="four digits, no spaces"><Input value={f.format_hint} onChange={(e) => setF({ ...f, format_hint: e.target.value })} /></Field>
-          <div className="flex items-end gap-4 pb-4 text-sm"><label className="flex items-center gap-1"><input type="checkbox" checked={f.partial_credit} onChange={(e) => setF({ ...f, partial_credit: e.target.checked })} /> partial credit</label><label className="flex items-center gap-1"><input type="checkbox" checked={f.case_sensitive} onChange={(e) => setF({ ...f, case_sensitive: e.target.checked })} /> case-sensitive</label></div>
-        </div>
-
-        {f.grading === "auto" && (
-          <div className="rounded-box border border-line bg-page p-3">
-            <div className="mb-2 text-xs font-semibold uppercase text-muted">Answer key (never sent to participants)</div>
-            {f.kind === "mcq_single" && <Field label="Correct option index (0-based)"><Input value={f.key_option} onChange={(e) => setF({ ...f, key_option: e.target.value })} /></Field>}
-            {f.kind === "mcq_multi" && <Field label="Correct option indexes, comma-separated"><Input value={f.key_options} onChange={(e) => setF({ ...f, key_options: e.target.value })} /></Field>}
-            {f.kind === "fill_blank" && <Field label="Accepted answers, one per line"><Textarea rows={3} value={f.key_accepted} onChange={(e) => setF({ ...f, key_accepted: e.target.value })} /></Field>}
-            {f.kind === "numeric" && <div className="grid grid-cols-2 gap-2"><Field label="Value"><Input value={f.key_value} onChange={(e) => setF({ ...f, key_value: e.target.value })} /></Field><Field label="Tolerance"><Input value={f.tolerance} onChange={(e) => setF({ ...f, tolerance: e.target.value })} /></Field></div>}
-            {f.kind === "sequence" && <Field label="Correct order as item indexes, comma-separated"><Input value={f.key_order} onChange={(e) => setF({ ...f, key_order: e.target.value })} /></Field>}
-            {f.kind === "set" && <Field label="Correct members, one per line"><Textarea rows={3} value={f.key_members} onChange={(e) => setF({ ...f, key_members: e.target.value })} /></Field>}
-          </div>
-        )}
-        {f.grading === "validator" && (
-          <div className="rounded-box border border-line bg-page p-3">
-            <Field label="Validator: def check(entry) -> bool (runs in the judge sandbox at section close)"><Textarea rows={8} className="font-mono text-xs" value={f.validator_py} onChange={(e) => setF({ ...f, validator_py: e.target.value })} /></Field>
-            <Field label="Points per valid distinct entry"><Input type="number" value={f.points_per_entry} onChange={(e) => setF({ ...f, points_per_entry: Number(e.target.value) })} /></Field>
-          </div>
-        )}
-        {f.grading === "manual" && <Field label="Model answer (grading aid, never shown to participants)"><Textarea rows={4} value={f.model_answer} onChange={(e) => setF({ ...f, model_answer: e.target.value })} /></Field>}
-
-        <Field label="Reason"><Input value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
-        {msg && <div className="mb-3"><Alert tone={msg.tone}>{msg.text}</Alert></div>}
-        <div className="flex flex-wrap items-end gap-2">
-          <Button onClick={save} disabled={reason.length < 3 || !f.title}>{existing ? "Save" : "Create"}</Button>
-          {existing && f.grading === "auto" && <><Input className="w-56" placeholder="intended answer (JSON for lists)" value={trial} onChange={(e) => setTrial(e.target.value)} /><Button variant="secondary" onClick={test}>Self-test</Button></>}
-          {existing && f.grading === "validator" && <><Textarea className="w-48" rows={2} placeholder="should pass, one per line" value={shouldPass} onChange={(e) => setShouldPass(e.target.value)} /><Textarea className="w-48" rows={2} placeholder="should fail, one per line" value={shouldFail} onChange={(e) => setShouldFail(e.target.value)} /><Button variant="secondary" onClick={test}>Self-test</Button></>}
-          {existing && f.grading === "manual" && <Button variant="secondary" onClick={test}>Check readiness</Button>}
-        </div>
-        <p className="mt-2 text-xs text-faint">A question cannot be published until its self-test marks it ready. The intended answer scoring less than full marks usually means a typo in the key — or a puzzle with no valid answer.</p>
-      </CardBody>
-    </Card>
-  );
-}
-
-function fromPuzzle(p: Puzzle) {
-  const c = p.config as Record<string, unknown>; const k = (p.answerKey ?? {}) as Record<string, unknown>;
-  return { ...EMPTY_PUZZLE, title: p.title, body_md: p.bodyMd, category: p.category, kind: p.kind, grading: p.grading, points: p.points, explain_points: p.explainPoints, order_index: p.orderIndex,
-    options: ((c.options as string[]) ?? []).join("\n"), items: ((c.items as string[]) ?? []).join("\n"), partial_credit: Boolean(c.partialCredit), tolerance: c.tolerance === undefined ? "" : String(c.tolerance), case_sensitive: Boolean(c.caseSensitive),
-    key_option: k.option === undefined ? "" : String(k.option), key_options: ((k.options as number[]) ?? []).join(","), key_accepted: ((k.accepted as string[]) ?? []).join("\n"), key_value: k.value === undefined ? "" : String(k.value), key_order: ((k.order as number[]) ?? []).join(","), key_members: ((k.members as string[]) ?? []).join("\n"),
-    model_answer: p.modelAnswer ?? "", validator_py: p.validatorPy ?? EMPTY_PUZZLE.validator_py, points_per_entry: p.pointsPerEntry ?? 1, max_entries: p.maxEntries, format_regex: p.formatRegex ?? "", format_hint: p.formatHint ?? "" };
-}
-
-function parseTrial(kind: string, s: string): unknown {
-  if (["mcq_multi", "sequence", "set"].includes(kind)) { try { return JSON.parse(s); } catch { return s.split(",").map((x) => x.trim()).map((x) => (kind === "set" ? x : Number(x))); } }
-  if (kind === "mcq_single") return Number(s);
-  return s;
 }
 
 // ---------------------------------------------------------------------------
 
-function HackAdmin() {
-  const [rows, setRows] = useState<Hack[]>([]);
-  const [sel, setSel] = useState<number | "new" | null>(null);
+function HackList() {
+  const router = useRouter();
+  const [rows, setRows] = useState<Hack[] | null>(null);
+  const [filter, setFilter] = useState("");
+  const [pending, setPending] = useState<Pending | null>(null);
   const load = useCallback(async () => setRows((await api.get<{ questions: Hack[] }>("/api/admin/phase1/hacking")).questions), []);
   useEffect(() => { void load(); }, [load]);
-  const current = typeof sel === "number" ? rows.find((r) => r.id === sel) ?? null : null;
-  return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <Card>
-        <CardHeader title="Hacking questions" action={<Button size="sm" onClick={() => setSel("new")}>+ New</Button>} />
-        <CardBody className="space-y-1 p-2">{rows.map((r) => (
-          <button key={r.id} onClick={() => setSel(r.id)} className={`flex w-full items-center justify-between rounded-box px-3 py-2 text-left text-sm ${sel === r.id ? "bg-green-tint font-semibold" : "hover:bg-page"}`}>
-            <span>{r.orderIndex}. {r.title}</span>{r.voided ? <Badge tone="red">void</Badge> : r.published ? <Badge tone="green">live</Badge> : r.ready ? <Badge tone="blue">ready</Badge> : <Badge tone="amber">draft</Badge>}
-          </button>
-        ))}</CardBody>
-      </Card>
-      <div className="lg:col-span-2">{sel === null ? <EmptyState icon={<Icon.Bug size={22} />} title={rows.length ? "Pick a hacking question" : "No hacking questions yet"} body="Upload the judge package (with a stored reference and validator) on the Problems page first, then reference it here." action={<Button size="sm" onClick={() => setSel("new")}>New hacking question</Button>} /> : <HackEditor key={String(sel)} existing={current} onChange={load} onCreated={setSel} />}</div>
-    </div>
-  );
-}
+  const act = useQuestionActions("hacking", load);
 
-function HackEditor({ existing, onChange, onCreated }: { existing: Hack | null; onChange: () => Promise<void>; onCreated: (id: number) => void }) {
-  const [f, setF] = useState({ title: existing?.title ?? "", statement_md: existing?.statementMd ?? "", constraints_md: existing?.constraintsMd ?? "", problem_id: existing?.problemId ?? "", given_source: existing?.givenSource ?? "", given_language: existing?.givenLanguage ?? "cpp", hack_points: existing?.hackPoints ?? 20, fail_penalty: existing?.failPenalty ?? 0, order_index: existing?.orderIndex ?? 0 });
-  const [reason, setReason] = useState(""); const [breaking, setBreaking] = useState("");
-  const [msg, setMsg] = useState<{ tone: "success" | "error" | "warning"; text: string } | null>(null);
-  async function save() {
-    setMsg(null);
-    try {
-      if (existing) { await api.patch(`/api/admin/phase1/hacking/${existing.id}`, { ...f, reason }); setMsg({ tone: "success", text: "Saved. Prove a breaking input before publishing." }); }
-      else { const r = await api.post<{ id: number }>("/api/admin/phase1/hacking", { ...f, reason }); onCreated(r.id); }
-      await onChange();
-    } catch (err) { setMsg({ tone: "error", text: errorMessage(err) }); }
-  }
-  async function test() {
-    if (!existing) return;
-    setMsg(null);
-    try { const r = await api.post<{ ready: boolean; detail: string }>(`/api/admin/phase1/hacking/${existing.id}/test`, { breaking_input: breaking }); setMsg({ tone: r.ready ? "success" : "warning", text: r.detail }); await onChange(); }
-    catch (err) { setMsg({ tone: "error", text: errorMessage(err) }); }
-  }
+  if (!rows) return <CardSkeleton lines={8} />;
+  const shown = rows.filter((r) => !filter || r.title.toLowerCase().includes(filter.toLowerCase()) || r.problemId.includes(filter));
+  const live = rows.filter((r) => stateOf(r) === "live");
+
   return (
-    <Card>
-      <CardHeader title={existing ? `Edit: ${existing.title}` : "New hacking question"} action={existing && <span className="flex gap-2">
-        {existing.published ? <ReasonAction label="Unpublish" title="Unpublish?" onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${existing.id}/unpublish`, { reason }); await onChange(); }} />
-          : <ReasonAction label="Publish" variant="primary" title="Publish?" disabled={!existing.ready} onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${existing.id}/publish`, { reason }); await onChange(); }} />}
-        {!existing.voided && <ReasonAction label="Void" variant="danger" title="Void?" onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${existing.id}/void`, { reason }); await onChange(); }} />}
-      </span>} />
-      <CardBody>
-        <Alert tone="info">Upload the judge package for this question on the Problems page first: <code>problem.json</code> with <code>hack_only: true</code>, limits, a stored <code>reference</code> solution and a <code>validator.py</code>. Then reference its id here. The reference solution is never in this database.</Alert>
-        <div className="mt-3 grid grid-cols-3 gap-3">
-          <Field label="Title"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
-          <Field label="Judge problem id"><Input value={f.problem_id} onChange={(e) => setF({ ...f, problem_id: e.target.value })} /></Field>
-          <div className="grid grid-cols-3 gap-2">
-            <Field label="Points"><Input type="number" value={f.hack_points} onChange={(e) => setF({ ...f, hack_points: Number(e.target.value) })} /></Field>
-            <Field label="Fail penalty"><Input type="number" value={f.fail_penalty} onChange={(e) => setF({ ...f, fail_penalty: Number(e.target.value) })} /></Field>
-            <Field label="Order"><Input type="number" value={f.order_index} onChange={(e) => setF({ ...f, order_index: Number(e.target.value) })} /></Field>
-          </div>
-        </div>
-        <Field label="Statement (Markdown)"><Textarea rows={5} value={f.statement_md} onChange={(e) => setF({ ...f, statement_md: e.target.value })} /></Field>
-        <Field label="Constraints (Markdown, shown to participants)"><Textarea rows={3} value={f.constraints_md} onChange={(e) => setF({ ...f, constraints_md: e.target.value })} /></Field>
-        <div className="grid grid-cols-4 gap-3">
-          <Field label="Given solution language"><Select value={f.given_language} onChange={(e) => setF({ ...f, given_language: e.target.value })}>{["cpp", "c", "python", "pypy", "java", "javascript"].map((l) => <option key={l}>{l}</option>)}</Select></Field>
-          <div className="col-span-3"><Field label="The given (flawed) solution — shown in full to participants"><Textarea rows={10} className="font-mono text-xs" value={f.given_source} onChange={(e) => setF({ ...f, given_source: e.target.value })} /></Field></div>
-        </div>
-        <Field label="Reason"><Input value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
-        {msg && <div className="mb-3"><Alert tone={msg.tone}>{msg.text}</Alert></div>}
-        <div className="flex flex-wrap items-end gap-2">
-          <Button onClick={save} disabled={reason.length < 3 || !f.title || !f.problem_id}>{existing ? "Save" : "Create"}</Button>
-          {existing && <><Textarea className="w-64" rows={2} placeholder="a known breaking input" value={breaking} onChange={(e) => setBreaking(e.target.value)} /><Button variant="secondary" onClick={test} disabled={!breaking.trim()}>Prove it breaks</Button></>}
-        </div>
-      </CardBody>
-    </Card>
+    <div className="space-y-4">
+      {rows.length > 0 && (
+        <StatRow cols={3}>
+          <Stat label="Hacking questions" value={rows.length} icon={<Icon.Bug size={13} />} hint={`${rows.filter((r) => stateOf(r) === "draft").length} still draft`} />
+          <Stat label="Live" value={live.length} tone="green" icon={<Icon.Check size={13} />} hint="each proven breakable" />
+          <Stat label="Points available" value={live.reduce((s, r) => s + r.hackPoints, 0)} icon={<Icon.Trophy size={13} />} hint="one successful hack per solution" />
+        </StatRow>
+      )}
+      {rows.length === 0 ? (
+        <Section padded={false}>
+          <EmptyState icon={<Icon.Bug size={20} />} title="No hacking questions yet"
+            body="Each one is a problem plus a deliberately flawed solution. The judge package (limits, validator, reference) is uploaded under Problems; the question references it."
+            action={<Link href="/admin/phase1/hacking/new"><Button size="sm" icon={<Icon.Plus size={14} />}>Create the first hacking question</Button></Link>} />
+        </Section>
+      ) : (
+        <Section padded={false}>
+          <Toolbar actions={<span className="text-[12px] text-muted">{shown.length} of {rows.length}</span>}>
+            <SearchInput className="w-64" placeholder="Filter by title or problem id" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          </Toolbar>
+          <Table>
+            <thead>
+              <tr>
+                <Th className="w-12" align="right">#</Th>
+                <Th>Question</Th>
+                <Th className="hidden md:table-cell">Judge problem</Th>
+                <Th className="hidden sm:table-cell">Language</Th>
+                <Th align="right">Points</Th>
+                <Th className="hidden lg:table-cell" align="right">Penalty</Th>
+                <Th>State</Th>
+                <Th className="w-12"><span className="sr-only">Actions</span></Th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r) => {
+                const s = stateOf(r);
+                return (
+                  <Tr key={r.id} className={r.voided ? "opacity-60" : ""}>
+                    <Td align="right" className="text-faint">{r.orderIndex}</Td>
+                    <Td>
+                      <Link href={`/admin/phase1/hacking/${r.id}`} className="group block">
+                        <div className="font-semibold group-hover:text-green-dark">{r.title}</div>
+                        <div className="text-[11.5px] text-faint">{r.statementMd.replace(/\s+/g, " ").slice(0, 80)}{r.statementMd.length > 80 ? "…" : ""}</div>
+                      </Link>
+                    </Td>
+                    <Td className="hidden font-mono text-[12px] md:table-cell">{r.problemId}</Td>
+                    <Td className="hidden text-muted sm:table-cell">{r.givenLanguage}</Td>
+                    <Td align="right" className="font-medium">{r.hackPoints}</Td>
+                    <Td align="right" className="hidden text-muted lg:table-cell">{r.failPenalty ? `−${r.failPenalty}` : "0"}</Td>
+                    <Td><StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot></Td>
+                    <Td>
+                      <Menu items={[
+                        { label: "Edit", onSelect: () => router.push(`/admin/phase1/hacking/${r.id}`) },
+                        ...(s === "live" ? [{ label: "Unpublish", onSelect: () => setPending({ kind: "unpublish", id: r.id, title: r.title }) }] : []),
+                        ...(s === "ready" ? [{ label: "Publish", onSelect: () => setPending({ kind: "publish", id: r.id, title: r.title }) }] : []),
+                        ...(s === "draft" ? [{ label: "Publish (prove a breaking input first)", disabled: true, onSelect: () => undefined }] : []),
+                        ...(!r.voided ? [{ label: "Void", danger: true, onSelect: () => setPending({ kind: "void", id: r.id, title: r.title }) }] : []),
+                      ]} />
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </Table>
+          {shown.length === 0 && <EmptyState compact title="Nothing matches" body="Try another filter." />}
+        </Section>
+      )}
+      <ActionDialog pending={pending} onClose={() => setPending(null)} run={(k, id, reason) => act[k](id, reason)} />
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
 
 function Review() {
-  const [rows, setRows] = useState<Standing[]>([]);
+  const { toast } = useToast();
+  const [rows, setRows] = useState<Standing[] | null>(null);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const [topN, setTopN] = useState("");
   const load = useCallback(async () => {
     const r = await api.get<{ standings: Standing[] }>("/api/admin/phase1/advance");
     setRows(r.standings); setChosen(new Set(r.standings.filter((s) => s.advanced).map((s) => s.participant_id)));
   }, []);
   useEffect(() => { void load(); }, [load]);
+
+  if (!rows) return <CardSkeleton lines={8} />;
+  if (rows.length === 0) return <Section padded={false}><EmptyState icon={<Icon.Users size={20} />} title="No participants yet" body="Standings appear once people have registered and Phase 1 has run." /></Section>;
+
   const provisional = rows.filter((r) => r.provisional).length;
-  if (rows.length === 0) return <EmptyState icon={<Icon.Users size={22} />} title="No participants yet" body="Standings appear once people have registered and Phase 1 has run." />;
+  const decided = rows.filter((r) => r.advanced !== null).length;
+  const eligible = rows.filter((r) => !r.disqualified);
+  const dirty = JSON.stringify([...chosen].sort()) !== JSON.stringify(rows.filter((s) => s.advanced).map((s) => s.participant_id).sort());
+  const toggle = (id: string, on: boolean) => { const n = new Set(chosen); if (on) n.add(id); else n.delete(id); setChosen(n); };
+  const pickTop = () => { const n = Number(topN); if (!n) return; setChosen(new Set(eligible.filter((r) => r.rank >= 1 && r.rank <= n).map((r) => r.participant_id))); };
+
   return (
     <div className="space-y-4">
-      {provisional > 0 && <Alert tone="warning">{provisional} participant(s) have ungraded items — their totals are provisional. You may still select; grades can follow.</Alert>}
-      <Card>
-        <CardHeader title="Phase 1 leaderboard — tick who advances" action={<ReasonAction label={`Confirm selection (${chosen.size})`} variant="primary" title="Set who advances to Phase 2" description="Everyone is notified. You can revise this until Phase 2 opens. Announce the basis before Phase 1 if you have not." onConfirm={async (reason) => { await api.post("/api/admin/phase1/advance", { participant_ids: [...chosen], reason }); await load(); }} />} />
+      <StatRow cols={4}>
+        <Stat label="Participants" value={rows.length} icon={<Icon.Users size={13} />} hint={`${rows.filter((r) => r.disqualified).length} disqualified`} />
+        <Stat label="Provisional" value={provisional} tone={provisional ? "amber" : "ink"} icon={<Icon.Clock size={13} />} hint={provisional ? "items still with an evaluator" : "every item graded"} />
+        <Stat label="Selected" value={chosen.size} tone="green" icon={<Icon.Check size={13} />} hint={dirty ? "unsaved selection" : `${decided} decided so far`} />
+        <Stat label="Top score" value={rows[0]?.points ?? 0} icon={<Icon.Trophy size={13} />} hint={rows[0]?.name} />
+      </StatRow>
+      {provisional > 0 && <Alert tone="warning" title={`${provisional} participant${provisional === 1 ? " has" : "s have"} ungraded items`}>Their totals are provisional. You may still select; grades can follow and the selection can be revised until Phase 2 opens.</Alert>}
+      <Section
+        title="Who advances"
+        description="Tick the finalists. Everyone is notified when you confirm; the selection can be revised until Phase 2 opens."
+        actions={
+          <div className="flex items-center gap-2">
+            <input type="number" min={1} className="h-8 w-20 rounded-box border border-line-2 px-2 text-[13px]" placeholder="Top N" value={topN} onChange={(e) => setTopN(e.target.value)} aria-label="Select the top N" />
+            <Button size="sm" variant="secondary" onClick={pickTop} disabled={!Number(topN)}>Select top {topN || "N"}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setChosen(new Set())}>Clear</Button>
+          </div>
+        }
+        padded={false}
+        footer={
+          <ReasonAction label={`Confirm selection · ${chosen.size}`} variant="primary" size="md" title="Set who advances to Phase 2"
+            description={<span><strong>{chosen.size}</strong> participant{chosen.size === 1 ? "" : "s"} will be selected; everyone else is marked not selected. Announce the basis before Phase 1 if you have not.</span>}
+            onConfirm={async (reason) => { await api.post("/api/admin/phase1/advance", { participant_ids: [...chosen], reason }); toast({ title: "Selection saved", description: "Participants have been notified.", tone: "success" }); await load(); }} />
+        }
+      >
         <Table>
-          <thead><tr><Th></Th><Th>Rank</Th><Th>Participant</Th><Th>Points</Th><Th>Submitted</Th><Th>Status</Th></tr></thead>
-          <tbody>{rows.map((s) => (
-            <tr key={s.participant_id} className={s.disqualified ? "opacity-50" : chosen.has(s.participant_id) ? "bg-green-tint" : ""}>
-              <Td><input type="checkbox" disabled={s.disqualified} checked={chosen.has(s.participant_id)} onChange={(e) => { const n = new Set(chosen); if (e.target.checked) n.add(s.participant_id); else n.delete(s.participant_id); setChosen(n); }} /></Td>
-              <Td className="font-semibold">{s.rank || "—"}</Td><Td>{s.name}</Td>
-              <Td className="tabular-nums">{s.points}{s.provisional && "*"}</Td>
-              <Td className="text-faint">{s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString() : "never finished"}</Td>
-              <Td>{s.disqualified ? <Badge tone="red">disqualified</Badge> : s.advanced === true ? <Badge tone="green">advancing</Badge> : s.advanced === false ? <Badge tone="grey">not selected</Badge> : <Badge tone="amber">undecided</Badge>}</Td>
+          <thead>
+            <tr>
+              <Th className="w-10"><span className="sr-only">Select</span></Th>
+              <Th className="w-16" align="right">Rank</Th>
+              <Th>Participant</Th>
+              <Th align="right">Points</Th>
+              <Th className="hidden sm:table-cell">Submitted</Th>
+              <Th>Decision</Th>
             </tr>
-          ))}</tbody>
+          </thead>
+          <tbody>
+            {rows.map((s) => (
+              <Tr key={s.participant_id} selected={chosen.has(s.participant_id)} className={s.disqualified ? "opacity-50" : ""}>
+                <Td><input type="checkbox" className="h-4 w-4 accent-green" disabled={s.disqualified} checked={chosen.has(s.participant_id)} onChange={(e) => toggle(s.participant_id, e.target.checked)} aria-label={`Select ${s.name}`} /></Td>
+                <Td align="right" className="font-semibold">{s.rank || "—"}</Td>
+                <Td className="font-medium">{s.name}</Td>
+                <Td align="right" className="font-semibold">{s.points}{s.provisional && <span className="ml-1 text-faint" title="provisional">*</span>}</Td>
+                <Td className="hidden text-faint sm:table-cell">{s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "never finished"}</Td>
+                <Td>{s.disqualified ? <StatusDot tone="red">Disqualified</StatusDot> : s.advanced === true ? <StatusDot tone="green">Advancing</StatusDot> : s.advanced === false ? <StatusDot tone="grey">Not selected</StatusDot> : <StatusDot tone="amber">Undecided</StatusDot>}</Td>
+              </Tr>
+            ))}
+          </tbody>
         </Table>
-      </Card>
+      </Section>
     </div>
   );
 }
