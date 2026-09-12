@@ -97,6 +97,7 @@ paths:
                   - { key: c,          name: "C (GCC 14)",          compiled: true }
                   - { key: cpp,        name: "C++ (GCC 14)",        compiled: true }
                   - { key: python,     name: "Python 3.13",         compiled: false }
+                  - { key: pypy,       name: "PyPy 3.11 (7.3.23)",  compiled: false }
                   - { key: java,       name: "Java 21",             compiled: true }
                   - { key: javascript, name: "JavaScript (Node 20)", compiled: false }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -643,12 +644,15 @@ components:
         memory_limit_mb: { type: integer, example: 256 }
         compare:
           type: string
-          enum: [tokens, exact, checker]
+          enum: [tokens, exact, float, yesno, checker]
           description: |
             * `tokens`  whitespace-insensitive comparison (the default)
             * `exact`   byte-exact but for trailing whitespace
-            * `checker` a testlib-style program decides — for problems with
-                        more than one valid answer
+            * `float`   numeric, within the problem's `float_tolerance`
+                        (absolute or relative, whichever is kinder)
+            * `yesno`   case-insensitive YES/NO, so `Yes` and `YES` are one answer
+            * `checker` a Python program decides — for problems with more than
+                        one valid answer
         early_exit:
           type: boolean
           description: Stop at the first failing testcase.

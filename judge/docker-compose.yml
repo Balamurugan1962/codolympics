@@ -1,0 +1,62 @@
+# Judge stack: the API and the sandbox.
+#
+#   docker compose up -d
+#   curl localhost:8000/health
+#
+# go-judge publishes no ports. It executes untrusted code in a privileged
+# container, so it is reachable only from judge-api on the internal network
+# (US-J6-01).
+
+services:
+  go-judge:
+    image: fyp-judge-worker:1.0
+    build:
+      context: ../worker
+    restart: unless-stopped
+    # The sandbox needs to create cgroups and namespaces for each run.
+    privileged: true
+    cgroup: host
+    # Pinning to a fixed core set is what makes repeated timings comparable,
+    # which a time-based tiebreak depends on (US-J2-05).
+    cpuset: "${GO_JUDGE_CPUSET:-0-3}"
+    command:
+      - -http-addr=0.0.0.0:5050
+      - -release           # no debug endpoints
+      - -silent
+    networks: [judge]
+    healthcheck:
+      test: ["CMD", "/opt/go-judge", "-version"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  judge-api:
+    build: .
+    image: judge-api:1.0
+    restart: unless-stopped
+    depends_on:
+      go-judge:
+        condition: service_started
+    environment:
+      JUDGE_GO_JUDGE_URL: http://go-judge:5050
+      JUDGE_PROBLEMS_DIR: /problems
+      JUDGE_SERVICE_TOKEN: "${JUDGE_SERVICE_TOKEN:?set JUDGE_SERVICE_TOKEN in .env}"
+      JUDGE_CONCURRENCY: "${JUDGE_CONCURRENCY:-0}"
+      JUDGE_QUEUE_LIMIT: "${JUDGE_QUEUE_LIMIT:-0}"
+      JUDGE_JOB_TTL_S: "${JUDGE_JOB_TTL_S:-600}"
+    volumes:
+      # Read-only: the judge never writes to the problem set. Validation
+      # results are kept in memory instead of beside the testcases.
+      - ./problems:/problems:ro
+    ports:
+      - "8000:8000"
+    networks: [judge]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+networks:
+  judge:
+    driver: bridge
