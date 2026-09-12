@@ -1,6 +1,6 @@
 # Low-Level Design — Backend and Frontend
 
-**Status:** design agreed, not implemented
+**Status:** implemented in `web/` — this document describes what was built
 **Related:** [requirements-backend.md](requirements-backend.md) · [requirements-frontend.md](requirements-frontend.md) · [decisions.md](decisions.md)
 
 This document is the step between the requirements and the code. It answers *how*,
