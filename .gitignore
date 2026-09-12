@@ -38,3 +38,6 @@ yarn-error.log*
 judge/.venv/
 *.egg-info/
 .pytest_cache/
+
+# run.sh state
+.run/
