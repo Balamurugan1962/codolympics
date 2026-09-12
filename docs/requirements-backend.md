@@ -216,6 +216,24 @@ questions, since two people pay comparable amounts for different Hard problems.
 - GIVEN no configured cap, THEN a participant may own any number of questions — balance is the only limit
 - GIVEN an administrator has configured an ownership cap, THEN bids that would exceed it are rejected with a clear reason
 
+### US-B4-03 · A participant may end up owning nothing · MUST
+
+**As** an administrator
+**I want** the case of a participant winning no questions handled openly
+**So that** it is a known outcome with a remedy, not a surprise on the day
+
+**Acceptance criteria**
+
+- GIVEN a participant who loses every auction, THEN owning nothing is a **legitimate
+  outcome of bidding** and the contest rules say so in advance
+- GIVEN such a participant, THEN the administrator dashboard identifies them clearly —
+  they have money, no question, and nothing to do
+- GIVEN such a participant, THEN an administrator may **assign ownership of an unsold
+  question** to them directly, at a price the administrator sets, with a recorded reason
+- GIVEN an ownership cap, THEN setting one is the administrator's lever for preventing
+  this before it happens, rather than repairing it afterwards
+- GIVEN any such assignment, THEN it is audit-logged and the participant is notified
+
 ### US-B4-02 · Accurate balance at all times · MUST
 
 **As** a participant
@@ -369,7 +387,11 @@ questions, since two people pay comparable amounts for different Hard problems.
 - GIVEN a question already accepted, THEN a later wrong submission never un-solves it
 - GIVEN further accepted submissions, THEN the recorded solve time remains that of the **first** accepted submission — always, including after a rejudge invalidated it and the participant re-solved
 - GIVEN a rejudge changes a verdict, THEN standings and totals are recomputed from stored submissions
-- GIVEN participants tied on both score and total solve time, THEN they share a rank
+- GIVEN participants tied on both score and total solve time, THEN the better **Phase 1
+  rank** ranks higher — Phase 1 contributes no points, but it separates an exact tie so
+  a prize does not rest on joint first place
+- GIVEN participants tied on score, solve time **and** Phase 1 rank, THEN they share a
+  rank, and an administrator may break it explicitly with a recorded reason
 
 ### US-B7-03 · Leaderboard · SHOULD
 
@@ -508,6 +530,44 @@ questions, since two people pay comparable amounts for different Hard problems.
 - GIVEN a judge restart, THEN in-flight submissions are automatically resubmitted
 - GIVEN a restart, THEN no submission is lost and no participant must resubmit manually
 
+### US-B10-04 · Back up contest state · MUST
+
+**As** an administrator
+**I want** contest state backed up automatically during the contest
+**So that** a server failure does not end the contest with nothing to recover
+
+**Acceptance criteria**
+
+- GIVEN the contest running, THEN the database is dumped automatically at a
+  configurable interval, by default every 5 minutes
+- GIVEN a dump, THEN it is written to storage **separate from the database's own disk**
+- GIVEN the backups, THEN the most recent few are retained and older ones removed
+- GIVEN a backup, THEN restoring it has been **tested before the contest** — an
+  untested backup is not a backup
+- GIVEN a failed backup, THEN it is shown on the admin dashboard rather than failing
+  silently
+- GIVEN a restore, THEN what is lost is bounded by the backup interval, and the
+  administrator can see the timestamp of the state they recovered
+
+> Every other recovery story here covers a *client* failing. This is the only one that
+> covers the *server* failing, and without it a disk fault ends the contest outright.
+
+### US-B10-05 · Survive losing the judge entirely · SHOULD
+
+**As** an administrator
+**I want** a second judge available
+**So that** judging continues if one fails rather than halting the contest
+
+**Acceptance criteria**
+
+- GIVEN the judge is stateless, THEN more than one instance may run and the backend may
+  use any of them
+- GIVEN one judge becoming unreachable, THEN submissions are routed to another and
+  none are lost
+- GIVEN all judges unreachable, THEN submissions queue and retry, and the dashboard
+  says so prominently
+- GIVEN a spare, THEN it shares the read-only problems volume so both judge identically
+
 ### US-B10-03 · Export results · SHOULD
 
 **As** an administrator
@@ -536,6 +596,7 @@ questions, since two people pay comparable amounts for different Hard problems.
 | NFR-B-10 | Auction state — current question, highest bid, countdown — survives a backend restart | failover test |
 | NFR-B-11 | Submissions retained for the whole contest and exportable afterwards | export test |
 | NFR-B-12 | All virtual money is integer; no operation can produce a fractional balance | unit test |
+| NFR-B-13 | Contest state is recoverable to within the backup interval after total server loss | restore drill |
 
 ## Assumptions
 
@@ -551,6 +612,8 @@ questions, since two people pay comparable amounts for different Hard problems.
 ## Open items
 
 - Starting balance, base prices, bid increment X, hint prices, difficulty scores — the structure is fixed; the values will be set once the problem set exists and has been ranked by difficulty
+- **Ordering dependency:** these values cannot be fixed until the number of participants advancing from Phase 1 is known. 25 questions among 20 people is a fundamentally different auction from 25 among 8 — base prices and starting balance follow from that ratio
+- Default ownership cap, which is the lever against a participant owning nothing (US-B4-03)
 - Bid countdown duration and opening-window duration
 - Final round duration
 - Auction running order (a per-contest configuration, decided before the auction)

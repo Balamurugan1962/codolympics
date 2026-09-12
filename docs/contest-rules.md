@@ -44,42 +44,95 @@ solve**.
 |---|---|
 | Competitors | ~20 **individuals** — one person, one account |
 | Questions | 25, across Easy / Medium / Hard |
-| Phases | Auction 1 → Coding Round 1 → Auction 2 → Final Round |
+| Structure | **Phase 1** qualifying round → **Phase 2** auction contest |
+| Phase 1 | Section A logical puzzles, then Section B hacking — each timed separately |
+| Phase 2 | Auction 1 → Coding Round 1 → Auction 2 → Final Round |
 | Coding Round 1 | 1 hour 30 minutes |
 | Starting money | identical for everyone *(amount TBD)* |
 | Question ownership | **exactly one participant per question** |
 | Scoring | difficulty score per solved question; solving is all-or-nothing |
-| Tiebreak | lowest **sum of solve times**, each measured from when you won the question |
+| Tiebreak | lowest **sum of solve times**, each measured from when you won the question; an exact tie is broken by Phase 1 rank |
 | Venue | proctored exam hall, organiser-controlled machines |
 | Network | contest server on the hall network only — no internet access |
 | Leaderboard | organiser's choice: live, frozen near the end, or hidden |
 
 ---
 
-## 3. Phases
+## 3. How the competition runs
 
-### Phase 1 — First auction
+The competition has **two phases**. Phase 1 decides who takes part in Phase 2.
 
-Questions are auctioned. You bid with virtual money. Highest bidder owns the question
-exclusively.
+---
 
-### Phase 2 — Coding Round 1 · 1 h 30 m
+### Phase 1 — Qualifying round
+
+Two sections, run one after the other, **each with its own time limit**.
+
+#### Section A — Logical Puzzles
+
+Multiple-choice and short-answer questions: pattern and observation problems,
+detective and mystery problems, and constraint puzzles. No programming.
+
+Short-answer questions are marked on **the correctness of your reasoning**, not just
+your final answer — so show your working where you are asked for it.
+
+You may answer in any order and change any answer until the section closes. There is
+**no negative marking**: a wrong answer scores zero, never less.
+
+#### Section B — Hacking
+
+You are given a problem and a solution to it. The solution is wrong. **Your job is to
+find a test case that makes it fail** — wrong output, too slow, or a crash.
+
+- You submit a **test input**, not code.
+- Your input must obey the problem's stated constraints. If it does not, you are told
+  which constraint it broke and the attempt does not count.
+- The **first** person-hack that breaks a given solution scores. Once you have broken
+  a solution, breaking it again with a similar input earns nothing — finding the flaw
+  is the achievement.
+- You are told whether your input was valid and whether it broke the solution. You are
+  **not** told how it failed, or what the correct output was.
+
+#### Selection
+
+Scores from both sections are combined. **Equal scores are separated by the earlier
+submission time.**
+
+The organisers then select who advances to Phase 2, using the leaderboard. The basis
+for that selection is announced before Phase 1 begins.
+
+Phase 1 points do **not** carry into Phase 2 — everyone who advances starts level, on
+identical money. Your Phase 1 rank is kept for one purpose only: separating an exact
+tie at the very end.
+
+---
+
+### Phase 2 — The auction contest
+
+Four rounds.
+
+#### Round 1 — First auction
+
+Questions are auctioned one at a time. You bid with virtual money. The highest bidder
+owns the question exclusively.
+
+#### Round 2 — Coding Round 1 · 1 h 30 m
 
 Solve the questions you own. You may submit as many times as you like, and you may
 buy hints for your questions at any time.
 
-**You may also code and submit during the auctions themselves.** The phases govern
+**You may also code and submit during the auctions themselves.** The rounds govern
 when bidding happens, not when you are allowed to work — so if you run out of money
 in the second auction, you can keep solving instead of watching.
 
-### Phase 3 — Second auction
+#### Round 3 — Second auction
 
-Questions that went unsold in the first auction are re-offered, at the same base
-price. With 25 questions and 20 participants, expect few leftovers — this round is
-mostly a chance to reconsider how much of your remaining money is worth spending on
-hints rather than a second question.
+Questions that went unsold in the first auction are re-offered, one at a time, at the
+same base price. With 25 questions and few participants, expect few leftovers — this
+round is mostly a chance to reconsider how much of your remaining money is worth
+spending on hints rather than a second question.
 
-### Phase 4 — Final round
+#### Round 4 — Final round
 
 Attempt newly acquired questions and keep working on any question you own. The
 contest ends when this round closes.
@@ -132,6 +185,21 @@ contest ends when this round closes.
   one are both valid strategies, and both mean spending your money.
 - Because each question has a single owner, **no two participants solve the same
   problem**. Your score reflects your own purchases and your own solutions.
+
+---
+
+### If you win nothing
+
+Bidding badly has consequences. If you are outbid on every question you go after, you
+will own nothing — and since hints are only available for questions you own, there
+will be nothing for you to spend money on either.
+
+**This is a real possible outcome, and you should bid accordingly.** Do not save your
+whole balance for a question someone else wants more than you do.
+
+Organisers watch for this and may step in — for example by offering you an unsold
+question — but that is a discretionary remedy, not a right, and it is recorded when it
+happens.
 
 ---
 
@@ -245,6 +313,11 @@ not on when you happened to acquire it.
 
 Once a question is accepted it stays accepted — a later wrong submission never
 un-solves it, and your solve time is fixed by your **first** accepted submission.
+
+**If two participants are still exactly level** — same score and the same total solve
+time — the higher **Phase 1 rank** places first. Phase 1 contributes no points to your
+Phase 2 score; it only settles a tie that is otherwise dead level. If even that is
+equal, the organisers decide, and record why.
 
 ---
 

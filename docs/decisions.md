@@ -15,7 +15,7 @@ Decisions here are settled; open questions are listed at the end.
 | 2 | **Not Judge0** | Its schema has a single `stdin` column, so it cannot compile once and run many — 10k testcases would mean 10k compiles. Also cgroup v1 only, no release since Apr 2024, GPL-3, amd64-only |
 | 3 | **Not DOMjudge** | Excellent and modern, but has no concept of per-participant question ownership, which this contest requires |
 | 4 | Judge is **two containers** — `judge-api` unprivileged, `go-judge` privileged with no published ports | go-judge has no authentication; anything that reaches it can run code in a privileged container |
-| 5 | Six services: frontend, backend, judge-api, go-judge, Postgres, Redis | Judge owns none of the contest logic |
+| 5 | ~~Six services~~ → **four**: Next.js (UI + API), judge-api, go-judge, Postgres | Superseded by decision 62. Sessions live in Postgres, the submission queue is a database poller, and SSE fanout is in-process — nothing was left for Redis to do |
 | 6 | **Judge is stateless** — no database, no Redis | A restart loses only in-flight jobs; the backend stores every submission |
 | 7 | **Deployment topology deliberately undecided** | Nothing may assume backend and judge share a filesystem |
 
@@ -154,6 +154,39 @@ correct code fixes bad pricing.
 - Auction running order (per-contest configuration)
 - Deployment topology and core count (deliberately deferred)
 - Python reader API surface for checkers and validators
+
+## Phase structure and Phase 1
+
+| # | Decision | Reasoning |
+|---|---|---|
+| 60 | The competition is **two phases**: Phase 1 qualifying round, Phase 2 auction contest | Phase 2's `Auction 1 / Coding Round 1 / Auction 2 / Final Round` are **rounds inside Phase 2**, not peers of Phase 1 — the earlier naming collided |
+| 61 | Phase 1 has **two sections**, run strictly in sequence with separate time limits: Logical Puzzles, then Hacking | From the Phase 1 rulebook. Section B is opened by an administrator, leaving room for a break or a fix |
+| 61a | Section A answer types: MCQ single/multi, fill-blank, numeric, sequence, set, long text — each `auto`, `validator` or `manual` graded | Most questions need no marking; open-ended ones can be scored by an uploaded validator; the rest are read by an evaluator |
+| 61b | Short answers are marked on **the correctness of the reasoning** | Straight from the rulebook |
+| 61c | Section B: participants submit a **test input**, never code; the given solution is shown, the reference solution never is | Reading the flawed solution is the task |
+| 61d | **One scoring hack per given solution** | Points per hack alone would reward farming a single bug with near-identical inputs |
+| 61e | Hack feedback is valid/invalid and hacked/not — never the verdict or the expected output | Otherwise the judge becomes an oracle for probing behaviour rather than a check on reading the code |
+| 61f | Section A validators score **correctness**; the browser checks **format** only | Live correctness feedback would turn "find as many as you can" into brute force against the validator |
+| 61g | Phase 1 selects who advances; an administrator chooses from the leaderboard, with the basis announced beforehand | No automatic top-N. Unlimited discretion without a published basis is what disputes feed on |
+| 61h | Phase 1 contributes **no points** to Phase 2, and everyone advances on an identical balance | Keeps US-B1-01 intact; an early lead must not compound into an auction advantage |
+| 61i | Phase 1 **rank** breaks an exact tie in the final standings | Avoids joint first place without letting Phase 1 add score |
+| 61j | Three roles: participant, evaluator, administrator; **one account, one role** | Evaluators grade without touching contest state, and nobody grades their own work |
+| 61k | One session per account applies to **participants only** | It is an anti-cheat control; applied to admins it would log an organiser out mid-auction |
+
+## Architecture revisions
+
+| # | Decision | Reasoning |
+|---|---|---|
+| 62 | **Redis dropped** — four services, not six | Sessions are in Postgres via Better Auth, the queue is a database poller, SSE fanout is in-process. One fewer thing to fail on the day |
+| 63 | **Better Auth**, self-hosted, username + admin plugins | Database-backed sessions are revocable, which is what single-session enforcement needs; JWTs cannot be revoked. Works with no internet |
+| 64 | **Next.js route handlers** for the backend, not NestJS | One deployable, Better Auth first-class, shared types with the UI for free |
+| 65 | Solve time is **derived from submissions, never stored** | Satisfies "first AC always counts" and "recompute after a rejudge" simultaneously; no column can go stale |
+| 66 | Auction deadlines are **database columns**, polled by a scheduler — never `setTimeout` | An in-memory timer cannot survive the restart NFR-B-10 requires |
+| 67 | Realtime is **SSE**, not WebSockets | Every realtime flow is server→client; SSE brings reconnection with `Last-Event-ID` for free, which the reconnect stories require |
+| 68 | Problems live on **one volume: backend read-write, judge read-only** | Publishing is the symlink swap the judge already treats as atomic. Amends judge assumption 4 |
+| 69 | Samples are the **first K testcases**; the administrator sets K, the text is read from the package | A displayed sample can never drift from the testcase actually judged |
+| 70 | **Automatic database backups with a tested restore** | Every other recovery story covers a *client* failing; this is the only cover for the *server* failing |
+| 71 | Phase 1 needs **two new judge endpoints** — `/hack` and `/validate-answers` | Both are "run something in the sandbox against data supplied in the request", the one shape the judge did not offer |
 
 ## Settled defaults
 

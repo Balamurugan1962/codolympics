@@ -511,6 +511,86 @@ releasable as open source.
 
 ---
 
+## Epic J7 — Hacking support
+
+Phase 1's Hacking section gives participants a problem and a solution to it, and asks
+them to find a test case that makes the solution fail
+([requirements-phase1.md](requirements-phase1.md), Epic P3).
+
+Everything this needs already exists except one thing: every endpoint today runs a
+submission against **stored** testcases. Hacking inverts that — a stored solution
+against a **supplied** testcase.
+
+### US-J7-01 · Judge one supplied input · MUST
+
+**As** the backend
+**I want** to run a solution against a single test input given in the request
+**So that** hacking reuses this sandbox rather than adding a second execution path
+
+**Acceptance criteria**
+
+- GIVEN a problem, a solution and a test input, WHEN submitted
+  THEN a job handle is returned and the result is polled like any other job
+- GIVEN the problem has a validator, THEN the input is checked against it first
+  AND an invalid input returns `valid_input: false` with the violated constraint named
+  AND the solution is not run at all
+- GIVEN a valid input, THEN the problem's stored reference solution is run to obtain
+  the correct answer
+- GIVEN a valid input, THEN the solution under test is run under the problem's time and
+  memory limits
+- GIVEN the solution under test producing a wrong answer, exceeding a limit, or
+  crashing, THEN `hacked: true` with its verdict
+- GIVEN the solution under test producing the correct answer, THEN `hacked: false`
+- GIVEN the reference solution itself failing, THEN the result is `IE` and `hacked` is
+  **not** reported — the problem is broken, and a participant must never be credited or
+  penalised for that
+- GIVEN a supplied input larger than **256 KB**, THEN `400` with a clear error — the
+  same cap as source code, and enough for any hand-written test case
+
+### US-J7-02 · Reference solutions are stored and never served · MUST
+
+**As** an administrator
+**I want** the correct solution held with the problem and unreachable
+**So that** hacking cannot be short-circuited by reading the answer
+
+**Acceptance criteria**
+
+- GIVEN a problem package, THEN it may carry a reference solution and the language it
+  is written in
+- GIVEN the reference solution, THEN **no endpoint returns it**, to any caller, at any
+  privilege level
+- GIVEN a stored reference solution, THEN `POST /validate` uses it when no
+  `reference_source` is supplied in the request
+- GIVEN a hacking problem with no stored reference solution, THEN validation fails with
+  a clear message — it cannot be used for hacking
+
+### US-J7-03 · Score entries against a supplied validator · MUST
+
+**As** the backend
+**I want** to run a validator over a list of answers and learn which are valid
+**So that** Phase 1's open-ended questions score themselves
+
+**Acceptance criteria**
+
+- GIVEN a validator and a list of entries, WHEN submitted
+  THEN each entry is reported valid or invalid, in order
+- GIVEN the validator, THEN it runs in the sandbox under its own time and memory
+  limits — it is administrator-written, not participant-written, but a typo must not
+  be able to hang the contest
+- GIVEN a validator that crashes, hangs or exceeds its limits, THEN the result is `IE`
+  and **no entry is reported invalid** — the caller must be able to tell "rejected"
+  apart from "never checked"
+- GIVEN one entry causing the validator to raise, THEN that entry is reported as an
+  error and the remaining entries are still evaluated
+- GIVEN the validator, THEN it uses the same reader API as checkers and input
+  validators
+
+> This and US-J7-01 are the only two capabilities Phase 1 needs. Both are variations
+> on "run something in the sandbox against data supplied in the request", which is the
+> one shape this service did not previously offer.
+
+---
+
 ## Non-functional requirements
 
 | ID | Requirement | Verification |
@@ -531,13 +611,19 @@ releasable as open source.
 1. The backend is trusted; the judge does not authenticate participants.
 2. Testcases are prepared and validated before the contest.
 3. The host provides cgroup v2 and permits privileged containers.
-4. Deployment topology is undecided, so nothing assumes a shared filesystem with the backend.
+4. The problem set lives on a volume the backend writes and the judge reads. The judge
+   **never writes** to it; publishing a new version is the backend swapping the
+   `current` symlink, which this service already treats as atomic.
 
 ## Open items
 
-- Exact Python reader API surface for checkers and validators
+*None outstanding.*
 
 ## Settled defaults
 
 - Job TTL: 10 minutes after completion
 - Testcase response cap: 1 MB, truncated with a flag
+- Supplied hack input cap: 256 KB, matching the source cap
+- Python reader API for checkers and validators: implemented as `app/checker_runtime.py`;
+  `int(lo, hi)`, `float()`, `word()`, `line()`, `ints(n)`, `rest()`, `eof()`, with
+  malformed contestant output producing `WA` and malformed jury data producing `IE`

@@ -8,8 +8,13 @@
 
 ## Scope
 
-Everything a participant or administrator sees. It renders state the backend owns
-and never decides anything itself — no scoring, no eligibility, no timing. A
+Everything a participant, evaluator or administrator sees **during Phase 2**. The
+Phase 1 interfaces — the puzzle and hacking views, the question editor and the
+evaluator's grading queue — are specified alongside their behaviour in
+[requirements-phase1.md](requirements-phase1.md); everything in Epic F10 (kiosk
+constraints) applies to them equally.
+
+It renders state the backend owns and never decides anything itself — no scoring, no eligibility, no timing. A
 manipulated client must not be able to gain an advantage.
 
 Delivered as a **web application in a locked-down browser**, not a desktop app.
@@ -29,6 +34,7 @@ discover the constraint mid-contest.
 | | |
 |---|---|
 | **Participant** | bids, reads owned questions, writes and submits code, buys hints |
+| **Evaluator** | grades Phase 1 short answers and manual items; cannot change contest state |
 | **Administrator** | manages problems, drives phases, monitors health, resolves incidents |
 
 ### Priority scale
