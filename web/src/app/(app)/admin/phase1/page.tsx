@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 
+import { Icon } from "@/components/icons";
 import { ReasonAction } from "@/components/reason-action";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { Table, Td, Th } from "@/components/ui/table";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Tabs } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
 type Puzzle = { id: number; title: string; bodyMd: string; category: string; kind: string; grading: string; points: number; explainPoints: number; orderIndex: number; published: boolean; voided: boolean; ready: boolean; config: Record<string, unknown>; answerKey: Record<string, unknown> | null; modelAnswer: string | null; validatorPy: string | null; pointsPerEntry: number | null; maxEntries: number; formatRegex: string | null; formatHint: string | null };
@@ -24,7 +28,8 @@ type Standing = { participant_id: string; name: string; points: number; provisio
 export default function Phase1AdminPage() {
   const [tab, setTab] = useState<"puzzles" | "hacking" | "review">("puzzles");
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
+      <PageHeader title="Phase 1" description="Author the puzzles and hacking questions, prove each one works, publish. After the round, grade and select who advances." />
       <Tabs value={tab} onChange={setTab} tabs={[{ value: "puzzles", label: "Section A — Puzzles" }, { value: "hacking", label: "Section B — Hacking" }, { value: "review", label: "Review & advance" }]} />
       {tab === "puzzles" && <PuzzleAdmin />}
       {tab === "hacking" && <HackAdmin />}
@@ -53,7 +58,7 @@ function PuzzleAdmin() {
           </button>
         ))}</CardBody>
       </Card>
-      <div className="lg:col-span-2">{sel !== null && <PuzzleEditor key={String(sel)} existing={current} onChange={async () => { await load(); }} onCreated={(id) => setSel(id)} />}</div>
+      <div className="lg:col-span-2">{sel === null ? <EmptyState icon={<Icon.Puzzle size={22} />} title={rows.length ? "Pick a puzzle to edit" : "No puzzles yet"} body="Each question must pass its self-test before it can be published." action={<Button size="sm" onClick={() => setSel("new")}>New puzzle</Button>} /> : <PuzzleEditor key={String(sel)} existing={current} onChange={async () => { await load(); }} onCreated={(id) => setSel(id)} />}</div>
     </div>
   );
 }
@@ -199,7 +204,7 @@ function HackAdmin() {
           </button>
         ))}</CardBody>
       </Card>
-      <div className="lg:col-span-2">{sel !== null && <HackEditor key={String(sel)} existing={current} onChange={load} onCreated={setSel} />}</div>
+      <div className="lg:col-span-2">{sel === null ? <EmptyState icon={<Icon.Bug size={22} />} title={rows.length ? "Pick a hacking question" : "No hacking questions yet"} body="Upload the judge package (with a stored reference and validator) on the Problems page first, then reference it here." action={<Button size="sm" onClick={() => setSel("new")}>New hacking question</Button>} /> : <HackEditor key={String(sel)} existing={current} onChange={load} onCreated={setSel} />}</div>
     </div>
   );
 }
@@ -268,6 +273,7 @@ function Review() {
   }, []);
   useEffect(() => { void load(); }, [load]);
   const provisional = rows.filter((r) => r.provisional).length;
+  if (rows.length === 0) return <EmptyState icon={<Icon.Users size={22} />} title="No participants yet" body="Standings appear once people have registered and Phase 1 has run." />;
   return (
     <div className="space-y-4">
       {provisional > 0 && <Alert tone="warning">{provisional} participant(s) have ungraded items — their totals are provisional. You may still select; grades can follow.</Alert>}

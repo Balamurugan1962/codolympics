@@ -8,7 +8,7 @@
  *
  * Lock order is always lot -> participant. There is no second ordering.
  */
-import { and, asc, count, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { user } from "@/db/auth-schema";
@@ -48,10 +48,22 @@ export async function auctionSnapshot(round: number) {
     .where(eq(lot.round, round))
     .orderBy(asc(lot.order));
 
+  const recent = open
+    ? await db
+        .select({ id: bid.id, amount: bid.amount, participantId: bid.participantId, name: user.name, createdAt: bid.createdAt })
+        .from(bid)
+        .innerJoin(user, eq(user.id, bid.participantId))
+        .where(eq(bid.lotId, open.lot.id))
+        .orderBy(desc(bid.id))
+        .limit(12)
+    : [];
+
   return {
     round,
     increment: c.bidIncrement,
     countdown_seconds: c.countdownSeconds,
+    opening_window_seconds: c.openingWindowSeconds,
+    recent_bids: recent.map((b) => ({ id: b.id, amount: b.amount, participant_id: b.participantId, name: b.name, at: b.createdAt.toISOString() })),
     lot: open
       ? {
           id: open.lot.id,
