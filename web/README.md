@@ -1,4 +1,4 @@
-# Contest web app
+# Codolympics web app
 
 The UI and API for both phases, in one Next.js process. Phase 1 is the
 qualifying round (logical puzzles, then hacking); Phase 2 is the auction coding
@@ -76,8 +76,13 @@ src/
   app/api/               route handlers: check, call the engine, respond
   app/(app)/             signed-in pages; layout loads state and opens SSE
   app/(auth)/            sign-in and registration
-  components/            shell, editor (Monaco, bundled), SSE provider,
-                         countdown, markdown, the ReasonAction dialog, ui/
+  components/            shell (brand, nav, phase stepper, live toasts),
+                         editor (Monaco, bundled), SSE provider, countdown,
+                         markdown, logo, icons, the ReasonAction dialog
+  components/ui/         button, card, input, badge, alert, table, tabs,
+                         dialog, menu, toast, skeleton, empty-state,
+                         page-header, stat, stepper, countdown-ring,
+                         split-pane, kbd -- all hand-rolled, ~40 lines each
 tests/                   scoring, leak contracts, concurrent bidding, e2e
 ```
 
@@ -101,3 +106,12 @@ and nothing else ever locks in a different order.
 
 **Monaco is bundled**, not loaded from a CDN. Fonts are the system stack. The
 page loads nothing from outside the contest server.
+
+**The UI follows a few rules everywhere.** One primary action per screen; the
+phase stepper always visible; a toast for every outcome (bid accepted, outbid,
+verdict, announcement); skeletons while loading and empty states that say what
+to do next; `Ctrl+Enter` submits code, `←`/`→` move between puzzles, `J`/`K`
+move through the grading queue; two-pane layouts collapse to tabs below 1024px.
+
+**Login is rate-limited per IP** in production (10 sign-ins per 10 s). A script
+signing in many users from one machine must pace itself; people never notice.

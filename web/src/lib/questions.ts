@@ -3,10 +3,10 @@
  * Ownership is checked here on every read; a question you do not own is not
  * hidden, it is unreachable (US-B4-01, US-F3-02).
  */
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { draft, ownership, question } from "@/db/schema";
+import { draft, judgement, ownership, question, submission } from "@/db/schema";
 
 import { errors } from "./api";
 import { hintsFor } from "./hints";
@@ -20,10 +20,30 @@ export async function ownedQuestions(participantId: string) {
     .from(ownership)
     .innerJoin(question, eq(question.id, ownership.questionId))
     .where(and(eq(ownership.participantId, participantId), isNull(ownership.voidedAt)));
-  return rows.map(({ q, own }) => ({
-    id: q.id, title: q.title, difficulty: q.difficulty, score: q.score, status: q.status,
-    price_paid: own.pricePaid, awarded_at: own.awardedAt.toISOString(),
-  }));
+
+  // attempted / solved, from current judgements (US-F3-01).
+  const stats = await db
+    .select({
+      questionId: submission.questionId,
+      attempts: sql<number>`count(*)::int`,
+      solved: sql<boolean>`bool_or(${judgement.verdict} = 'AC')`,
+      inFlight: sql<boolean>`bool_or(${judgement.state} <> 'done')`,
+    })
+    .from(submission)
+    .innerJoin(judgement, and(eq(judgement.submissionId, submission.id), isNull(judgement.supersededAt)))
+    .where(eq(submission.participantId, participantId))
+    .groupBy(submission.questionId);
+  const byQ = new Map(stats.map((s) => [s.questionId, s]));
+
+  return rows.map(({ q, own }) => {
+    const st = byQ.get(q.id);
+    return {
+      id: q.id, title: q.title, difficulty: q.difficulty, score: q.score, status: q.status,
+      price_paid: own.pricePaid, awarded_at: own.awardedAt.toISOString(),
+      attempts: st?.attempts ?? 0,
+      progress: st?.solved ? "solved" : st?.inFlight ? "judging" : st?.attempts ? "attempted" : "unattempted",
+    } as const;
+  });
 }
 
 export async function questionForOwner(participantId: string, questionId: string) {

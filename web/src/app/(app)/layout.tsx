@@ -1,5 +1,6 @@
 import { ContestProvider, type ContestState } from "@/components/contest-provider";
 import { Shell } from "@/components/shell";
+import { ToastProvider } from "@/components/ui/toast";
 import { requireViewer } from "@/lib/session";
 import { stateFor } from "@/lib/state";
 
@@ -9,7 +10,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const initial = (await stateFor(viewer)) as unknown as ContestState;
   return (
     <ContestProvider initial={initial}>
-      <Shell>{children}</Shell>
+      <ToastProvider>
+        <Shell>{children}</Shell>
+      </ToastProvider>
     </ContestProvider>
   );
 }

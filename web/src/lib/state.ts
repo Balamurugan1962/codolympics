@@ -8,8 +8,9 @@ import { db } from "@/db";
 import { announcement, notification, participant } from "@/db/schema";
 
 import { auctionSnapshot } from "./auction";
-import { getContest, isAuction, phaseSnapshot } from "./contest";
+import { getContest, isAuction, isPhase2, phaseSnapshot } from "./contest";
 import { hasAdvanced } from "./phase1-review";
+import { phase2Standings } from "./scoring";
 import { ownedQuestions } from "./questions";
 import { submitStatus } from "./submissions";
 import type { Viewer } from "./session";
@@ -42,6 +43,9 @@ export async function stateFor(viewer: Viewer) {
         }
       : null,
     questions: await ownedQuestions(viewer.id),
+    rank: isPhase2(c.phase) && c.leaderboardMode !== "hidden"
+      ? ((await phase2Standings({ frozenAt: c.leaderboardMode === "frozen" ? c.leaderboardFrozenAt : null })).find((s) => s.participant_id === viewer.id) ?? null)
+      : null,
     auction: isAuction(c.phase) ? await auctionSnapshot(c.phase === "auction2" ? 2 : 1) : null,
     submit: await submitStatus(viewer.id),
     notifications: unread.map((n) => ({ id: n.id, body_md: n.bodyMd, created_at: n.createdAt.toISOString() })),

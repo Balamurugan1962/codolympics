@@ -36,6 +36,18 @@ export const auth = betterAuth({
     updateAge: 60 * 15,
   },
 
+  // Per-IP. Stops a bored participant guessing a neighbour's password without
+  // getting in the way of anyone typing theirs. Every kiosk has its own IP.
+  rateLimit: {
+    enabled: true,
+    window: 10,
+    max: 100,
+    customRules: {
+      "/sign-in/username": { window: 10, max: 10 },
+      "/sign-up/email": { window: 60, max: 30 },
+    },
+  },
+
   user: {
     additionalFields: {
       // What language they expect to code in, captured at registration so an

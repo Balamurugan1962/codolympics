@@ -63,3 +63,29 @@
 .prose-statement th, .prose-statement td { border: 1px solid var(--color-line); padding: .35em .6em; }
 .prose-statement ul, .prose-statement ol { padding-left: 1.4em; margin: .5em 0; }
 .prose-statement strong { font-weight: 600; }
+
+/* --- motion, focus, scroll -------------------------------------------- */
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(27,169,76,.45); } 100% { box-shadow: 0 0 0 12px rgba(27,169,76,0); } }
+.animate-fade-in { animation: fade-in .15s ease-out; }
+.pulse-once { animation: pulse-ring .6s ease-out 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* Visible focus for keyboard users, invisible for mouse users. */
+:focus-visible { outline: 2px solid var(--color-green); outline-offset: 2px; }
+button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
+
+/* Thin, unobtrusive scrollbars in panes. */
+.pane::-webkit-scrollbar { width: 8px; height: 8px; }
+.pane::-webkit-scrollbar-thumb { background: var(--color-line-2); border-radius: 4px; }
+.pane::-webkit-scrollbar-track { background: transparent; }
+
+/* Full-height workspace below the shell (navbar 56px + stepper 40px). */
+.workspace { height: calc(100vh - 96px); }
+
+/* Screen-reader only. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

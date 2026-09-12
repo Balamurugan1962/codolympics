@@ -106,7 +106,7 @@ export async function gradingQueue() {
   }
   const ungraded = rows.filter((r) =>
     (r.q.grading === "manual" && r.a.manualScore === null) || (r.q.explainPoints > 0 && r.a.explainScore === null)).length;
-  return { groups: [...byQuestion.values()], ungraded };
+  return { groups: [...byQuestion.values()], ungraded, total: rows.length };
 }
 
 export async function gradeAnswer(

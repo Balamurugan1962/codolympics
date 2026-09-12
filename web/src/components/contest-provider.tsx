@@ -17,7 +17,8 @@ export type ContestState = {
   contest: { phase: string; phase_ends_at: string | null; registration_open: boolean; leaderboard_mode: string; server_now: number };
   announcements: { id: number; bodyMd: string; createdAt: string }[];
   me?: { balance: number; disqualified: boolean; advanced: boolean; p1_puzzles_finished: boolean; p1_hacking_finished: boolean } | null;
-  questions?: { id: string; title: string; difficulty: string; score: number; status: string; price_paid: number; awarded_at: string }[];
+  questions?: { id: string; title: string; difficulty: string; score: number; status: string; price_paid: number; awarded_at: string; attempts: number; progress: "solved" | "judging" | "attempted" | "unattempted" }[];
+  rank?: { rank: number; score: number; solved: number; total_time_ms: number } | null;
   auction?: AuctionSnapshot | null;
   submit?: { in_flight: boolean; cooldown_ms: number; server_now: number };
   notifications?: { id: number; body_md: string; created_at: string }[];
@@ -27,6 +28,8 @@ export type AuctionSnapshot = {
   round: number;
   increment: number;
   countdown_seconds: number;
+  opening_window_seconds: number;
+  recent_bids: { id: number; amount: number; participant_id: string; name: string; at: string }[];
   lot: {
     id: number; question_id: string; title: string; difficulty: string; score: number; base_price: number;
     current_bid: number | null; current_bidder_id: string | null; current_bidder_name: string | null; next_bid: number;
