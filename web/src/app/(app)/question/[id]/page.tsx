@@ -171,9 +171,12 @@ export default function QuestionPage() {
 
       <div className="space-y-3">
         <div className="flex items-center gap-3">
-          <Select className="w-48" value={language} onChange={(e) => { setLanguage(e.target.value); if (!source.trim()) setSource(TEMPLATE[e.target.value] ?? ""); }}>
-            {languages.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}
-          </Select>
+          <div className="w-52">
+            <Select value={language} onChange={(e) => { setLanguage(e.target.value); if (!source.trim()) setSource(TEMPLATE[e.target.value] ?? ""); }}>
+              {languages.length === 0 && <option value={language}>{language}</option>}
+              {languages.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}
+            </Select>
+          </div>
           <span className={`text-xs ${saved === "failed" ? "font-semibold text-red" : "text-faint"}`}>
             {saved === "saving" ? "Saving…" : saved === "saved" ? "Draft saved" : saved === "failed" ? "Draft NOT saved — check your connection" : ""}
           </span>

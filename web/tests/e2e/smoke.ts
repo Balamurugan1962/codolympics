@@ -53,7 +53,7 @@ function zip(files: Record<string, string>): Uint8Array {
 async function upload(admin: Client, id: string, files: Record<string, string>) {
   const form = new FormData();
   form.set("id", id); form.set("reason", "smoke test upload");
-  form.set("package", new Blob([zip(files)], { type: "application/zip" }), `${id}.zip`);
+  form.set("package", new Blob([Buffer.from(zip(files))], { type: "application/zip" }), `${id}.zip`);
   const r = await admin.call("POST", "/api/admin/problems", undefined, form);
   assert(r.status === 201, `upload ${id} → ${r.status} ${JSON.stringify(r.data)}`);
   return r.data.version as string;
