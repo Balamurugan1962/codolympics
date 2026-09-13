@@ -1,31 +1,75 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import * as React from "react";
 
-/** The box: white, 1px border, square-ish corners. `interactive` adds a hover lift for clickable cards. */
-export function Card({ className = "", interactive = false, ...props }: HTMLAttributes<HTMLDivElement> & { interactive?: boolean }) {
+import { cn } from "@/lib/utils";
+
+/*
+ * A panel: white, one hairline border, barely any shadow.
+ *
+ * Tuned away from the shadcn defaults on purpose — stock cards are airy
+ * (rounded-xl, 24px padding, 24px gaps) and this application is dense. Header
+ * and footer carry their own rules so a card reads as one object with bands,
+ * the way HackerRank's panels do, instead of floating boxes inside a box.
+ */
+function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={`rounded-box border border-line bg-card ${interactive ? "transition-[border-color,box-shadow] hover:border-line-2 hover:shadow-sm" : ""} ${className}`}
+      data-slot="card"
+      className={cn("flex flex-col rounded-lg border bg-card text-card-foreground shadow-xs", className)}
       {...props}
     />
   );
 }
 
-export function CardHeader({ title, description, action, className = "" }: { title: ReactNode; description?: ReactNode; action?: ReactNode; className?: string }) {
+/** Title, description and an optional action, divided from the body below. */
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div className={`flex items-start justify-between gap-3 border-b border-line px-4 py-3 ${className}`}>
-      <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold leading-snug">{title}</h2>
-        {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
-      </div>
-      {action && <div className="shrink-0">{action}</div>}
-    </div>
+    <div
+      data-slot="card-header"
+      className={cn(
+        "grid auto-rows-min grid-rows-[auto_auto] items-start gap-1 border-b px-5 py-3.5 has-data-[slot=card-action]:grid-cols-[1fr_auto]",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
-export function CardBody({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={`p-4 ${className}`} {...props} />;
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return <div data-slot="card-title" className={cn("text-[14.5px] leading-snug font-semibold", className)} {...props} />;
 }
 
-export function CardFooter({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={`flex items-center justify-end gap-2 border-t border-line bg-page/60 px-4 py-3 ${className}`} {...props} />;
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-[12.5px] leading-relaxed text-muted-foreground", className)}
+      {...props}
+    />
+  );
 }
+
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn("col-start-2 row-span-2 row-start-1 flex items-center gap-2 self-center justify-self-end", className)}
+      {...props}
+    />
+  );
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return <div data-slot="card-content" className={cn("px-5 py-4", className)} {...props} />;
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex flex-wrap items-center gap-2 border-t bg-muted/40 px-5 py-3", className)}
+      {...props}
+    />
+  );
+}
+
+export { Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent };

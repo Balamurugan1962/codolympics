@@ -1,52 +1,148 @@
-/** A small inline icon set. No icon library: the hall has no internet and these are 20 lines each. */
-import type { SVGProps } from "react";
+/**
+ * The application's icon vocabulary, on top of lucide (shadcn's icon set).
+ *
+ * Two reasons this is a named map rather than direct lucide imports at every
+ * call site. It fixes the meaning of an icon — `Icon.Sold` is a gavel
+ * everywhere, and changing that is one line here — and it defaults the size to
+ * 16px, which is the size this UI uses almost everywhere; lucide defaults to 24.
+ *
+ * lucide ships as bundled SVG components, so nothing is fetched at runtime.
+ */
+import {
+  Activity, AlarmClock, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Ban, Bell, BookOpen, Bug, Calendar,
+  Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsUpDown, CircleAlert, CircleCheck,
+  CircleHelp, CircleX, ClipboardList, Clock, Code, Coins, Copy, Cpu, Database, Dot, Download, Ellipsis, ExternalLink,
+  Eye, EyeOff, FileCode, FileText, Filter, Flag, FolderOpen, Gavel, GraduationCap, GripVertical, Hash, Inbox, Info,
+  Key, Layers, LayoutGrid, Lightbulb, Link2, List, ListChecks, LoaderCircle, Lock, LogOut, Maximize2, Medal, Megaphone,
+  Menu, Minimize2, Package, PanelLeft, Pause, Pencil, Percent, Play, Plus, Puzzle, RefreshCw, RotateCcw, Save, Scale, Search,
+  Send, Server, Settings, Shield, ShieldCheck, Sparkles, Square, SquareCheck, Target, Terminal, Timer, TrendingUp,
+  TriangleAlert, Trash2, Trophy, Undo2, Unlock, Upload, UserPlus, UserX, Users, Wallet, Wifi, WifiOff, X, Zap,
+  type LucideIcon,
+} from "lucide-react";
 
-type P = SVGProps<SVGSVGElement> & { size?: number };
-const base = (size: number, p: P) => ({
-  width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
-  strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true, ...p,
-});
+import { cn } from "@/lib/utils";
+
+export type IconProps = React.ComponentProps<LucideIcon> & { size?: number };
+
+/** Default to 16px and hide from assistive tech — an icon beside a label is decoration. */
+const at = (C: LucideIcon, extra?: string) =>
+  function Ico({ size = 16, className, ...p }: IconProps) {
+    return <C size={size} aria-hidden className={cn(extra, className)} {...p} />;
+  };
 
 export const Icon = {
-  Check: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M20 6 9 17l-5-5" /></svg>,
-  X: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M18 6 6 18M6 6l12 12" /></svg>,
-  Clock: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
-  Coins: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><circle cx="9" cy="9" r="6" /><path d="M14.5 6.5A6 6 0 1 1 6.5 14.5" /></svg>,
-  Trophy: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z" /><path d="M7 6H4a2 2 0 0 0 0 4h3M17 6h3a2 2 0 0 1 0 4h-3" /></svg>,
-  Code: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16" /></svg>,
-  Puzzle: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M10 3h4v3a2 2 0 1 0 4 0V3h3v7h-3a2 2 0 1 0 0 4h3v7h-7v-3a2 2 0 1 0-4 0v3H3v-7h3a2 2 0 1 0 0-4H3V3h7Z" /></svg>,
-  Bug: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M9 8V6a3 3 0 0 1 6 0v2M8 12h8M3 13h3M18 13h3M5 19l2-2M19 19l-2-2M12 8a5 5 0 0 1 5 5v2a5 5 0 0 1-10 0v-2a5 5 0 0 1 5-5Z" /></svg>,
-  Gavel: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M14 4l6 6M4 20l7-7M12 6l6 6M9 9l6 6" /></svg>,
-  ChevronLeft: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="m15 6-6 6 6 6" /></svg>,
-  ChevronRight: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="m9 6 6 6-6 6" /></svg>,
-  ChevronDown: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="m6 9 6 6 6-6" /></svg>,
-  Menu: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M4 6h16M4 12h16M4 18h16" /></svg>,
-  More: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><circle cx="5" cy="12" r="1.5" fill="currentColor" /><circle cx="12" cy="12" r="1.5" fill="currentColor" /><circle cx="19" cy="12" r="1.5" fill="currentColor" /></svg>,
-  Bell: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M6 8a6 6 0 0 1 12 0v5l2 3H4l2-3V8ZM10 20a2 2 0 0 0 4 0" /></svg>,
-  Alert: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg>,
-  Info: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><circle cx="12" cy="12" r="9" /><path d="M12 8h.01M11 12h1v4h1" /></svg>,
-  Spinner: ({ size = 16, ...p }: P) => <svg {...base(size, p)} className={`animate-spin ${p.className ?? ""}`}><path d="M21 12a9 9 0 1 1-6.2-8.6" /></svg>,
-  Upload: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M12 16V4M6 10l6-6 6 6M4 20h16" /></svg>,
-  Play: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M6 4l14 8-14 8V4Z" /></svg>,
-  Flag: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M5 21V4h12l-2 4 2 4H5" /></svg>,
-  Users: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><circle cx="9" cy="8" r="4" /><path d="M2 21a7 7 0 0 1 14 0M17 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7" /></svg>,
-  Settings: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>,
-  Logout: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>,
-  Lightbulb: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z" /></svg>,
-  List: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>,
-  ArrowRight: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M5 12h14M13 6l6 6-6 6" /></svg>,
-  Refresh: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6" /></svg>,
-  Eye: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>,
-  Lock: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>,
-  Copy: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>,
-  Grid: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>,
-  Shield: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M12 3l8 3v6c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V6l8-3Z" /><path d="m9 12 2 2 4-4" /></svg>,
-  Search: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>,
-  Plus: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M12 5v14M5 12h14" /></svg>,
-  Download: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M12 4v12M6 10l6 6 6-6M4 20h16" /></svg>,
-  Panel: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></svg>,
-  Edit: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M4 20h4l10-10-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>,
-  Trash: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" /></svg>,
-  Send: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><path d="M21 3 10.5 13.5M21 3l-7 18-3.5-7.5L3 10l18-7Z" /></svg>,
-  Dot: ({ size = 16, ...p }: P) => <svg {...base(size, p)}><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" /></svg>,
+  // verdicts and outcomes
+  Check: at(Check),
+  CheckAll: at(CheckCheck),
+  X: at(X),
+  Alert: at(TriangleAlert),
+  Info: at(Info),
+  Help: at(CircleHelp),
+  CircleCheck: at(CircleCheck),
+  CircleAlert: at(CircleAlert),
+  CircleX: at(CircleX),
+  Dot: at(Dot),
+
+  // the contest
+  Trophy: at(Trophy),
+  Medal: at(Medal),
+  Gavel: at(Gavel),
+  Coins: at(Coins),
+  Wallet: at(Wallet),
+  Puzzle: at(Puzzle),
+  Bug: at(Bug),
+  Code: at(Code),
+  FileCode: at(FileCode),
+  Flag: at(Flag),
+  Scale: at(Scale),
+  Target: at(Target),
+  Graduation: at(GraduationCap),
+  Spark: at(Sparkles),
+
+  // time
+  Clock: at(Clock),
+  Timer: at(Timer),
+  Alarm: at(AlarmClock),
+  Calendar: at(Calendar),
+  Pause: at(Pause),
+  Play: at(Play),
+
+  // navigation and chrome
+  Grid: at(LayoutGrid),
+  Menu: at(Menu),
+  More: at(Ellipsis),
+  Panel: at(PanelLeft),
+  ChevronLeft: at(ChevronLeft),
+  ChevronRight: at(ChevronRight),
+  ChevronDown: at(ChevronDown),
+  ChevronUp: at(ChevronUp),
+  ChevronsUpDown: at(ChevronsUpDown),
+  ArrowLeft: at(ArrowLeft),
+  ArrowRight: at(ArrowRight),
+  ArrowUp: at(ArrowUp),
+  ArrowDown: at(ArrowDown),
+  Sort: at(ArrowUpDown),
+  External: at(ExternalLink),
+  Link: at(Link2),
+  Expand: at(Maximize2),
+  Collapse: at(Minimize2),
+
+  // actions
+  Plus: at(Plus),
+  Edit: at(Pencil),
+  Trash: at(Trash2),
+  Save: at(Save),
+  Copy: at(Copy),
+  Send: at(Send),
+  Upload: at(Upload),
+  Download: at(Download),
+  Refresh: at(RefreshCw),
+  Undo: at(Undo2),
+  Reset: at(RotateCcw),
+  Search: at(Search),
+  Filter: at(Filter),
+  Spinner: at(LoaderCircle, "animate-spin"),
+
+  // people and access
+  Users: at(Users),
+  UserPlus: at(UserPlus),
+  UserBan: at(UserX),
+  Ban: at(Ban),
+  Lock: at(Lock),
+  Unlock: at(Unlock),
+  Key: at(Key),
+  Shield: at(Shield),
+  ShieldCheck: at(ShieldCheck),
+  Logout: at(LogOut),
+  Settings: at(Settings),
+
+  // content and monitoring
+  Bell: at(Bell),
+  Megaphone: at(Megaphone),
+  List: at(List),
+  ListChecks: at(ListChecks),
+  Clipboard: at(ClipboardList),
+  Inbox: at(Inbox),
+  File: at(FileText),
+  Folder: at(FolderOpen),
+  Package: at(Package),
+  Layers: at(Layers),
+  Server: at(Server),
+  Activity: at(Activity),
+  Database: at(Database),
+  Cpu: at(Cpu),
+  Terminal: at(Terminal),
+  Hash: at(Hash),
+  Percent: at(Percent),
+  Trend: at(TrendingUp),
+  Book: at(BookOpen),
+  Lightbulb: at(Lightbulb),
+  Eye: at(Eye),
+  EyeOff: at(EyeOff),
+  Wifi: at(Wifi),
+  WifiOff: at(WifiOff),
+  Zap: at(Zap),
+  Grip: at(GripVertical),
+  Square: at(Square),
+  SquareCheck: at(SquareCheck),
 };

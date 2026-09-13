@@ -1,97 +1,279 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /*
- * HackerRank-style design tokens. Light content on a pale page, a dark navy
- * top bar, green for actions and success.
+ * Codolympics design system.
  *
- * Fonts are the system stack on purpose: the hall has no internet, and this
- * needs no font files at all. Everything else the page needs is bundled.
+ * Two layers of tokens, both pointing at the same HackerRank palette:
+ *
+ *   1. The shadcn/ui semantic set (--background, --primary, --border, …). Every
+ *      shadcn component reads these, so re-theming is one block of CSS.
+ *   2. A small brand set (--navy, --green-bright, --amber …) for the handful of
+ *      surfaces shadcn has no word for: the navy chrome, the phase timeline,
+ *      the verdict colours.
+ *
+ * Light only, like HackerRank and like the hall projector. There is no dark
+ * palette on purpose — an untested second theme on contest day is a risk with
+ * no upside.
+ *
+ * Fonts are the system stack: the hall has no internet, so no font files are
+ * fetched. Everything else the page needs is bundled.
  */
-@theme {
-  --color-navy: #0e141e;
-  --color-navy-2: #1c2b3a;
-  --color-ink: #0e141e;
-  --color-muted: #39424e;
-  --color-faint: #7d8792;
-  --color-page: #f7f8fa;
-  --color-card: #ffffff;
-  --color-line: #e3e6ea;
-  --color-line-2: #c9cfd6;
 
-  --color-green: #1ba94c;
-  --color-green-dark: #158a3d;
-  --color-green-bright: #00ea64;
-  --color-green-tint: #e8f7ee;
+@custom-variant dark (&:is(.dark *));
 
-  --color-red: #d0342c;
-  --color-red-tint: #fbe9e8;
-  --color-amber: #f2a900;
-  --color-amber-tint: #fdf3d8;
-  --color-blue: #0f74d6;
-  --color-blue-tint: #e7f1fc;
+:root {
+  --radius: 0.375rem;
+
+  /* Surfaces */
+  --background: #f7f8fa;
+  --foreground: #0e141e;
+  --card: #ffffff;
+  --card-foreground: #0e141e;
+  --popover: #ffffff;
+  --popover-foreground: #0e141e;
+
+  /* Action */
+  --primary: #1ba94c;
+  --primary-foreground: #ffffff;
+  --secondary: #eef0f3;
+  --secondary-foreground: #0e141e;
+
+  /* Quiet */
+  --muted: #f1f3f5;
+  --muted-foreground: #5b6672;
+  --accent: #e8f7ee;
+  --accent-foreground: #127a37;
+
+  /* Alarm */
+  --destructive: #d0342c;
+  --destructive-foreground: #ffffff;
+
+  /* Lines */
+  --border: #e3e6ea;
+  --input: #d3d8de;
+  --ring: #1ba94c;
+
+  /* Charts, in the order they get used */
+  --chart-1: #1ba94c;
+  --chart-2: #0f74d6;
+  --chart-3: #f2a900;
+  --chart-4: #d0342c;
+  --chart-5: #7d8792;
+
+  /* The navy sidebar */
+  --sidebar: #0e141e;
+  --sidebar-foreground: rgba(255, 255, 255, 0.72);
+  --sidebar-primary: #00ea64;
+  --sidebar-primary-foreground: #0e141e;
+  --sidebar-accent: rgba(255, 255, 255, 0.1);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #00ea64;
+
+  /* Brand tokens shadcn has no name for */
+  --navy: #0e141e;
+  --navy-2: #1c2b3a;
+  --ink: #0e141e;
+  --faint: #7d8792;
+  --line-2: #c9cfd6;
+  --green: #1ba94c;
+  --green-dark: #127a37;
+  --green-bright: #00ea64;
+  --green-tint: #e8f7ee;
+  --red: #d0342c;
+  --red-tint: #fbe9e8;
+  --amber: #b47300;
+  --amber-bg: #f2a900;
+  --amber-tint: #fdf3d8;
+  --blue: #0f74d6;
+  --blue-tint: #e7f1fc;
+  --violet: #6941c6;
+  --violet-tint: #f1ecfd;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-navy: var(--navy);
+  --color-navy-2: var(--navy-2);
+  --color-ink: var(--ink);
+  --color-faint: var(--faint);
+  --color-line: var(--border);
+  --color-line-2: var(--line-2);
+  --color-page: var(--background);
+  --color-green: var(--green);
+  --color-green-dark: var(--green-dark);
+  --color-green-bright: var(--green-bright);
+  --color-green-tint: var(--green-tint);
+  --color-red: var(--red);
+  --color-red-tint: var(--red-tint);
+  --color-amber: var(--amber);
+  --color-amber-bg: var(--amber-bg);
+  --color-amber-tint: var(--amber-tint);
+  --color-blue: var(--blue);
+  --color-blue-tint: var(--blue-tint);
+  --color-violet: var(--violet);
+  --color-violet-tint: var(--violet-tint);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  --radius-box: 4px;
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-box: var(--radius);
 }
 
 @layer base {
-  html { color-scheme: light; }
+  * {
+    @apply border-border outline-ring/40;
+  }
+  html {
+    color-scheme: light;
+  }
   body {
-    background: var(--color-page);
-    color: var(--color-ink);
+    @apply bg-background text-foreground;
     font-family: var(--font-sans);
     font-size: 14px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
-  h1, h2, h3 { font-weight: 600; letter-spacing: -0.01em; }
-  code, pre, kbd { font-family: var(--font-mono); }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.011em;
+  }
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+  }
+  /* Numbers in tables, timers and scoreboards must not jitter. */
+  .tabular,
+  th,
+  td {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* Markdown statements: tables, code blocks and formulae must read well. */
-.prose-statement :is(h1,h2,h3) { margin: 1.25em 0 .5em; }
-.prose-statement p { margin: .6em 0; }
-.prose-statement pre {
-  background: var(--color-page); border: 1px solid var(--color-line);
-  border-radius: var(--radius-box); padding: .75rem; overflow-x: auto; font-size: 13px;
+/* --- markdown -----------------------------------------------------------
+ * Problem statements, hints, hacking constraints and announcements. Tailwind's
+ * reset strips list markers and heading sizes, so everything a statement can
+ * contain is restored here by hand.
+ */
+.prose-statement {
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.65;
 }
-.prose-statement code { background: var(--color-page); padding: .1em .3em; border-radius: 3px; font-size: 13px; }
-.prose-statement pre code { background: none; padding: 0; }
-.prose-statement table { border-collapse: collapse; margin: .75em 0; }
-.prose-statement th, .prose-statement td { border: 1px solid var(--color-line); padding: .35em .6em; }
-.prose-statement ul, .prose-statement ol { padding-left: 1.4em; margin: .5em 0; }
+.prose-statement > :first-child { margin-top: 0; }
+.prose-statement > :last-child { margin-bottom: 0; }
+.prose-statement h1 { font-size: 1.3em; margin: 1.3em 0 .5em; }
+.prose-statement h2 { font-size: 1.15em; margin: 1.3em 0 .5em; }
+.prose-statement h3 { font-size: 1.02em; margin: 1.2em 0 .4em; }
+.prose-statement p { margin: .7em 0; }
+.prose-statement a { color: var(--green-dark); text-decoration: underline; text-underline-offset: 2px; }
+.prose-statement pre {
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .75rem .85rem;
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.6;
+  margin: .8em 0;
+}
+.prose-statement code {
+  background: var(--muted);
+  padding: .12em .35em;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: .92em;
+}
+.prose-statement pre code { background: none; padding: 0; font-size: inherit; }
+.prose-statement table { border-collapse: collapse; margin: .8em 0; font-size: 13px; display: block; overflow-x: auto; }
+.prose-statement th, .prose-statement td { border: 1px solid var(--border); padding: .4em .7em; text-align: left; }
+.prose-statement th { background: var(--muted); font-weight: 600; }
+.prose-statement ul, .prose-statement ol { padding-left: 1.45em; margin: .6em 0; }
 .prose-statement ul { list-style: disc; }
 .prose-statement ol { list-style: decimal; }
-.prose-statement li { margin: .2em 0; }
-.prose-statement li::marker { color: var(--color-faint); }
-.prose-statement blockquote { border-left: 3px solid var(--color-line-2); padding-left: .8em; margin: .6em 0; color: var(--color-muted); }
-.prose-statement strong { font-weight: 600; }
+.prose-statement li { margin: .25em 0; }
+.prose-statement li::marker { color: var(--faint); }
+.prose-statement blockquote {
+  border-left: 3px solid var(--line-2);
+  padding-left: .9em;
+  margin: .8em 0;
+  color: var(--muted-foreground);
+}
+.prose-statement hr { border: 0; border-top: 1px solid var(--border); margin: 1.2em 0; }
+.prose-statement strong { font-weight: 650; }
+.prose-statement img { max-width: 100%; }
 
-/* --- motion, focus, scroll -------------------------------------------- */
-@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* --- motion, focus, scroll --------------------------------------------- */
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes drawer-in { from { transform: translateX(16px); opacity: .6; } to { transform: none; opacity: 1; } }
-@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(27,169,76,.45); } 100% { box-shadow: 0 0 0 12px rgba(27,169,76,0); } }
-.animate-fade-in { animation: fade-in .15s ease-out; }
+@keyframes rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(27, 169, 76, .45); }
+  100% { box-shadow: 0 0 0 12px rgba(27, 169, 76, 0); }
+}
+.animate-fade-in { animation: fade-in .16s ease-out; }
+.animate-rise-in { animation: rise-in .22s cubic-bezier(.16, 1, .3, 1); }
 .pulse-once { animation: pulse-ring .6s ease-out 1; }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
 }
 
-/* Visible focus for keyboard users, invisible for mouse users. */
-:focus-visible { outline: 2px solid var(--color-green); outline-offset: 2px; }
-button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
-
-/* Thin, unobtrusive scrollbars in panes. */
-.pane::-webkit-scrollbar { width: 8px; height: 8px; }
-.pane::-webkit-scrollbar-thumb { background: var(--color-line-2); border-radius: 4px; }
+/* Thin, unobtrusive scrollbars inside panes. */
+.pane::-webkit-scrollbar { width: 9px; height: 9px; }
+.pane::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
+.pane::-webkit-scrollbar-thumb:hover { background: var(--faint); background-clip: content-box; }
 .pane::-webkit-scrollbar-track { background: transparent; }
 
-/* Full-height workspace below the shell (navbar 56px + stepper 40px). */
+/* Full-height workspace below the shell (navbar 56px + phase timeline 40px). */
 .workspace { height: calc(100vh - 96px); }
 
 /* Screen-reader only. */
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
