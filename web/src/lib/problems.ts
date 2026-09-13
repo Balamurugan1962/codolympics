@@ -20,7 +20,7 @@ import { question } from "@/db/schema";
 import { errors } from "./api";
 import { audit } from "./audit";
 import { getContest, isPhase2 } from "./contest";
-import { judge, JudgeError, type ValidationReport } from "./judge";
+import { judge, JudgeError, type ProblemInfo, type ValidationReport } from "./judge";
 import { rejudgeQuestion, submissionCount } from "./submissions";
 
 const ROOT = path.resolve(process.env.PROBLEMS_DIR ?? "../judge/problems");
@@ -90,6 +90,73 @@ export async function uploadPackage(actorId: string, input: { id: string; zip: U
 
   await audit({ actorId, action: "problem.upload", target: input.id, reason: input.reason, detail: { version: next, files: names.length } });
   return { version: next };
+}
+
+/**
+ * Every package on the volume, read by us rather than by the judge.
+ *
+ * The judge only ever serves a package's *live* version, so anything uploaded
+ * and not yet published is invisible to it. Listing only what the judge can see
+ * means an administrator cannot find the package they just uploaded in order to
+ * publish it — which is a dead end, and exactly what a setup import produces,
+ * since an import publishes nothing on purpose.
+ *
+ * The app owns this directory, so it can answer for itself. Shaped like the
+ * judge's ProblemInfo so the two lists merge.
+ */
+export async function packagesOnDisk(): Promise<ProblemInfo[]> {
+  let ids: string[] = [];
+  try {
+    ids = (await fs.readdir(ROOT, { withFileTypes: true })).filter((e) => e.isDirectory() && ID.test(e.name)).map((e) => e.name);
+  } catch {
+    return [];
+  }
+
+  const out: ProblemInfo[] = [];
+  for (const id of ids) {
+    const versions = await versionsOf(id);
+    const version = (await currentVersion(id)) ?? versions.at(-1);
+    if (!version) continue;
+    const dir = dirFor(id, version);
+    let meta: Record<string, unknown> = {};
+    try {
+      meta = JSON.parse(await fs.readFile(path.join(dir, "problem.json"), "utf8"));
+    } catch {
+      continue; // not a package, or half-written
+    }
+
+    let testcases = 0;
+    let bytes = 0;
+    try {
+      const tests = await fs.readdir(path.join(dir, "tests"));
+      testcases = tests.filter((n) => n.endsWith(".in")).length;
+    } catch {
+      /* hack-only packages have no tests of their own */
+    }
+    try {
+      const stat = await fs.stat(dir);
+      bytes = stat.size;
+    } catch {
+      /* size is cosmetic */
+    }
+
+    const reference = meta.reference as { file?: string } | undefined;
+    out.push({
+      problem_id: id,
+      testcases,
+      bytes,
+      version,
+      validated: false, // only the judge can say; the question row carries our own answer
+      compare: String(meta.compare ?? "tokens"),
+      time_limit_ms: Number(meta.time_limit_ms ?? 0),
+      memory_limit_mb: Number(meta.memory_limit_mb ?? 0),
+      early_exit: meta.early_exit === undefined ? true : Boolean(meta.early_exit),
+      has_reference: Boolean(reference?.file),
+      hack_only: Boolean(meta.hack_only),
+      modified_at: null,
+    });
+  }
+  return out;
 }
 
 /** Validate a specific version through the judge (US-B8-02). */
