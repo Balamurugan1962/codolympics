@@ -1,29 +1,26 @@
 "use client";
 
 /**
- * People. Participants and staff behind two tabs; every repair is one menu away
- * and every one asks for a reason before it happens.
+ * The participant roster. Every repair is one menu away and every one asks for
+ * a reason before it happens, which is what lands in the audit log.
  */
 import { useCallback, useEffect, useState } from "react";
 
 import { useContest } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
-import { LocalTime } from "@/components/local-time";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChoiceCards } from "@/components/ui/choice";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Field, FormGrid, SearchInput } from "@/components/ui/field";
+import { Field, SearchInput } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { SimpleSelect } from "@/components/ui/select";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
-import { CardSkeleton, TableSkeleton } from "@/components/ui/skeleton";
+import { CardSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
@@ -38,7 +35,6 @@ type P = {
   disqualified: boolean;
   disqualified_reason: string | null;
 };
-type Staff = { id: string; name: string; username: string | null; role: string; created_at: string };
 type Action = { kind: "adjust" | "password" | "rename" | "disqualify" | "requalify" | "remove" | "assign"; p: P };
 
 export default function PeoplePage() {
@@ -70,135 +66,124 @@ export default function PeoplePage() {
 
   return (
     <PageBody width="wide">
-      <PageHeader title="People" description="Participants compete; evaluators grade. One account, one role." />
+      <PageHeader
+        title="Participants"
+        description="Everyone competing. They register themselves; staff accounts live under Staff."
+      />
 
-      <Tabs defaultValue="participants">
-        <TabsList variant="line" className="mb-5 w-full justify-start border-b">
-          <TabsTrigger value="participants">Participants{all.length ? ` (${all.length})` : ""}</TabsTrigger>
-          <TabsTrigger value="staff">Staff</TabsTrigger>
-        </TabsList>
+      {!rows ? (
+        <CardSkeleton lines={8} />
+      ) : all.length === 0 ? (
+        <Section padded={false}>
+          <EmptyState
+            icon={<Icon.Users />}
+            title="Nobody has registered yet"
+            body="Participants register themselves at their machines while registration is open."
+          />
+        </Section>
+      ) : (
+        <div className="space-y-5">
+          <StatRow cols={4}>
+            <Stat label="Registered" value={all.length} icon={<Icon.Users size={13} />} hint={`${all.filter((r) => r.disqualified).length} disqualified`} />
+            <Stat
+              label="Own nothing"
+              value={ownNothing}
+              tone={ownNothing ? "warning" : "default"}
+              icon={<Icon.Alert size={13} />}
+              hint={inPhase2 ? "have money, nothing to solve" : "only meaningful after an auction"}
+            />
+            <Stat label="Questions owned" value={all.reduce((s, r) => s + r.owned, 0)} icon={<Icon.Code size={13} />} />
+            <Stat label="Money unspent" value={money.toLocaleString()} icon={<Icon.Coins size={13} />} hint="across everyone" />
+          </StatRow>
 
-        <TabsContent value="participants">
-          {!rows ? (
-            <CardSkeleton lines={8} />
-          ) : all.length === 0 ? (
-            <Section padded={false}>
-              <EmptyState
-                icon={<Icon.Users />}
-                title="Nobody has registered yet"
-                body="Participants register themselves at their machines while registration is open."
-              />
-            </Section>
-          ) : (
-            <div className="space-y-5">
-              <StatRow cols={4}>
-                <Stat label="Registered" value={all.length} icon={<Icon.Users size={13} />} hint={`${all.filter((r) => r.disqualified).length} disqualified`} />
-                <Stat
-                  label="Own nothing"
-                  value={ownNothing}
-                  tone={ownNothing ? "warning" : "default"}
-                  icon={<Icon.Alert size={13} />}
-                  hint={inPhase2 ? "have money, nothing to solve" : "only meaningful after an auction"}
-                />
-                <Stat label="Questions owned" value={all.reduce((s, r) => s + r.owned, 0)} icon={<Icon.Code size={13} />} />
-                <Stat label="Money unspent" value={money.toLocaleString()} icon={<Icon.Coins size={13} />} hint="across everyone" />
-              </StatRow>
-
-              {ownNothing > 0 && (
-                <Alert variant="warning">
-                  <Icon.Alert />
-                  <AlertTitle>
-                    {ownNothing} participant{ownNothing === 1 ? " owns" : "s own"} nothing
-                  </AlertTitle>
-                  <AlertDescription>
-                    They have money and nothing to solve. Assign an unsold question from the row menu, or leave it — losing every bid is a
-                    legitimate outcome and the rules say so.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <Section padded={false}>
-                <Toolbar>
-                  <SearchInput
-                    className="w-full sm:w-72"
-                    placeholder="Filter by name or username"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    onClear={() => setFilter("")}
-                  />
-                  <span className="ml-auto text-[12px] text-muted-foreground">
-                    {shown.length} of {all.length}
-                  </span>
-                </Toolbar>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Participant</TableHead>
-                      <TableHead className="hidden sm:table-cell">Language</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
-                      <TableHead className="hidden text-right sm:table-cell">Owns</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-12">
-                        <span className="sr-only">Actions</span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {shown.map((p) => (
-                      <TableRow key={p.id} className={p.disqualified ? "opacity-60" : ""}>
-                        <TableCell>
-                          <div className="font-semibold">{p.name}</div>
-                          <div className="font-mono text-[11.5px] text-faint">{p.username}</div>
-                        </TableCell>
-                        <TableCell className="hidden text-muted-foreground sm:table-cell">{p.preferred_language ?? "—"}</TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">{p.balance.toLocaleString()}</TableCell>
-                        <TableCell className="hidden text-right tabular-nums sm:table-cell">
-                          {p.owned > 0 ? p.owned : <span className="text-faint">0</span>}
-                        </TableCell>
-                        <TableCell>
-                          {p.disqualified ? (
-                            <StatusDot tone="destructive">Disqualified</StatusDot>
-                          ) : inPhase2 && p.owned === 0 ? (
-                            <StatusDot tone="warning">Owns nothing</StatusDot>
-                          ) : (
-                            <StatusDot tone="success">Active</StatusDot>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Menu
-                            label={`Actions for ${p.name}`}
-                            items={[
-                              { label: "Adjust balance", icon: <Icon.Coins size={15} />, onSelect: () => setAction({ kind: "adjust", p }) },
-                              { label: "Reset password", icon: <Icon.Key size={15} />, onSelect: () => setAction({ kind: "password", p }) },
-                              { label: "Rename", icon: <Icon.Edit size={15} />, onSelect: () => setAction({ kind: "rename", p }) },
-                              ...(inPhase2 && p.owned === 0 && unsold.length
-                                ? [{ label: "Assign an unsold question", icon: <Icon.Gavel size={15} />, onSelect: () => setAction({ kind: "assign", p }) }]
-                                : []),
-                              { separator: true as const },
-                              p.disqualified
-                                ? { label: "Reverse disqualification", icon: <Icon.Undo size={15} />, onSelect: () => setAction({ kind: "requalify", p }) }
-                                : { label: "Disqualify", icon: <Icon.Ban size={15} />, danger: true, onSelect: () => setAction({ kind: "disqualify", p }) },
-                              ...(phase === "registration"
-                                ? [{ label: "Remove account", icon: <Icon.Trash size={15} />, danger: true, onSelect: () => setAction({ kind: "remove", p }) }]
-                                : []),
-                            ]}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {shown.length === 0 && <EmptyState compact icon={<Icon.Search />} title="Nobody matches that filter" />}
-              </Section>
-            </div>
+          {ownNothing > 0 && (
+            <Alert variant="warning">
+              <Icon.Alert />
+              <AlertTitle>
+                {ownNothing} participant{ownNothing === 1 ? " owns" : "s own"} nothing
+              </AlertTitle>
+              <AlertDescription>
+                They have money and nothing to solve. Assign an unsold question from the row menu, or leave it — losing every bid is a
+                legitimate outcome and the rules say so.
+              </AlertDescription>
+            </Alert>
           )}
-        </TabsContent>
 
-        <TabsContent value="staff">
-          <StaffPanel />
-        </TabsContent>
-      </Tabs>
-
+          <Section padded={false}>
+            <Toolbar>
+              <SearchInput
+                className="w-full sm:w-72"
+                placeholder="Filter by name or username"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                onClear={() => setFilter("")}
+              />
+              <span className="ml-auto text-[12px] text-muted-foreground">
+                {shown.length} of {all.length}
+              </span>
+            </Toolbar>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Participant</TableHead>
+                  <TableHead className="hidden sm:table-cell">Language</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead className="hidden text-right sm:table-cell">Owns</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-12">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {shown.map((p) => (
+                  <TableRow key={p.id} className={p.disqualified ? "opacity-60" : ""}>
+                    <TableCell>
+                      <div className="font-semibold">{p.name}</div>
+                      <div className="font-mono text-[11.5px] text-faint">{p.username}</div>
+                    </TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">{p.preferred_language ?? "—"}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">{p.balance.toLocaleString()}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                      {p.owned > 0 ? p.owned : <span className="text-faint">0</span>}
+                    </TableCell>
+                    <TableCell>
+                      {p.disqualified ? (
+                        <StatusDot tone="destructive">Disqualified</StatusDot>
+                      ) : inPhase2 && p.owned === 0 ? (
+                        <StatusDot tone="warning">Owns nothing</StatusDot>
+                      ) : (
+                        <StatusDot tone="success">Active</StatusDot>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Menu
+                        label={`Actions for ${p.name}`}
+                        items={[
+                          { label: "Adjust balance", icon: <Icon.Coins size={15} />, onSelect: () => setAction({ kind: "adjust", p }) },
+                          { label: "Reset password", icon: <Icon.Key size={15} />, onSelect: () => setAction({ kind: "password", p }) },
+                          { label: "Rename", icon: <Icon.Edit size={15} />, onSelect: () => setAction({ kind: "rename", p }) },
+                          ...(inPhase2 && p.owned === 0 && unsold.length
+                            ? [{ label: "Assign an unsold question", icon: <Icon.Gavel size={15} />, onSelect: () => setAction({ kind: "assign", p }) }]
+                            : []),
+                          { separator: true as const },
+                          p.disqualified
+                            ? { label: "Reverse disqualification", icon: <Icon.Undo size={15} />, onSelect: () => setAction({ kind: "requalify", p }) }
+                            : { label: "Disqualify", icon: <Icon.Ban size={15} />, danger: true, onSelect: () => setAction({ kind: "disqualify", p }) },
+                          ...(phase === "registration"
+                            ? [{ label: "Remove account", icon: <Icon.Trash size={15} />, danger: true, onSelect: () => setAction({ kind: "remove", p }) }]
+                            : []),
+                        ]}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {shown.length === 0 && <EmptyState compact icon={<Icon.Search />} title="Nobody matches that filter" />}
+          </Section>
+        </div>
+      )}
       {action && (
         <ActionDialog
           action={action}
@@ -346,170 +331,3 @@ function ActionDialog({
  * not registered, and they never appear in the participant list. This is the
  * whole roster of people who run the contest.
  */
-function StaffPanel() {
-  const { state } = useContest();
-  const [rows, setRows] = useState<Staff[] | null>(null);
-  const [creating, setCreating] = useState(false);
-
-  const load = useCallback(async () => setRows((await api.get<{ staff: Staff[] }>("/api/admin/staff")).staff), []);
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const admins = (rows ?? []).filter((r) => r.role === "admin").length;
-
-  return (
-    <>
-      <Section
-        title="Staff accounts"
-        description="Administrators run the contest; evaluators grade Phase 1 and can see hack verdicts. Neither competes, and neither can self-register."
-        actions={
-          <Button size="sm" onClick={() => setCreating(true)}>
-            <Icon.UserPlus size={14} /> Create a staff account
-          </Button>
-        }
-        padded={false}
-      >
-        {!rows ? (
-          <TableSkeleton rows={3} cols={4} />
-        ) : rows.length === 0 ? (
-          <EmptyState
-            icon={<Icon.Shield />}
-            title="No staff accounts yet"
-            body="You are signed in as the bootstrap administrator. Create an evaluator before Phase 1 so grading is not one person's job."
-            action={
-              <Button size="sm" onClick={() => setCreating(true)}>
-                <Icon.UserPlus size={14} /> Create a staff account
-              </Button>
-            }
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="hidden sm:table-cell">Can do</TableHead>
-                <TableHead className="hidden md:table-cell">Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{r.name}</span>
-                      {r.id === state?.viewer.id && <Badge variant="outline">you</Badge>}
-                    </div>
-                    <div className="font-mono text-[11.5px] text-faint">{r.username}</div>
-                  </TableCell>
-                  <TableCell>
-                    {r.role === "admin" ? <Badge variant="navy">Administrator</Badge> : <Badge variant="info">Evaluator</Badge>}
-                  </TableCell>
-                  <TableCell className="hidden text-[12.5px] text-muted-foreground sm:table-cell">
-                    {r.role === "admin" ? "Everything, including resets" : "Grade Phase 1 and review hacks"}
-                  </TableCell>
-                  <TableCell className="hidden text-muted-foreground md:table-cell">
-                    <LocalTime iso={r.created_at} withDate />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Section>
-
-      {rows && admins === 1 && (
-        <Alert variant="warning" className="mt-4">
-          <Icon.Alert />
-          <AlertTitle>There is only one administrator</AlertTitle>
-          <AlertDescription>
-            If that account is locked out mid-contest nobody can advance the phase. Create a second one and keep the password off the machine.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {creating && (
-        <CreateStaffDialog
-          onClose={() => setCreating(false)}
-          onDone={async () => {
-            setCreating(false);
-            await load();
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-function CreateStaffDialog({ onClose, onDone }: { onClose: () => void; onDone: () => Promise<void> }) {
-  const { toast } = useToast();
-  const [f, setF] = useState({ username: "", password: "", role: "evaluator", reason: "" });
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const ready = f.username.length >= 2 && f.password.length >= 8 && f.reason.trim().length >= 3;
-
-  async function create() {
-    setBusy(true);
-    setError(null);
-    try {
-      await api.post("/api/admin/staff", f);
-      toast({ title: `Created ${f.role} '${f.username}'`, description: "Tell them the password in person.", tone: "success" });
-      await onDone();
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title="Create a staff account"
-      description="They sign in with this name and password. Nothing is emailed — hand the password over in person."
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose} disabled={busy}>
-            Cancel
-          </Button>
-          <Button onClick={create} loading={busy} disabled={!ready}>
-            Create account
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <FormGrid cols={2}>
-          <Field label="Display name" required>
-            <Input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} placeholder="e.g. Anjali" autoFocus />
-          </Field>
-          <Field label="Password" hint="8+ characters" required>
-            <Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
-          </Field>
-        </FormGrid>
-        <Field label="Role" required>
-          <ChoiceCards
-            cols={2}
-            value={f.role}
-            onChange={(role) => setF({ ...f, role })}
-            name="Role"
-            options={[
-              { value: "evaluator", label: "Evaluator", icon: <Icon.Scale size={16} />, description: "Grades Phase 1 and reviews hack attempts. Cannot change contest state." },
-              { value: "admin", label: "Administrator", icon: <Icon.Shield size={16} />, description: "Everything you can do, including advancing phases and resetting the contest." },
-            ]}
-          />
-        </Field>
-        <Field label="Reason" required help="Recorded in the audit log with your name and the time.">
-          <Input value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} placeholder="e.g. second grader for Phase 1" />
-        </Field>
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-      </div>
-    </Modal>
-  );
-}

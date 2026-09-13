@@ -56,7 +56,8 @@ export default function WorkspacePage() {
   const [q, setQ] = useState<Question | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [languages, setLanguages] = useState<{ key: string; name: string }[]>([]);
-  const [language, setLanguage] = useState("cpp");
+  const preferred = state?.me?.preferred_language ?? "cpp";
+  const [language, setLanguage] = useState(preferred);
   const [source, setSource] = useState("");
   const [fontSize, setFontSize] = useState(13);
   const [saved, setSaved] = useState<"saved" | "saving" | "failed" | "idle">("idle");
@@ -77,7 +78,7 @@ export default function WorkspacePage() {
         const local = safeGet(`draft:${id}`);
         const remote = data.draft;
         const pick = local && (!remote || local.at > Date.parse(remote.updated_at)) ? local : remote ? { source: remote.source, language: remote.language } : null;
-        if (pick) { setSource(pick.source); setLanguage(pick.language); } else setSource(TEMPLATE.cpp);
+        if (pick) { setSource(pick.source); setLanguage(pick.language); } else { setLanguage(preferred); setSource(TEMPLATE[preferred] ?? TEMPLATE.cpp); }
       }
     } catch (err) { setError(errorMessage(err)); }
   }, [id]);
