@@ -10,11 +10,12 @@ const Body = z.object({
   manual_score: z.number().int().min(0).optional(),
   explain_score: z.number().int().min(0).optional(),
   comment: z.string().max(2000).optional(),
+  flagged: z.boolean().optional(),
 });
 
 export const POST = route(async (req) => {
   const viewer = await requireApiViewer("evaluator", "admin");
   const b = await body(req, Body);
-  await gradeAnswer(viewer.id, { participantId: b.participant_id, questionId: b.question_id, manualScore: b.manual_score, explainScore: b.explain_score, comment: b.comment });
+  await gradeAnswer(viewer.id, { participantId: b.participant_id, questionId: b.question_id, manualScore: b.manual_score, explainScore: b.explain_score, comment: b.comment, flagged: b.flagged });
   return json({ ok: true });
 });

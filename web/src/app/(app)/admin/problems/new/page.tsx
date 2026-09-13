@@ -198,7 +198,7 @@ export default function NewProblemPage() {
                 <SummaryItem label="Comparison">{inspection.problem?.compare ?? "tokens"}{inspection.hasChecker ? " · checker.py" : ""}</SummaryItem>
                 <SummaryItem label="Validator">{inspection.hasValidator ? "validator.py" : "none"}</SummaryItem>
                 <SummaryItem label="Reference">{inspection.reference ? `${inspection.reference.file} (${inspection.reference.language})` : "none"}</SummaryItem>
-                <SummaryItem label="Kind">{hackOnly ? <Badge variant="info">Hacking</Badge> : <Badge variant="success">Auction problem</Badge>}</SummaryItem>
+                <SummaryItem label="Kind">{hackOnly ? <Badge variant="neutral">Hacking</Badge> : <Badge variant="success">Auction problem</Badge>}</SummaryItem>
                 {!hackOnly && (
                   <>
                     <SummaryItem label="Title">{details.title}</SummaryItem>

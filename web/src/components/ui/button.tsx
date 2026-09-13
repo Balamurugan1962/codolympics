@@ -6,8 +6,9 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 /*
- * HackerRank buttons are semibold, square-ish and quiet until you need them
- * loud: one red primary per view, outlines for everything else.
+ * Semibold, square-ish, and quiet until they need to be loud: one blue primary
+ * per view, outlines for everything else. Flat — no drop shadows. A shadow on
+ * a button is decoration, and the fill already carries the emphasis.
  *
  * `loading` is part of the primitive rather than each caller's business —
  * almost every button here posts something, and a button that stays clickable
@@ -18,13 +19,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-xs hover:bg-brand-dark active:bg-brand-dark",
-        destructive: "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/30",
-        outline: "border border-input bg-card text-foreground shadow-xs hover:border-line-2 hover:bg-muted",
+        default: "bg-primary text-primary-foreground hover:bg-brand-dark active:bg-brand-deep",
+        destructive: "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/30",
+        outline: "border border-input bg-card text-foreground hover:border-line-2 hover:bg-muted",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/70",
         ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
-        link: "text-brand-dark underline-offset-4 hover:underline",
-        navy: "bg-navy text-white shadow-xs hover:bg-navy-2",
+        link: "text-brand-deep underline-offset-4 hover:underline",
+        navy: "bg-navy text-white hover:bg-navy-2",
       },
       size: {
         default: "h-9 px-4 has-[>svg]:px-3.5",

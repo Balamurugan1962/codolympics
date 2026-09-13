@@ -106,7 +106,10 @@ export function SearchInput({
   return (
     <div className={cn("relative", className)}>
       <Icon.Search size={15} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-faint" />
-      <Input type="search" value={value} className="pr-8 pl-8 [&::-webkit-search-cancel-button]:hidden" {...props} />
+      {/* The browser's own clear button is hidden in CSS (.search-plain in
+          globals.css) rather than with an arbitrary variant: that one class
+          reliably crashes Turbopack's CSS generation on rebuild. */}
+      <Input type="search" value={value} className="search-plain pr-8 pl-8" {...props} />
       {onClear && value ? (
         <button
           type="button"

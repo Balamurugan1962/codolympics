@@ -5,13 +5,21 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 /*
- * Status pills. The colours are the contest's vocabulary and are used the same
+ * Status chips. The colours are the contest's vocabulary and are used the same
  * way everywhere: green means done or correct, red means wrong or stopped,
- * amber means in progress or needs attention, blue means informational,
- * violet marks something a human must still judge.
+ * amber needs attention, blue means active or in progress, violet marks
+ * something a human must still judge, and grey is a plain label.
+ *
+ * Grey is the default on purpose. A chip that classifies rather than reports —
+ * a version number, a problem kind — takes `neutral`, because if everything is
+ * coloured then nothing is. Reach for a colour only when the chip is telling
+ * you the state of something.
+ *
+ * Square-ish rather than a pill: at 11px a full round reads soft and wastes
+ * horizontal space next to the dense tables these sit in.
  */
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap transition-colors [&>svg]:pointer-events-none [&>svg]:size-3",
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-[4px] border px-1.5 py-0 text-[11px] font-semibold whitespace-nowrap transition-colors [&>svg]:pointer-events-none [&>svg]:size-3",
   {
     variants: {
       variant: {
@@ -19,7 +27,7 @@ const badgeVariants = cva(
         success: "border-green/20 bg-green-tint text-green-dark",
         destructive: "border-red/20 bg-red-tint text-red",
         warning: "border-amber-bg/30 bg-amber-tint text-amber",
-        info: "border-blue/20 bg-blue-tint text-blue",
+        info: "border-brand/25 bg-brand-tint text-brand-deep",
         review: "border-violet/20 bg-violet-tint text-violet",
         neutral: "border-border bg-muted text-muted-foreground",
         outline: "border-line-2 bg-transparent text-muted-foreground",
@@ -59,7 +67,7 @@ function StatusDot({
     success: "bg-green",
     destructive: "bg-red",
     warning: "bg-amber-bg",
-    info: "bg-blue",
+    info: "bg-brand",
     review: "bg-violet",
     neutral: "bg-line-2",
   }[tone];
