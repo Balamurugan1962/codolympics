@@ -106,35 +106,16 @@ export const PUZZLES = [
     pointsPerEntry: 2,
     maxEntries: 20,
     config: { partialCredit: true },
-    // Scored by running this against the participant's entries: the app sends
-    // them one per line and reads back a score per entry.
-    validatorPy: `"""Score the factors of 36, one entry per line.
-
-Each entry is worth its points if it divides 36 exactly and has not already
-been given. Duplicates score nothing rather than scoring twice.
-"""
-
-FACTORS = {1, 2, 3, 4, 6, 9, 12, 18, 36}
-
-
-def score(entries):
-    seen = set()
-    out = []
-    for raw in entries:
-        text = raw.strip()
-        try:
-            value = int(text)
-        except ValueError:
-            out.append((False, f"{text!r} is not a whole number"))
-            continue
-        if value in seen:
-            out.append((False, "already listed"))
-        elif value in FACTORS:
-            seen.add(value)
-            out.append((True, ""))
-        else:
-            out.append((False, f"{value} does not divide 36"))
-    return out
+    // One entry at a time: the judge hands `check` a Reader over a single
+    // submitted line and counts the truthy answers. Deduplication happens
+    // before this is called, so it never has to think about repeats.
+    validatorPy: `def check(entry):
+    """One submitted factor. True when it divides 36 exactly."""
+    # Out of range or not an integer raises, which marks just this entry
+    # invalid and says why — the rest of the list is still scored.
+    value = entry.int(1, 36)
+    entry.eof()          # "12 18" on one line is two answers, not one
+    return 36 % value == 0
 `,
     modelAnswer: "1, 2, 3, 4, 6, 9, 12, 18, 36 — nine factors.",
     maxEntriesHint: true,

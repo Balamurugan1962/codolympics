@@ -58,6 +58,35 @@ whether these tests were built against the checker on your judge. For each
 problem: open it, run **Validate**, then **Publish**. For Phase 1: open each
 question, run its self-test, then publish.
 
+## The two kinds of Python in here
+
+They look alike and are not interchangeable — getting them the wrong way round
+produces a question that silently scores nothing.
+
+**Answer validator** (Phase 1, `validator` grading) is handed one submitted
+entry at a time and returns whether to accept it:
+
+```python
+def check(entry):
+    value = entry.int(1, 36)   # raising marks just this entry invalid
+    entry.eof()
+    return 36 % value == 0
+```
+
+**Input validator** (a judge package, used by hacking) is handed a whole input
+file and raises if it breaks the stated constraints:
+
+```python
+def validate(inp):
+    n = inp.int(1, 1000)
+    for _ in range(n):
+        inp.int(-1000, 1000)
+    inp.eof()
+```
+
+Both read through the same `Reader`: `.int(lo, hi)`, `.word()`, `.line()`,
+`.ints(n)`, `.rest()`, `.eof()`.
+
 ## Rebuilding it
 
 `scripts/demo-content.ts` holds the content and `scripts/build-demo-setup.ts`
