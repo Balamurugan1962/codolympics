@@ -1,15 +1,33 @@
 import type { ReactNode } from "react";
 
+import { cn } from "@/lib/utils";
+
 /** Never a blank area: what this is, why it is empty, and the way out. */
-export function EmptyState({ icon, title, body, action, compact = false }: {
-  icon?: ReactNode; title: string; body?: ReactNode; action?: ReactNode; compact?: boolean;
+export function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+  compact = false,
+  className,
+}: {
+  icon?: ReactNode;
+  title: string;
+  body?: ReactNode;
+  action?: ReactNode;
+  compact?: boolean;
+  className?: string;
 }) {
   return (
-    <div className={`flex flex-col items-center justify-center px-6 text-center ${compact ? "py-8" : "py-14"}`}>
-      {icon && <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-page text-faint">{icon}</div>}
+    <div className={cn("flex flex-col items-center justify-center px-6 text-center", compact ? "py-9" : "py-14", className)}>
+      {icon && (
+        <div className="mb-3.5 flex size-11 items-center justify-center rounded-full border bg-muted text-faint [&_svg]:size-[18px]">
+          {icon}
+        </div>
+      )}
       <div className="text-[14px] font-semibold">{title}</div>
-      {body && <div className="mt-1 max-w-sm text-[12.5px] leading-relaxed text-muted">{body}</div>}
-      {action && <div className="mt-4">{action}</div>}
+      {body && <div className="mt-1.5 max-w-sm text-[12.5px] leading-relaxed text-muted-foreground">{body}</div>}
+      {action && <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{action}</div>}
     </div>
   );
 }

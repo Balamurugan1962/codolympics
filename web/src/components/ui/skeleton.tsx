@@ -1,13 +1,36 @@
-/** A loading placeholder that keeps the layout from jumping. */
-export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-box bg-line ${className}`} aria-hidden="true" />;
+import { cn } from "@/lib/utils";
+
+function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
+  return <div data-slot="skeleton" className={cn("animate-pulse rounded-md bg-muted", className)} {...props} />;
 }
 
-export function CardSkeleton({ lines = 3 }: { lines?: number }) {
+export { Skeleton };
+
+/** A card-shaped loading placeholder, so a page does not jump when data lands. */
+function CardSkeleton({ lines = 3, className }: { lines?: number; className?: string }) {
   return (
-    <div className="rounded-box border border-line bg-card p-4">
-      <Skeleton className="mb-3 h-4 w-1/3" />
-      {Array.from({ length: lines }).map((_, i) => <Skeleton key={i} className={`mb-2 h-3 ${i % 2 ? "w-2/3" : "w-full"}`} />)}
+    <div className={cn("rounded-lg border bg-card p-5 shadow-xs", className)} aria-hidden>
+      <Skeleton className="mb-4 h-4 w-1/3" />
+      {Array.from({ length: lines }).map((_, i) => (
+        <Skeleton key={i} className={cn("mb-2.5 h-3", i % 2 ? "w-2/3" : "w-full")} />
+      ))}
     </div>
   );
 }
+
+/** Rows of a table that has not arrived yet. */
+function TableSkeleton({ rows = 6, cols = 4 }: { rows?: number; cols?: number }) {
+  return (
+    <div aria-hidden className="divide-y">
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex h-11 items-center gap-4 px-4">
+          {Array.from({ length: cols }).map((_, c) => (
+            <Skeleton key={c} className={cn("h-3", c === 0 ? "w-1/4" : "flex-1")} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export { CardSkeleton, TableSkeleton };

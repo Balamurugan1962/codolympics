@@ -1,35 +1,96 @@
-import type { ReactNode } from "react";
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { Slot } from "radix-ui";
 
-type Tone = "green" | "red" | "amber" | "blue" | "grey" | "navy" | "outline";
+import { cn } from "@/lib/utils";
 
-const tones: Record<Tone, string> = {
-  green: "bg-green-tint text-green-dark ring-1 ring-inset ring-green/20",
-  red: "bg-red-tint text-red ring-1 ring-inset ring-red/20",
-  amber: "bg-amber-tint text-[#8a6100] ring-1 ring-inset ring-amber/30",
-  blue: "bg-blue-tint text-blue ring-1 ring-inset ring-blue/20",
-  grey: "bg-page text-muted ring-1 ring-inset ring-line-2",
-  navy: "bg-navy text-white",
-  outline: "text-muted ring-1 ring-inset ring-line-2",
-};
+/*
+ * Status pills. The colours are the contest's vocabulary and are used the same
+ * way everywhere: green means done or correct, red means wrong or stopped,
+ * amber means in progress or needs attention, blue means informational,
+ * violet marks something a human must still judge.
+ */
+const badgeVariants = cva(
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap transition-colors [&>svg]:pointer-events-none [&>svg]:size-3",
+  {
+    variants: {
+      variant: {
+        default: "border-transparent bg-primary text-primary-foreground",
+        success: "border-green/20 bg-green-tint text-green-dark",
+        destructive: "border-red/20 bg-red-tint text-red",
+        warning: "border-amber-bg/30 bg-amber-tint text-amber",
+        info: "border-blue/20 bg-blue-tint text-blue",
+        review: "border-violet/20 bg-violet-tint text-violet",
+        neutral: "border-border bg-muted text-muted-foreground",
+        outline: "border-line-2 bg-transparent text-muted-foreground",
+        navy: "border-transparent bg-navy text-white",
+      },
+      size: {
+        default: "h-5",
+        lg: "h-6 px-2.5 text-[12px]",
+      },
+    },
+    defaultVariants: { variant: "neutral", size: "default" },
+  },
+);
 
-export function Badge({ tone = "grey", children, className = "" }: { tone?: Tone; children: ReactNode; className?: string }) {
+function Badge({
+  className,
+  variant,
+  size,
+  asChild = false,
+  ...props
+}: React.ComponentProps<"span"> & VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
+  const Comp = asChild ? Slot.Root : "span";
+  return <Comp data-slot="badge" className={cn(badgeVariants({ variant, size }), className)} {...props} />;
+}
+
+/** Quieter than a badge: a coloured dot with a word. For statuses inside dense rows. */
+function StatusDot({
+  tone,
+  children,
+  className,
+}: {
+  tone: "success" | "destructive" | "warning" | "info" | "neutral" | "review";
+  children?: React.ReactNode;
+  className?: string;
+}) {
+  const dot = {
+    success: "bg-green",
+    destructive: "bg-red",
+    warning: "bg-amber-bg",
+    info: "bg-blue",
+    review: "bg-violet",
+    neutral: "bg-line-2",
+  }[tone];
   return (
-    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold leading-5 ${tones[tone]} ${className}`}>
+    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap text-[12.5px]", className)}>
+      <span className={cn("size-1.5 shrink-0 rounded-full", dot)} />
       {children}
     </span>
   );
 }
 
-/** A coloured dot with a label — quieter than a badge, for statuses in lists. */
-export function StatusDot({ tone, children }: { tone: "green" | "red" | "amber" | "blue" | "grey"; children: ReactNode }) {
-  const dot = { green: "bg-green", red: "bg-red", amber: "bg-amber", blue: "bg-blue", grey: "bg-line-2" }[tone];
-  return <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12.5px]"><span className={`h-1.5 w-1.5 rounded-full ${dot}`} />{children}</span>;
+/** The judge's verdict, spelled out. Participants should never have to learn the abbreviations. */
+const VERDICTS: Record<string, { label: string; variant: "success" | "destructive" | "warning" | "neutral" }> = {
+  AC: { label: "Accepted", variant: "success" },
+  WA: { label: "Wrong answer", variant: "destructive" },
+  TLE: { label: "Time limit", variant: "destructive" },
+  MLE: { label: "Memory limit", variant: "destructive" },
+  RE: { label: "Runtime error", variant: "destructive" },
+  OLE: { label: "Output limit", variant: "destructive" },
+  CE: { label: "Compile error", variant: "warning" },
+  IE: { label: "Judge error", variant: "neutral" },
+};
+
+function VerdictBadge({ verdict, className }: { verdict: string | null | undefined; className?: string }) {
+  if (!verdict) return <Badge variant="neutral" className={className}>Pending</Badge>;
+  const v = VERDICTS[verdict];
+  return (
+    <Badge variant={v?.variant ?? "destructive"} className={className}>
+      {v?.label ?? verdict}
+    </Badge>
+  );
 }
 
-export function VerdictBadge({ verdict }: { verdict: string | null | undefined }) {
-  if (!verdict) return <Badge tone="grey">Pending</Badge>;
-  if (verdict === "AC") return <Badge tone="green">Accepted</Badge>;
-  if (verdict === "IE") return <Badge tone="grey">Judge error</Badge>;
-  if (verdict === "CE") return <Badge tone="amber">Compile error</Badge>;
-  return <Badge tone="red">{verdict}</Badge>;
-}
+export { Badge, badgeVariants, StatusDot, VerdictBadge };
