@@ -1,14 +1,29 @@
 import { errors, json, route } from "@/lib/api";
 import { judge } from "@/lib/judge";
-import { currentVersion, uploadPackage, versionsOf } from "@/lib/problems";
+import { currentVersion, packagesOnDisk, uploadPackage, versionsOf } from "@/lib/problems";
 import { requireApiViewer } from "@/lib/session";
 
-/** The problem list as the judge sees it, plus which versions exist on disk (US-F9-01). */
+/**
+ * Every package, whether or not the judge can serve it yet (US-F9-01).
+ *
+ * The judge only reads a package's live version, so listing only what it can
+ * see would hide everything uploaded and not yet published — including
+ * everything a setup import creates, leaving no way to reach the Publish button.
+ * The volume is the truth about what exists; the judge is the truth about what
+ * is running, so its entry wins where the two overlap.
+ */
 export const GET = route(async () => {
   await requireApiViewer("admin", "evaluator");
-  const problems = await judge.problems().catch(() => []);
-  const withVersions = await Promise.all(problems.map(async (p) => ({ ...p, versions: await versionsOf(p.problem_id), current: await currentVersion(p.problem_id) })));
-  return json({ problems: withVersions });
+  const [live, onDisk] = await Promise.all([judge.problems().catch(() => []), packagesOnDisk()]);
+  const byId = new Map(onDisk.map((p) => [p.problem_id, p]));
+  for (const p of live) byId.set(p.problem_id, p);
+
+  const problems = await Promise.all(
+    [...byId.values()]
+      .sort((a, b) => a.problem_id.localeCompare(b.problem_id))
+      .map(async (p) => ({ ...p, versions: await versionsOf(p.problem_id), current: await currentVersion(p.problem_id) })),
+  );
+  return json({ problems });
 });
 
 /** Upload a package zip as a new version. multipart: id, package, reason. */
