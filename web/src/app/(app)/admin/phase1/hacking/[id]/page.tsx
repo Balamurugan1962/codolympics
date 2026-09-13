@@ -33,7 +33,7 @@ export default function EditHackPage() {
         breadcrumb={crumb}
         title={hack.title}
         description={<span>Question #{hack.id} · judge problem <span className="font-mono">{hack.problemId}</span> · {hack.hackPoints} pts</span>}
-        actions={s === "live" ? <StatusDot tone="green">Live</StatusDot> : s === "ready" ? <StatusDot tone="blue">Ready to publish</StatusDot> : s === "void" ? <StatusDot tone="grey">Void</StatusDot> : <StatusDot tone="amber">Draft</StatusDot>}
+        actions={s === "live" ? <StatusDot tone="success">Live</StatusDot> : s === "ready" ? <StatusDot tone="info">Ready to publish</StatusDot> : s === "void" ? <StatusDot tone="neutral">Void</StatusDot> : <StatusDot tone="warning">Draft</StatusDot>}
       />
       <HackBuilder existing={hack} initialStep={search.get("step") ?? undefined} onSaved={load} />
     </PageBody>

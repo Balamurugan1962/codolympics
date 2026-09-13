@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 
 import { useContest } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { CardSkeleton } from "@/components/ui/skeleton";
-import { Table, Td, Th, Tr } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
 
 type Board = { mode: string; selection_basis?: string; standings: { participant_id: string; name: string; points: number; provisional: boolean; rank: number; advanced?: boolean | null; submitted_at?: string | null }[] };
@@ -27,19 +27,19 @@ export default function Phase1LeaderboardPage() {
         <EmptyState icon={<Icon.Eye size={20} />} title="Standings are hidden" body="The organisers will reveal them when Phase 1 closes." />
       ) : (
         <div className="space-y-3">
-          {board.selection_basis && <Alert tone="info" title="How selection works">{board.selection_basis}</Alert>}
+          {board.selection_basis && <Alert variant="info"><AlertTitle>"How selection works"</AlertTitle><AlertDescription>{board.selection_basis}</AlertDescription></Alert>}
           <Section padded={false}>
             <Table>
-              <thead><tr><Th className="w-16" align="right">Rank</Th><Th>Participant</Th><Th align="right">Points</Th><Th className="hidden sm:table-cell">Submitted</Th><Th className="w-32"><span className="sr-only">Decision</span></Th></tr></thead>
-              <tbody>{board.standings.map((s) => (
-                <Tr key={s.participant_id} selected={s.participant_id === me}>
-                  <Td align="right" className="font-semibold">{s.rank ? `#${s.rank}` : "—"}</Td>
-                  <Td className="font-medium">{s.name}{s.participant_id === me && <span className="ml-1.5 text-[11.5px] font-semibold text-green-dark">you</span>}</Td>
-                  <Td align="right" className="font-semibold">{s.points}{s.provisional && <span className="ml-1 text-faint" title="some items not yet graded">*</span>}</Td>
-                  <Td className="hidden text-faint sm:table-cell">{s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</Td>
-                  <Td>{s.advanced === true ? <Badge tone="green">advancing</Badge> : s.advanced === false ? <Badge tone="grey">not selected</Badge> : null}</Td>
-                </Tr>
-              ))}</tbody>
+              <TableHeader><TableRow><TableHead className="w-16 text-right tabular-nums">Rank</TableHead><TableHead>Participant</TableHead><TableHead className="text-right tabular-nums">Points</TableHead><TableHead className="hidden sm:table-cell">Submitted</TableHead><TableHead className="w-32"><span className="sr-only">Decision</span></TableHead></TableRow></TableHeader>
+              <TableBody>{board.standings.map((s) => (
+                <TableRow key={s.participant_id} data-state={s.participant_id === me ? "selected" : undefined}>
+                  <TableCell className="font-semibold text-right tabular-nums">{s.rank ? `#${s.rank}` : "—"}</TableCell>
+                  <TableCell className="font-medium">{s.name}{s.participant_id === me && <span className="ml-1.5 text-[11.5px] font-semibold text-green-dark">you</span>}</TableCell>
+                  <TableCell className="font-semibold text-right tabular-nums">{s.points}{s.provisional && <span className="ml-1 text-faint" title="some items not yet graded">*</span>}</TableCell>
+                  <TableCell className="hidden text-faint sm:table-cell">{s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</TableCell>
+                  <TableCell>{s.advanced === true ? <Badge variant="success">advancing</Badge> : s.advanced === false ? <Badge variant="neutral">not selected</Badge> : null}</TableCell>
+                </TableRow>
+              ))}</TableBody>
             </Table>
             {board.standings.length === 0 && <EmptyState compact title="No standings yet" />}
           </Section>

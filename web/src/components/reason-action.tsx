@@ -2,27 +2,42 @@
 
 /**
  * An administrator action that requires a reason before it is applied
- * (US-F9-00). The reason goes into the audit log with the change.
+ * (US-F9-00). The reason goes into the audit log in the same transaction as
+ * the change, so the log can never disagree with what happened.
  */
 import { useState } from "react";
 
 import { errorMessage } from "@/lib/client";
 
-import { Alert } from "./ui/alert";
+import { Alert, AlertDescription } from "./ui/alert";
 import { Button } from "./ui/button";
-import { Dialog } from "./ui/dialog";
-import { Field, Input, Textarea } from "./ui/input";
+import { Field } from "./ui/field";
+import { Input } from "./ui/input";
+import { Modal } from "./ui/modal";
+import { Textarea } from "./ui/textarea";
+
+type Variant = React.ComponentProps<typeof Button>["variant"];
 
 export function ReasonAction({
-  label, title, description, confirmLabel, variant = "secondary", size = "sm", fields = [], disabled, onConfirm,
+  label,
+  title,
+  description,
+  confirmLabel,
+  variant = "outline",
+  size = "sm",
+  icon,
+  fields = [],
+  disabled,
+  onConfirm,
 }: {
   label: string;
   title: string;
   description?: React.ReactNode;
   confirmLabel?: string;
-  variant?: "primary" | "secondary" | "danger" | "ghost";
-  size?: "sm" | "md";
-  fields?: { name: string; label: string; type?: "text" | "number" | "password" | "textarea"; hint?: string; defaultValue?: string }[];
+  variant?: Variant;
+  size?: "xs" | "sm" | "default";
+  icon?: React.ReactNode;
+  fields?: { name: string; label: string; type?: "text" | "number" | "password" | "textarea"; hint?: string; help?: string; defaultValue?: string }[];
   disabled?: boolean;
   onConfirm: (reason: string, values: Record<string, string>) => Promise<void>;
 }) {
@@ -33,31 +48,66 @@ export function ReasonAction({
   const [busy, setBusy] = useState(false);
 
   async function confirm() {
-    setBusy(true); setError(null);
-    try { await onConfirm(reason.trim(), values); setOpen(false); setReason(""); }
-    catch (err) { setError(errorMessage(err)); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setError(null);
+    try {
+      await onConfirm(reason.trim(), values);
+      setOpen(false);
+      setReason("");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <>
-      <Button variant={variant} size={size} disabled={disabled} onClick={() => setOpen(true)}>{label}</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title={title}>
-        {description && <div className="mb-4 text-sm text-muted">{description}</div>}
-        {fields.map((f) => (
-          <Field key={f.name} label={f.label} hint={f.hint}>
-            {f.type === "textarea"
-              ? <Textarea rows={3} value={values[f.name]} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} />
-              : <Input type={f.type ?? "text"} value={values[f.name]} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} />}
+      <Button variant={variant} size={size} disabled={disabled} onClick={() => setOpen(true)}>
+        {icon}
+        {label}
+      </Button>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={title}
+        description={description}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant={variant === "destructive" ? "destructive" : "default"}
+              onClick={confirm}
+              loading={busy}
+              disabled={reason.trim().length < 3}
+            >
+              {confirmLabel ?? label}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {fields.map((f) => (
+            <Field key={f.name} label={f.label} hint={f.hint} help={f.help}>
+              {f.type === "textarea" ? (
+                <Textarea rows={3} value={values[f.name]} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} />
+              ) : (
+                <Input type={f.type ?? "text"} value={values[f.name]} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} />
+              )}
+            </Field>
+          ))}
+          <Field label="Reason" hint="recorded in the audit log" help="At least three characters. Write what a colleague would need to understand this later.">
+            <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
           </Field>
-        ))}
-        <Field label="Reason (recorded in the audit log)"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus /></Field>
-        {error && <div className="mb-3"><Alert tone="error">{error}</Alert></div>}
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant={variant === "danger" ? "danger" : "primary"} onClick={confirm} disabled={busy || reason.trim().length < 3}>{confirmLabel ?? label}</Button>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
         </div>
-      </Dialog>
+      </Modal>
     </>
   );
 }

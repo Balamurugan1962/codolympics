@@ -7,7 +7,9 @@ import { Icon } from "@/components/icons";
 import { Markdown } from "@/components/markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox, Input, Textarea } from "@/components/ui/input";
+import { CheckField } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Kbd } from "@/components/ui/kbd";
 import { PageBody, PageHeader } from "@/components/ui/page";
@@ -46,10 +48,10 @@ export default function GradePage() {
       <PageHeader
         title="Grading queue"
         description="Manual answers and explanations, grouped by question so each is marked consistently across everyone. Names are hidden by default."
-        actions={<Checkbox label="Hide names" checked={hideNames} onChange={(e) => setHideNames(e.target.checked)} />}
+        actions={<CheckField label="Hide names" checked={hideNames} onChange={(e) => setHideNames(e.target.checked)} />}
       />
       <div className="mb-4 rounded-box border border-line bg-card px-4 py-3">
-        <div className="flex items-center justify-between text-[13px]"><span className="font-semibold">{graded} of {data.total} graded</span><span className="text-muted">{data.ungraded} left</span></div>
+        <div className="flex items-center justify-between text-[13px]"><span className="font-semibold">{graded} of {data.total} graded</span><span className="text-muted-foreground">{data.ungraded} left</span></div>
         <div className="mt-2 h-1.5 w-full rounded bg-line"><div className="h-1.5 rounded bg-green transition-[width]" style={{ width: `${pct}%` }} /></div>
       </div>
       {data.groups.length === 0 || !g ? <EmptyState icon={<Icon.Check size={20} />} title="Nothing to grade" body="No manual answers or explanations have been submitted yet." /> : (
@@ -60,8 +62,8 @@ export default function GradePage() {
                 const left = leftIn(x);
                 return (
                   <li key={x.question.id}>
-                    <button onClick={() => setCurrent(i)} className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-green-tint font-semibold" : "text-muted hover:bg-page hover:text-ink"}`}>
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${left ? "bg-amber" : "bg-green"}`} /><span className="truncate">{x.question.title}</span><span className="ml-auto text-[11.5px] text-faint">{left ? `${left} left` : "done"}</span>
+                    <button onClick={() => setCurrent(i)} className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-green-tint font-semibold" : "text-muted-foreground hover:bg-page hover:text-ink"}`}>
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${left ? "bg-amber-bg" : "bg-green"}`} /><span className="truncate">{x.question.title}</span><span className="ml-auto text-[11.5px] text-faint">{left ? `${left} left` : "done"}</span>
                     </button>
                   </li>
                 );
@@ -75,7 +77,7 @@ export default function GradePage() {
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Question {current + 1} of {n}</div>
                   <h2 className="mt-0.5 text-[15px] font-semibold">{g.question.title}</h2>
-                  <p className="mt-0.5 text-[12px] text-muted">{g.question.points} pts{g.question.explain_points ? ` · +${g.question.explain_points} for reasoning` : ""} · {g.items.length} answer{g.items.length === 1 ? "" : "s"} · {leftIn(g)} to grade</p>
+                  <p className="mt-0.5 text-[12px] text-muted-foreground">{g.question.points} pts{g.question.explain_points ? ` · +${g.question.explain_points} for reasoning` : ""} · {g.items.length} answer{g.items.length === 1 ? "" : "s"} · {leftIn(g)} to grade</p>
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <Button size="sm" variant="ghost" disabled={current === 0} onClick={() => setCurrent(current - 1)} aria-label="Previous question"><Icon.ChevronLeft size={16} /></Button>
@@ -86,7 +88,7 @@ export default function GradePage() {
                 <Markdown>{g.question.body_md}</Markdown>
                 {g.question.model_answer && (
                   <div className="rounded-box border border-line bg-page p-3 text-[13px]">
-                    <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted"><Icon.Lock size={12} /> Model answer — never shown to participants</div>
+                    <div className="mb-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Icon.Lock size={12} /> Model answer — never shown to participants</div>
                     <Markdown>{g.question.model_answer}</Markdown>
                   </div>
                 )}
@@ -120,18 +122,18 @@ function GradeRow({ item, q, label, onGraded }: { item: Item; q: Group["question
     <section className={`overflow-hidden rounded-box border bg-card ${done ? "border-green/40" : "border-line"}`}>
       <div className="flex items-center gap-2 border-b border-line px-5 py-2.5">
         <span className="text-[13px] font-semibold">{label}</span>
-        {done ? <Badge tone="green">graded</Badge> : <Badge tone="amber">to grade</Badge>}
+        {done ? <Badge variant="success">graded</Badge> : <Badge variant="warning">to grade</Badge>}
       </div>
       <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="space-y-3 text-[13px]">
-          {q.grading === "manual" && <div><div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">Answer</div><pre className="whitespace-pre-wrap rounded-box border border-line bg-page p-3 font-mono text-[12px]">{renderAnswer(item.answer)}</pre></div>}
-          {q.explain_points > 0 && <div><div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">Reasoning</div><div className="whitespace-pre-wrap rounded-box border border-line bg-page p-3">{item.explanation || <span className="text-faint">— nothing written —</span>}</div></div>}
+          {q.grading === "manual" && <div><div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Answer</div><pre className="whitespace-pre-wrap rounded-box border border-line bg-page p-3 font-mono text-[12px]">{renderAnswer(item.answer)}</pre></div>}
+          {q.explain_points > 0 && <div><div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Reasoning</div><div className="whitespace-pre-wrap rounded-box border border-line bg-page p-3">{item.explanation || <span className="text-faint">— nothing written —</span>}</div></div>}
         </div>
         <div className="space-y-3">
-          {q.grading === "manual" && <div><div className="mb-1 text-[12px] font-semibold text-muted">Answer score · 0–{q.points}</div><Input type="number" min={0} max={q.points} value={manual} onChange={(e) => setManual(e.target.value)} /></div>}
-          {q.explain_points > 0 && <div><div className="mb-1 text-[12px] font-semibold text-muted">Reasoning score · 0–{q.explain_points}</div><Input type="number" min={0} max={q.explain_points} value={explain} onChange={(e) => setExplain(e.target.value)} /></div>}
-          <div><div className="mb-1 text-[12px] font-semibold text-muted">Comment <span className="font-normal text-faint">(the participant sees this)</span></div><Textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} /></div>
-          <Button size="sm" onClick={save} loading={busy} icon={<Icon.Check size={14} />}>{done ? "Update grade" : "Save grade"}</Button>
+          {q.grading === "manual" && <div><div className="mb-1 text-[12px] font-semibold text-muted-foreground">Answer score · 0–{q.points}</div><Input type="number" min={0} max={q.points} value={manual} onChange={(e) => setManual(e.target.value)} /></div>}
+          {q.explain_points > 0 && <div><div className="mb-1 text-[12px] font-semibold text-muted-foreground">Reasoning score · 0–{q.explain_points}</div><Input type="number" min={0} max={q.explain_points} value={explain} onChange={(e) => setExplain(e.target.value)} /></div>}
+          <div><div className="mb-1 text-[12px] font-semibold text-muted-foreground">Comment <span className="font-normal text-faint">(the participant sees this)</span></div><Textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} /></div>
+          <Button size="sm" onClick={save} loading={busy}><Icon.Check size={14} /> {done ? "Update grade" : "Save grade"}</Button>
         </div>
       </div>
     </section>

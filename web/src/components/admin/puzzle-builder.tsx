@@ -15,12 +15,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../icons";
 import { AnswerInput, PuzzleCard, SequenceInput, defaultAnswer, type PuzzleView } from "../phase1/puzzle-card";
 import { ReasonAction } from "../reason-action";
-import { Alert } from "../ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Badge, StatusDot } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ChoiceCards } from "../ui/choice";
-import { FormGrid } from "../ui/form";
-import { Checkbox, Field, Input, Textarea } from "../ui/input";
+import { CheckField, Field, FormGrid } from "../ui/field";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import { StringListEditor } from "../ui/list-editor";
 import { MarkdownEditor } from "../ui/markdown-editor";
 import { Section } from "../ui/page";
@@ -214,7 +215,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
       aside={
         existing ? (
           <WizardNote title="Status">
-            <div className="mb-2">{state === "live" ? <StatusDot tone="green">Live</StatusDot> : state === "ready" ? <StatusDot tone="blue">Ready to publish</StatusDot> : state === "void" ? <StatusDot tone="grey">Void</StatusDot> : <StatusDot tone="amber">Draft</StatusDot>}</div>
+            <div className="mb-2">{state === "live" ? <StatusDot tone="success">Live</StatusDot> : state === "ready" ? <StatusDot tone="info">Ready to publish</StatusDot> : state === "void" ? <StatusDot tone="neutral">Void</StatusDot> : <StatusDot tone="warning">Draft</StatusDot>}</div>
             {dirty ? "You have unsaved changes. Saving resets readiness; the self-test must run again." : existing.published ? "Participants see this question when Section A is open." : existing.ready ? "The self-test passed. Publish it under Verify & publish." : "Run the self-test under Verify & publish before it can go live."}
           </WizardNote>
         ) : (
@@ -223,19 +224,19 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
       }
       footer={
         <>
-          <Button variant="secondary" disabled={step === 0 || busy} icon={<Icon.ChevronLeft size={14} />} onClick={() => go(step - 1)}>Back</Button>
-          <span className="text-[12px] text-muted">Step {step + 1} of {steps.length}</span>
+          <Button variant="outline" disabled={step === 0 || busy} onClick={() => go(step - 1)}><Icon.ChevronLeft size={14} /> Back</Button>
+          <span className="text-[12px] text-muted-foreground">Step {step + 1} of {steps.length}</span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {existing && dirty && (
               <>
                 <Input className="w-56" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for the change" aria-label="Reason" />
                 <Button variant="ghost" onClick={() => setF(initial)} disabled={busy}>Discard</Button>
-                <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3} icon={<Icon.Check size={14} />}>Save changes</Button>
+                <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3}><Icon.Check size={14} /> Save changes</Button>
               </>
             )}
             {!existing && <Link href="/admin/phase1"><Button variant="ghost" disabled={busy}>Cancel</Button></Link>}
             {key === "preview" && !existing
-              ? <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3} icon={<Icon.Plus size={14} />}>Create puzzle</Button>
+              ? <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3}><Icon.Plus size={14} /> Create puzzle</Button>
               : step < steps.length - 1 && <Button onClick={next} disabled={busy}>Continue <Icon.ChevronRight size={14} /></Button>}
           </div>
         </>
@@ -293,7 +294,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
           {isMcq(f.kind) && (
             <Section title="Options" description={f.kind === "mcq_single" ? "In the order shown. Mark the correct one under Grading." : "In the order shown. Mark the correct ones under Grading."}>
               <StringListEditor items={f.options} onChange={(v) => set("options", v)} placeholder={(i) => `Option ${i + 1}`} addLabel="Add option" max={12} />
-              {f.kind === "mcq_multi" && <div className="mt-4"><Checkbox label="Partial credit" help="Each correct selection earns its share; a wrong selection cancels one. Otherwise all-or-nothing." checked={f.partial_credit} onChange={(e) => set("partial_credit", e.target.checked)} /></div>}
+              {f.kind === "mcq_multi" && <div className="mt-4"><CheckField label="Partial credit" help="Each correct selection earns its share; a wrong selection cancels one. Otherwise all-or-nothing." checked={f.partial_credit} onChange={(e) => set("partial_credit", e.target.checked)} /></div>}
             </Section>
           )}
           {f.kind === "sequence" && (
@@ -312,8 +313,8 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
                 </Field>
               </FormGrid>
               <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
-                {f.kind !== "numeric" && <Checkbox label="Case-sensitive" help="Otherwise ABC and abc are the same answer." checked={f.case_sensitive} onChange={(e) => set("case_sensitive", e.target.checked)} />}
-                {f.kind === "set" && <Checkbox label="Partial credit" help="Each correct entry earns its share; a wrong one cancels one. Only for an answer key; a validator always scores per entry." checked={f.partial_credit} onChange={(e) => set("partial_credit", e.target.checked)} />}
+                {f.kind !== "numeric" && <CheckField label="Case-sensitive" help="Otherwise ABC and abc are the same answer." checked={f.case_sensitive} onChange={(e) => set("case_sensitive", e.target.checked)} />}
+                {f.kind === "set" && <CheckField label="Partial credit" help="Each correct entry earns its share; a wrong one cancels one. Only for an answer key; a validator always scores per entry." checked={f.partial_credit} onChange={(e) => set("partial_credit", e.target.checked)} />}
                 {f.kind === "numeric" && (
                   <Field label="Tolerance" help="Accepted if within ± this of the correct value.">
                     <Input type="number" min={0} step="any" className="w-32" value={f.tolerance} onChange={(e) => set("tolerance", e.target.value)} />
@@ -346,7 +347,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
               { value: "validator", label: "Validator code", description: "Your Python decides whether each entry is valid. For open-ended questions with many right answers.", disabled: f.kind !== "set" && f.kind !== "fill_blank" && f.kind !== "long_text" },
               { value: "manual", label: "Evaluator", description: "A person marks it against your model answer, out of the points." },
             ]} />
-            {f.grading === "validator" && f.kind !== "set" && <div className="mt-3"><Alert tone="info">Validator grading scores each distinct line of the answer. For a list of entries choose the “List of entries” kind, which gives participants an add-entry control.</Alert></div>}
+            {f.grading === "validator" && f.kind !== "set" && <div className="mt-3"><Alert variant="info"><AlertDescription>Validator grading scores each distinct line of the answer. For a list of entries choose the “List of entries” kind, which gives participants an add-entry control.</AlertDescription></Alert></div>}
           </Section>
 
           {f.grading === "auto" && (
@@ -355,10 +356,10 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
                 <div className="space-y-1.5">
                   {clean(f.options).map((o, i) => (
                     <label key={i} className={`flex cursor-pointer items-center gap-3 rounded-box border px-3 py-2.5 text-[13px] ${f.key_option === i ? "border-green bg-green-tint" : "border-line hover:border-line-2"}`}>
-                      <input type="radio" name="key" className="accent-green" checked={f.key_option === i} onChange={() => set("key_option", i)} /> <span className="flex-1">{o}</span>{f.key_option === i && <Badge tone="green">correct</Badge>}
+                      <input type="radio" name="key" className="accent-green" checked={f.key_option === i} onChange={() => set("key_option", i)} /> <span className="flex-1">{o}</span>{f.key_option === i && <Badge variant="success">correct</Badge>}
                     </label>
                   ))}
-                  {clean(f.options).length < 2 && <p className="text-[12.5px] text-muted">Add the options first.</p>}
+                  {clean(f.options).length < 2 && <p className="text-[12.5px] text-muted-foreground">Add the options first.</p>}
                 </div>
               )}
               {f.kind === "mcq_multi" && (
@@ -367,7 +368,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
                     const on = f.key_options.includes(i);
                     return (
                       <label key={i} className={`flex cursor-pointer items-center gap-3 rounded-box border px-3 py-2.5 text-[13px] ${on ? "border-green bg-green-tint" : "border-line hover:border-line-2"}`}>
-                        <input type="checkbox" className="accent-green" checked={on} onChange={(e) => set("key_options", e.target.checked ? [...f.key_options, i] : f.key_options.filter((x) => x !== i))} /> <span className="flex-1">{o}</span>{on && <Badge tone="green">correct</Badge>}
+                        <input type="checkbox" className="accent-green" checked={on} onChange={(e) => set("key_options", e.target.checked ? [...f.key_options, i] : f.key_options.filter((x) => x !== i))} /> <span className="flex-1">{o}</span>{on && <Badge variant="success">correct</Badge>}
                       </label>
                     );
                   })}
@@ -400,7 +401,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
           {f.grading === "validator" && (
             <Section title="Validator" description="Python, run once per distinct entry in the judge sandbox when the section closes. Raising marks that one entry as an error and moves on.">
               <div className="overflow-hidden rounded-box border border-line"><CodeEditor value={f.validator_py} language="python" onChange={(v) => set("validator_py", v)} height="280px" /></div>
-              <div className="mt-2 rounded-box bg-page px-3 py-2 font-mono text-[11.5px] text-muted">def check(entry) → bool · entry.rest() entry.int(lo, hi) entry.word() entry.line() entry.ints(n) entry.eof()</div>
+              <div className="mt-2 rounded-box bg-page px-3 py-2 font-mono text-[11.5px] text-muted-foreground">def check(entry) → bool · entry.rest() entry.int(lo, hi) entry.word() entry.line() entry.ints(n) entry.eof()</div>
               <FormGrid cols={2} className="mt-4">
                 <Field label="Points per valid entry" help="Distinct valid entries × this, capped by Maximum entries.">
                   <Input type="number" min={1} step={1} value={f.points_per_entry} onChange={(e) => set("points_per_entry", Number(e.target.value))} />
@@ -423,7 +424,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
 
       {key === "preview" && (
         <>
-          {allIssues.length > 0 && <Alert tone="error" title={existing ? "Cannot save yet" : "Not ready to create"}><ul className="ml-4 list-disc space-y-0.5">{allIssues.map((i) => <li key={i}>{i}</li>)}</ul></Alert>}
+          {allIssues.length > 0 && <Alert variant="destructive"><AlertTitle>{existing ? "Cannot save yet" : "Not ready to create"}</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{allIssues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
           <Section title="As a participant sees it" description="Live: the controls work, nothing is saved. What they never see: the key, the validator, the model answer." padded={false}>
             <div className="bg-page p-4"><PreviewCard view={view} /></div>
           </Section>
@@ -440,11 +441,11 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
           </Section>
           {!existing && (
             <Section title="Create" description="Recorded in the audit log with your reason.">
-              {error && <div className="mb-4"><Alert tone="error">{error}</Alert></div>}
+              {error && <div className="mb-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
               <Field label="Reason"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Section A question set, puzzle 3" /></Field>
             </Section>
           )}
-          {existing && error && <Alert tone="error">{error}</Alert>}
+          {existing && error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         </>
       )}
 
@@ -467,7 +468,7 @@ function describeKey(f: Form): string {
 
 function StepIssues({ issues }: { issues: string[] }) {
   if (issues.length === 0) return null;
-  return <Alert tone="warning" title="Before this step is complete"><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></Alert>;
+  return <Alert variant="warning"><AlertTitle>"Before this step is complete"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>;
 }
 
 function PreviewCard({ view }: { view: PuzzleView }) {
@@ -506,7 +507,7 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
 
   return (
     <>
-      {dirty && <Alert tone="warning" title="Unsaved changes">The self-test runs against the saved version. Save first (the footer) so the test proves what participants will get.</Alert>}
+      {dirty && <Alert variant="warning"><AlertTitle>"Unsaved changes"</AlertTitle><AlertDescription>The self-test runs against the saved version. Save first (the footer) so the test proves what participants will get.</AlertDescription></Alert>}
       <Section title="Where it stands">
         <Checklist items={[
           { ok: true, label: "Saved", detail: `Puzzle #${puzzle.id}` },
@@ -521,11 +522,11 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
         description={puzzle.grading === "auto" ? "Answer it as a participant would. The intended answer must score full marks — anything less usually means a slip in the key."
           : puzzle.grading === "validator" ? "Give entries that must be accepted and entries that must be rejected. The validator runs in the judge sandbox on each."
           : "Manual grading has nothing to compute; the check confirms a model answer is recorded."}
-        footer={<Button onClick={test} loading={busy} icon={<Icon.Play size={14} />}>{puzzle.grading === "manual" ? "Check readiness" : "Run self-test"}</Button>}
+        footer={<Button onClick={test} loading={busy}><Icon.Play size={14} /> {puzzle.grading === "manual" ? "Check readiness" : "Run self-test"}</Button>}
       >
         {puzzle.grading === "auto" && (
           <div className="rounded-box border border-line bg-page p-4">
-            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">The intended answer</div>
+            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">The intended answer</div>
             <AnswerInput q={view} value={answer} disabled={false} onChange={(v) => setAnswer(v)} />
           </div>
         )}
@@ -541,16 +542,16 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
         )}
         {puzzle.grading === "manual" && (
           <div className="rounded-box border border-line bg-page p-4 text-[13px]">
-            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">Model answer on record</div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Model answer on record</div>
             {puzzle.modelAnswer?.trim() ? <p className="whitespace-pre-wrap">{puzzle.modelAnswer}</p> : <p className="text-red">None — add one under Grading.</p>}
           </div>
         )}
-        {error && <div className="mt-4"><Alert tone="error">{error}</Alert></div>}
+        {error && <div className="mt-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
         {result && (
           <div className="mt-4">
-            <Alert tone={result.ready ? "success" : "warning"} title={result.ready ? "Ready to publish" : "Not ready"}>
-              {result.detail}{result.score !== undefined && <span className="ml-1 text-muted">({result.score} / {puzzle.points})</span>}
-            </Alert>
+            <Alert variant={result.ready ? "success" : "warning"}><AlertTitle>{result.ready ? "Ready to publish" : "Not ready"}</AlertTitle><AlertDescription>
+              {result.detail}{result.score !== undefined && <span className="ml-1 text-muted-foreground">({result.score} / {puzzle.points})</span>}
+            </AlertDescription></Alert>
           </div>
         )}
       </Section>
@@ -559,13 +560,13 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
         <div className="flex flex-wrap items-center gap-2">
           {puzzle.published
             ? <ReasonAction label="Unpublish" title="Unpublish this puzzle?" description="It disappears from Section A. Saved answers are kept." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/unpublish`, { reason }); toast({ title: "Unpublished", tone: "success" }); await onChanged?.(); }} />
-            : <ReasonAction label="Publish" variant="primary" size="md" disabled={!puzzle.ready || puzzle.voided} title="Publish this puzzle?" description="Participants see it when Section A is open. It has passed its self-test." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await onChanged?.(); }} />}
-          {!puzzle.ready && !puzzle.published && <span className="text-[12px] text-muted">Publishing unlocks when the self-test passes.</span>}
+            : <ReasonAction label="Publish" variant="default" size="default" disabled={!puzzle.ready || puzzle.voided} title="Publish this puzzle?" description="Participants see it when Section A is open. It has passed its self-test." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await onChanged?.(); }} />}
+          {!puzzle.ready && !puzzle.published && <span className="text-[12px] text-muted-foreground">Publishing unlocks when the self-test passes.</span>}
           <span className="flex-1" />
-          {!puzzle.voided && <ReasonAction label="Void" variant="danger" title="Void this puzzle?" description="It scores for nobody and every total is recomputed. This cannot be undone." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await onChanged?.(); }} />}
-          {!puzzle.published && <ReasonAction label="Delete" variant="danger" title="Delete this puzzle?" description="Only drafts can be deleted. This cannot be undone." onConfirm={async (reason) => { await api.del(`/api/admin/phase1/puzzles/${puzzle.id}`, { reason }); toast({ title: "Deleted", tone: "success" }); router.push("/admin/phase1"); }} />}
+          {!puzzle.voided && <ReasonAction label="Void" variant="destructive" title="Void this puzzle?" description="It scores for nobody and every total is recomputed. This cannot be undone." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await onChanged?.(); }} />}
+          {!puzzle.published && <ReasonAction label="Delete" variant="destructive" title="Delete this puzzle?" description="Only drafts can be deleted. This cannot be undone." onConfirm={async (reason) => { await api.del(`/api/admin/phase1/puzzles/${puzzle.id}`, { reason }); toast({ title: "Deleted", tone: "success" }); router.push("/admin/phase1"); }} />}
         </div>
-        {state === "void" && <p className="mt-3 text-[12.5px] text-muted">This puzzle is void.</p>}
+        {state === "void" && <p className="mt-3 text-[12.5px] text-muted-foreground">This puzzle is void.</p>}
       </Section>
     </>
   );

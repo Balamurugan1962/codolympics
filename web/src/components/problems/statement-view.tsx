@@ -15,7 +15,7 @@ export function StatementView({ statementMd, timeLimitMs, memoryLimitMb, hiddenT
 }) {
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-muted">
+      <div className="flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-muted-foreground">
         <span>Time limit <strong className="text-ink">{timeLimitMs ? `${timeLimitMs / 1000} s` : "—"}</strong></span>
         <span>Memory <strong className="text-ink">{memoryLimitMb ? `${memoryLimitMb} MB` : "—"}</strong></span>
         <span>Hidden tests <strong className="text-ink">{hiddenTestcases ?? "—"}</strong></span>
@@ -43,7 +43,7 @@ export function StatementView({ statementMd, timeLimitMs, memoryLimitMb, hiddenT
 export function SampleBox({ label, text, onCopied }: { label: string; text: string; onCopied?: () => void }) {
   return (
     <div className="min-w-0">
-      <div className="mb-1 flex items-center justify-between text-[11.5px] font-semibold text-muted">
+      <div className="mb-1 flex items-center justify-between text-[11.5px] font-semibold text-muted-foreground">
         {label}
         <button type="button" className="flex items-center gap-1 text-green-dark hover:underline" onClick={() => { void navigator.clipboard?.writeText(text); onCopied?.(); }}><Icon.Copy size={12} /> Copy</button>
       </div>

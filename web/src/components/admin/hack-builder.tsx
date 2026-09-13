@@ -13,11 +13,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../icons";
 import { HackQuestionView } from "../phase1/hack-view";
 import { ReasonAction } from "../reason-action";
-import { Alert } from "../ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { StatusDot } from "../ui/badge";
 import { Button } from "../ui/button";
-import { FormGrid } from "../ui/form";
-import { Field, Input, Select, Textarea } from "../ui/input";
+import { Field, FormGrid } from "../ui/field";
+import { Input } from "../ui/input";
+import { SimpleSelect } from "../ui/select";
+import { Textarea } from "../ui/textarea";
 import { MarkdownEditor } from "../ui/markdown-editor";
 import { Section } from "../ui/page";
 import { Checklist, Summary, SummaryItem } from "../ui/summary";
@@ -126,7 +128,7 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
       aside={
         existing ? (
           <WizardNote title="Status">
-            <div className="mb-2">{state === "live" ? <StatusDot tone="green">Live</StatusDot> : state === "ready" ? <StatusDot tone="blue">Ready to publish</StatusDot> : state === "void" ? <StatusDot tone="grey">Void</StatusDot> : <StatusDot tone="amber">Draft</StatusDot>}</div>
+            <div className="mb-2">{state === "live" ? <StatusDot tone="success">Live</StatusDot> : state === "ready" ? <StatusDot tone="info">Ready to publish</StatusDot> : state === "void" ? <StatusDot tone="neutral">Void</StatusDot> : <StatusDot tone="warning">Draft</StatusDot>}</div>
             {dirty ? "You have unsaved changes. Saving resets readiness." : existing.published ? "Participants see this when Section B is open." : existing.ready ? "A breaking input is proven. Publish it under Verify & publish." : "Prove a breaking input under Verify & publish before it can go live."}
           </WizardNote>
         ) : (
@@ -135,19 +137,19 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
       }
       footer={
         <>
-          <Button variant="secondary" disabled={step === 0 || busy} icon={<Icon.ChevronLeft size={14} />} onClick={() => go(step - 1)}>Back</Button>
-          <span className="text-[12px] text-muted">Step {step + 1} of {steps.length}</span>
+          <Button variant="outline" disabled={step === 0 || busy} onClick={() => go(step - 1)}><Icon.ChevronLeft size={14} /> Back</Button>
+          <span className="text-[12px] text-muted-foreground">Step {step + 1} of {steps.length}</span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {existing && dirty && (
               <>
                 <Input className="w-56" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for the change" aria-label="Reason" />
                 <Button variant="ghost" onClick={() => setF(initial)} disabled={busy}>Discard</Button>
-                <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3} icon={<Icon.Check size={14} />}>Save changes</Button>
+                <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3}><Icon.Check size={14} /> Save changes</Button>
               </>
             )}
             {!existing && <Link href="/admin/phase1?tab=hacking"><Button variant="ghost" disabled={busy}>Cancel</Button></Link>}
             {key === "preview" && !existing
-              ? <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3} icon={<Icon.Plus size={14} />}>Create question</Button>
+              ? <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3}><Icon.Plus size={14} /> Create question</Button>
               : step < steps.length - 1 && <Button onClick={() => go(step + 1)} disabled={busy}>Continue <Icon.ChevronRight size={14} /></Button>}
           </div>
         </>
@@ -157,17 +159,25 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
         <>
           <Section title="The judge problem" description="A hacking package on the judge: limits, validator.py and the stored reference solution. Upload it under Problems with hack_only set in problem.json.">
             {problems && hackProblems.length === 0 && (
-              <Alert tone="warning" title="No hacking packages on the judge">
+              <Alert variant="warning"><AlertTitle>"No hacking packages on the judge"</AlertTitle><AlertDescription>
                 Create one first: <Link href="/admin/problems/new" className="font-semibold text-green-dark hover:underline">New problem</Link> with <code className="rounded bg-page px-1 text-[11.5px]">&quot;hack_only&quot;: true</code> and a <code className="rounded bg-page px-1 text-[11.5px]">reference</code> in problem.json.
-              </Alert>
+              </AlertDescription></Alert>
             )}
             <div className="mt-3 space-y-4">
               <Field label="Judge problem">
-                <Select value={f.problem_id} onChange={(e) => set("problem_id", e.target.value)} className="max-w-sm font-mono">
-                  <option value="">Choose…</option>
-                  {hackProblems.map((p) => <option key={p.problem_id} value={p.problem_id}>{p.problem_id}</option>)}
-                  {f.problem_id && !hackProblems.some((p) => p.problem_id === f.problem_id) && <option value={f.problem_id}>{f.problem_id} (not a hacking package)</option>}
-                </Select>
+                <SimpleSelect
+                  className="max-w-sm font-mono"
+                  size="default"
+                  value={f.problem_id}
+                  onValueChange={(v) => set("problem_id", v)}
+                  placeholder="Choose…"
+                  options={[
+                    ...hackProblems.map((p) => ({ value: p.problem_id, label: p.problem_id })),
+                    ...(f.problem_id && !hackProblems.some((p) => p.problem_id === f.problem_id)
+                      ? [{ value: f.problem_id, label: `${f.problem_id} (not a hacking package)` }]
+                      : []),
+                  ]}
+                />
               </Field>
               {chosen && (
                 <Checklist items={[
@@ -210,10 +220,13 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
           <Section title="The given solution" description="Shown to participants read-only. It must compile and run — and be wrong on at least one valid input, which you will prove in the last step.">
             <div className="mb-3 max-w-xs">
               <Field label="Language">
-                <Select value={f.given_language} onChange={(e) => set("given_language", e.target.value)}>
-                  {languages.length === 0 && <option value={f.given_language}>{f.given_language}</option>}
-                  {languages.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}
-                </Select>
+                <SimpleSelect
+                  className="w-full"
+                  size="default"
+                  value={f.given_language}
+                  onValueChange={(v) => set("given_language", v)}
+                  options={languages.length === 0 ? [{ value: f.given_language, label: f.given_language }] : languages.map((l) => ({ value: l.key, label: l.name }))}
+                />
               </Field>
             </div>
             <div className="overflow-hidden rounded-box border border-line"><CodeEditor value={f.given_source} language={f.given_language} onChange={(v) => set("given_source", v)} height="420px" /></div>
@@ -224,7 +237,7 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
 
       {key === "preview" && (
         <>
-          {allIssues.length > 0 && <Alert tone="error" title={existing ? "Cannot save yet" : "Not ready to create"}><ul className="ml-4 list-disc space-y-0.5">{allIssues.map((i) => <li key={i}>{i}</li>)}</ul></Alert>}
+          {allIssues.length > 0 && <Alert variant="destructive"><AlertTitle>{existing ? "Cannot save yet" : "Not ready to create"}</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{allIssues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
           <Section title="As a participant sees it" description="Statement, constraints and the code to read. Below it they get a box for their input." padded={false}>
             <div className="bg-page p-4"><HackQuestionView q={view} index={0} total={1} /></div>
           </Section>
@@ -238,11 +251,11 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
           </Section>
           {!existing && (
             <Section title="Create" description="Recorded in the audit log with your reason.">
-              {error && <div className="mb-4"><Alert tone="error">{error}</Alert></div>}
+              {error && <div className="mb-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
               <Field label="Reason"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Section B question 2" /></Field>
             </Section>
           )}
-          {existing && error && <Alert tone="error">{error}</Alert>}
+          {existing && error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         </>
       )}
 
@@ -253,7 +266,7 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
 
 function StepIssues({ issues }: { issues: string[] }) {
   if (issues.length === 0) return null;
-  return <Alert tone="warning" title="Before this step is complete"><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></Alert>;
+  return <Alert variant="warning"><AlertTitle>"Before this step is complete"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>;
 }
 
 function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChanged?: () => Promise<void> }) {
@@ -271,7 +284,7 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
 
   return (
     <>
-      {dirty && <Alert tone="warning" title="Unsaved changes">The proof runs against the saved version. Save first (the footer).</Alert>}
+      {dirty && <Alert variant="warning"><AlertTitle>"Unsaved changes"</AlertTitle><AlertDescription>The proof runs against the saved version. Save first (the footer).</AlertDescription></Alert>}
       <Section title="Where it stands">
         <Checklist items={[
           { ok: true, label: "Saved", detail: `Question #${hack.id} · judge problem ${hack.problemId}` },
@@ -283,22 +296,22 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
       <Section
         title="Prove it breaks"
         description="An input that obeys the constraints and on which the given solution is wrong. The judge validates it, runs both programs, and compares — exactly what happens to a participant's attempt."
-        footer={<Button onClick={test} loading={busy} disabled={!input.trim()} icon={<Icon.Bug size={14} />}>Run the hack</Button>}
+        footer={<Button onClick={test} loading={busy} disabled={!input.trim()}><Icon.Bug size={14} /> Run the hack</Button>}
       >
         <Field label="Breaking input" help="Never shown to participants.">
           <Textarea rows={6} className="font-mono text-[12px]" value={input} onChange={(e) => setInput(e.target.value)} placeholder={"e.g.\n1000000007"} />
         </Field>
-        {error && <div className="mt-4"><Alert tone="error">{error}</Alert></div>}
+        {error && <div className="mt-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
         {result && (
           <div className="mt-4">
-            <Alert tone={result.ready ? "success" : "warning"} title={result.ready ? "It breaks — ready to publish" : "Not proven"}>
+            <Alert variant={result.ready ? "success" : "warning"}><AlertTitle>{result.ready ? "It breaks — ready to publish" : "Not proven"}</AlertTitle><AlertDescription>
               <p>{result.detail}</p>
               <Summary cols={3} className="mt-3">
                 <SummaryItem label="Input valid">{result.result.valid_input ? "yes" : `no — ${result.result.invalid_reason}`}</SummaryItem>
                 <SummaryItem label="Given solution">{result.result.verdict ?? "—"}</SummaryItem>
                 <SummaryItem label="Hacked">{result.result.hacked === null ? "—" : result.result.hacked ? "yes" : "no"}</SummaryItem>
               </Summary>
-            </Alert>
+            </AlertDescription></Alert>
           </div>
         )}
       </Section>
@@ -306,10 +319,10 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
         <div className="flex flex-wrap items-center gap-2">
           {hack.published
             ? <ReasonAction label="Unpublish" title="Unpublish this question?" description="It disappears from Section B. Judged attempts are kept." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/unpublish`, { reason }); toast({ title: "Unpublished", tone: "success" }); await onChanged?.(); }} />
-            : <ReasonAction label="Publish" variant="primary" size="md" disabled={!hack.ready || hack.voided} title="Publish this question?" description="Participants see it when Section B is open. A breaking input is proven." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await onChanged?.(); }} />}
-          {!hack.ready && !hack.published && <span className="text-[12px] text-muted">Publishing unlocks once a breaking input is proven.</span>}
+            : <ReasonAction label="Publish" variant="default" size="default" disabled={!hack.ready || hack.voided} title="Publish this question?" description="Participants see it when Section B is open. A breaking input is proven." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await onChanged?.(); }} />}
+          {!hack.ready && !hack.published && <span className="text-[12px] text-muted-foreground">Publishing unlocks once a breaking input is proven.</span>}
           <span className="flex-1" />
-          {!hack.voided && <ReasonAction label="Void" variant="danger" title="Void this question?" description="It scores for nobody and every total is recomputed. This cannot be undone." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await onChanged?.(); }} />}
+          {!hack.voided && <ReasonAction label="Void" variant="destructive" title="Void this question?" description="It scores for nobody and every total is recomputed. This cannot be undone." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await onChanged?.(); }} />}
         </div>
       </Section>
     </>

@@ -12,18 +12,20 @@ import { useCallback, useEffect, useState } from "react";
 import { CATEGORY_LABEL, GRADING_LABEL, KIND_LABEL, stateOf, type Hack, type Puzzle, type QuestionState, type Standing } from "@/components/admin/phase1-types";
 import { Icon } from "@/components/icons";
 import { ReasonAction } from "@/components/reason-action";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
+import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Field, SearchInput, Select, Textarea } from "@/components/ui/input";
+import { Field, SearchInput } from "@/components/ui/field";
+import { SimpleSelect } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Menu } from "@/components/ui/menu";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
-import { Table, Td, Th, Tr } from "@/components/ui/table";
-import { Tabs } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
@@ -40,21 +42,25 @@ export default function Phase1AdminPage() {
         title="Phase 1"
         description="The qualifying round: Section A puzzles, then Section B hacking. Author each question, prove it works, publish it. After the round, select who advances."
         actions={tab === "puzzles"
-          ? <Link href="/admin/phase1/puzzles/new"><Button icon={<Icon.Plus size={14} />}>New puzzle</Button></Link>
-          : tab === "hacking" ? <Link href="/admin/phase1/hacking/new"><Button icon={<Icon.Plus size={14} />}>New hacking question</Button></Link> : undefined}
+          ? <Button asChild><Link href="/admin/phase1/puzzles/new"><Icon.Plus size={14} /> New puzzle</Link></Button>
+          : tab === "hacking" ? <Button asChild><Link href="/admin/phase1/hacking/new"><Icon.Plus size={14} /> New hacking question</Link></Button> : undefined}
       />
-      <div className="mb-4">
-        <Tabs value={tab} onChange={goTab} tabs={[{ value: "puzzles", label: "Section A · Puzzles" }, { value: "hacking", label: "Section B · Hacking" }, { value: "review", label: "Review & advance" }]} />
-      </div>
-      {tab === "puzzles" && <PuzzleList />}
-      {tab === "hacking" && <HackList />}
-      {tab === "review" && <Review />}
+      <Tabs value={tab} onValueChange={(v) => goTab(v as Tab)}>
+        <TabsList variant="line" className="mb-5 w-full justify-start border-b">
+          <TabsTrigger value="puzzles">Section A · Puzzles</TabsTrigger>
+          <TabsTrigger value="hacking">Section B · Hacking</TabsTrigger>
+          <TabsTrigger value="review">Review &amp; advance</TabsTrigger>
+        </TabsList>
+        <TabsContent value="puzzles">{tab === "puzzles" && <PuzzleList />}</TabsContent>
+        <TabsContent value="hacking">{tab === "hacking" && <HackList />}</TabsContent>
+        <TabsContent value="review">{tab === "review" && <Review />}</TabsContent>
+      </Tabs>
     </PageBody>
   );
 }
 
-const STATE: Record<QuestionState, { label: string; tone: "green" | "amber" | "blue" | "grey" }> = {
-  draft: { label: "Draft", tone: "amber" }, ready: { label: "Ready", tone: "blue" }, live: { label: "Live", tone: "green" }, void: { label: "Void", tone: "grey" },
+const STATE: Record<QuestionState, { label: string; tone: "success" | "warning" | "info" | "neutral" }> = {
+  draft: { label: "Draft", tone: "warning" }, ready: { label: "Ready", tone: "info" }, live: { label: "Live", tone: "success" }, void: { label: "Void", tone: "neutral" },
 };
 
 function useQuestionActions(section: "puzzles" | "hacking", reload: () => Promise<void>) {
@@ -82,20 +88,20 @@ function ActionDialog({ pending, onClose, run }: { pending: Pending | null; onCl
     remove: { title: `Delete “${pending.title}”?`, body: "Only drafts can be deleted. This cannot be undone.", label: "Delete", danger: true },
   }[pending.kind];
   return (
-    <Dialog open onClose={onClose} title={copy.title}>
-      <p className="mb-4 text-[13px] text-muted">{copy.body}</p>
+    <Modal open onClose={onClose} title={copy.title}>
+      <p className="mb-4 text-[13px] text-muted-foreground">{copy.body}</p>
       <Field label="Reason" help="Recorded in the audit log.">
         <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
       </Field>
-      {error && <div className="mt-3"><Alert tone="error">{error}</Alert></div>}
+      {error && <div className="mt-3"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
       <div className="mt-5 flex justify-end gap-2">
-        <Button variant="secondary" onClick={onClose}>Cancel</Button>
-        <Button variant={copy.danger ? "danger" : "primary"} loading={busy} disabled={reason.trim().length < 3}
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button variant={copy.danger ? "destructive" : "default"} loading={busy} disabled={reason.trim().length < 3}
           onClick={async () => { setBusy(true); setError(null); try { await run(pending.kind, pending.id, reason.trim()); onClose(); } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); } }}>
           {copy.label}
         </Button>
       </div>
-    </Dialog>
+    </Modal>
   );
 }
 
@@ -121,7 +127,7 @@ function PuzzleList() {
       {rows.length > 0 && (
         <StatRow cols={4}>
           <Stat label="Puzzles" value={rows.length} icon={<Icon.Puzzle size={13} />} hint={`${rows.filter((r) => stateOf(r) === "draft").length} still draft`} />
-          <Stat label="Live" value={live.length} tone="green" icon={<Icon.Check size={13} />} hint="published and in the section" />
+          <Stat label="Live" value={live.length} tone="success" icon={<Icon.Check size={13} />} hint="published and in the section" />
           <Stat label="Points available" value={points} icon={<Icon.Trophy size={13} />} hint="across live puzzles, reasoning included" />
           <Stat label="Need an evaluator" value={live.filter((r) => r.grading === "manual" || r.explainPoints > 0).length} icon={<Icon.Users size={13} />} hint="manually graded or with reasoning" />
         </StatRow>
@@ -129,47 +135,44 @@ function PuzzleList() {
       {rows.length === 0 ? (
         <Section padded={false}>
           <EmptyState icon={<Icon.Puzzle size={20} />} title="No puzzles yet" body="Section A is logical puzzles: multiple choice, short answers, sequences, lists — or written answers an evaluator marks. Each must pass its self-test before it can be published."
-            action={<Link href="/admin/phase1/puzzles/new"><Button size="sm" icon={<Icon.Plus size={14} />}>Create the first puzzle</Button></Link>} />
+            action={<Link href="/admin/phase1/puzzles/new"><Button size="sm"><Icon.Plus size={14} /> Create the first puzzle</Button></Link>} />
         </Section>
       ) : (
         <Section padded={false}>
-          <Toolbar actions={<span className="text-[12px] text-muted">{shown.length} of {rows.length}</span>}>
+          <Toolbar actions={<span className="text-[12px] text-muted-foreground">{shown.length} of {rows.length}</span>}>
             <SearchInput className="w-64" placeholder="Filter by title" value={filter} onChange={(e) => setFilter(e.target.value)} />
-            <div className="w-36">
-              <Select value={state} onChange={(e) => setState(e.target.value as typeof state)} aria-label="State">
-                <option value="all">All states</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="live">Live</option><option value="void">Void</option>
-              </Select>
-            </div>
+            <SimpleSelect className="w-36" value={state} onValueChange={setState} aria-label="State"
+              options={[{ value: "all", label: "All states" }, { value: "draft", label: "Draft" }, { value: "ready", label: "Ready" }, { value: "live", label: "Live" }, { value: "void", label: "Void" }]} />
           </Toolbar>
           <Table>
-            <thead>
-              <tr>
-                <Th className="w-12" align="right">#</Th>
-                <Th>Puzzle</Th>
-                <Th className="hidden md:table-cell">Kind</Th>
-                <Th className="hidden lg:table-cell">Graded by</Th>
-                <Th align="right">Points</Th>
-                <Th>State</Th>
-                <Th className="w-12"><span className="sr-only">Actions</span></Th>
-              </tr>
-            </thead>
-            <tbody>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12 text-right tabular-nums">#</TableHead>
+                <TableHead>Puzzle</TableHead>
+                <TableHead className="hidden md:table-cell">Kind</TableHead>
+                <TableHead className="hidden lg:table-cell">Graded by</TableHead>
+                <TableHead className="text-right tabular-nums">Points</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {shown.map((r) => {
                 const s = stateOf(r);
                 return (
-                  <Tr key={r.id} className={r.voided ? "opacity-60" : ""}>
-                    <Td align="right" className="text-faint">{r.orderIndex}</Td>
-                    <Td>
+                  <TableRow key={r.id} className={r.voided ? "opacity-60" : ""}>
+                    <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
+                    <TableCell>
                       <Link href={`/admin/phase1/puzzles/${r.id}`} className="group block">
                         <div className="font-semibold group-hover:text-green-dark">{r.title}</div>
                         <div className="text-[11.5px] text-faint">{CATEGORY_LABEL[r.category]} · {r.bodyMd.replace(/\s+/g, " ").slice(0, 80)}{r.bodyMd.length > 80 ? "…" : ""}</div>
                       </Link>
-                    </Td>
-                    <Td className="hidden md:table-cell"><Badge tone="outline">{KIND_LABEL[r.kind]}</Badge></Td>
-                    <Td className="hidden text-muted lg:table-cell">{GRADING_LABEL[r.grading]}{r.explainPoints > 0 && <span className="text-faint"> + reasoning</span>}</Td>
-                    <Td align="right" className="font-medium">{r.points}{r.explainPoints > 0 && <span className="text-faint"> +{r.explainPoints}</span>}</Td>
-                    <Td><StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot></Td>
-                    <Td>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell"><Badge variant="outline">{KIND_LABEL[r.kind]}</Badge></TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">{GRADING_LABEL[r.grading]}{r.explainPoints > 0 && <span className="text-faint"> + reasoning</span>}</TableCell>
+                    <TableCell className="font-medium text-right tabular-nums">{r.points}{r.explainPoints > 0 && <span className="text-faint"> +{r.explainPoints}</span>}</TableCell>
+                    <TableCell><StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot></TableCell>
+                    <TableCell>
                       <Menu items={[
                         { label: "Edit", onSelect: () => router.push(`/admin/phase1/puzzles/${r.id}`) },
                         ...(s === "live" ? [{ label: "Unpublish", onSelect: () => setPending({ kind: "unpublish", id: r.id, title: r.title }) }] : []),
@@ -178,11 +181,11 @@ function PuzzleList() {
                         ...(!r.voided ? [{ label: "Void", danger: true, onSelect: () => setPending({ kind: "void", id: r.id, title: r.title }) }] : []),
                         ...(!r.published ? [{ label: "Delete", danger: true, onSelect: () => setPending({ kind: "remove", id: r.id, title: r.title }) }] : []),
                       ]} />
-                    </Td>
-                  </Tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
+            </TableBody>
           </Table>
           {shown.length === 0 && <EmptyState compact title="Nothing matches" body="Try another filter." />}
         </Section>
@@ -212,7 +215,7 @@ function HackList() {
       {rows.length > 0 && (
         <StatRow cols={3}>
           <Stat label="Hacking questions" value={rows.length} icon={<Icon.Bug size={13} />} hint={`${rows.filter((r) => stateOf(r) === "draft").length} still draft`} />
-          <Stat label="Live" value={live.length} tone="green" icon={<Icon.Check size={13} />} hint="each proven breakable" />
+          <Stat label="Live" value={live.length} tone="success" icon={<Icon.Check size={13} />} hint="each proven breakable" />
           <Stat label="Points available" value={live.reduce((s, r) => s + r.hackPoints, 0)} icon={<Icon.Trophy size={13} />} hint="one successful hack per solution" />
         </StatRow>
       )}
@@ -220,44 +223,44 @@ function HackList() {
         <Section padded={false}>
           <EmptyState icon={<Icon.Bug size={20} />} title="No hacking questions yet"
             body="Each one is a problem plus a deliberately flawed solution. The judge package (limits, validator, reference) is uploaded under Problems; the question references it."
-            action={<Link href="/admin/phase1/hacking/new"><Button size="sm" icon={<Icon.Plus size={14} />}>Create the first hacking question</Button></Link>} />
+            action={<Link href="/admin/phase1/hacking/new"><Button size="sm"><Icon.Plus size={14} /> Create the first hacking question</Button></Link>} />
         </Section>
       ) : (
         <Section padded={false}>
-          <Toolbar actions={<span className="text-[12px] text-muted">{shown.length} of {rows.length}</span>}>
+          <Toolbar actions={<span className="text-[12px] text-muted-foreground">{shown.length} of {rows.length}</span>}>
             <SearchInput className="w-64" placeholder="Filter by title or problem id" value={filter} onChange={(e) => setFilter(e.target.value)} />
           </Toolbar>
           <Table>
-            <thead>
-              <tr>
-                <Th className="w-12" align="right">#</Th>
-                <Th>Question</Th>
-                <Th className="hidden md:table-cell">Judge problem</Th>
-                <Th className="hidden sm:table-cell">Language</Th>
-                <Th align="right">Points</Th>
-                <Th className="hidden lg:table-cell" align="right">Penalty</Th>
-                <Th>State</Th>
-                <Th className="w-12"><span className="sr-only">Actions</span></Th>
-              </tr>
-            </thead>
-            <tbody>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12 text-right tabular-nums">#</TableHead>
+                <TableHead>Question</TableHead>
+                <TableHead className="hidden md:table-cell">Judge problem</TableHead>
+                <TableHead className="hidden sm:table-cell">Language</TableHead>
+                <TableHead className="text-right tabular-nums">Points</TableHead>
+                <TableHead className="hidden lg:table-cell text-right tabular-nums">Penalty</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {shown.map((r) => {
                 const s = stateOf(r);
                 return (
-                  <Tr key={r.id} className={r.voided ? "opacity-60" : ""}>
-                    <Td align="right" className="text-faint">{r.orderIndex}</Td>
-                    <Td>
+                  <TableRow key={r.id} className={r.voided ? "opacity-60" : ""}>
+                    <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
+                    <TableCell>
                       <Link href={`/admin/phase1/hacking/${r.id}`} className="group block">
                         <div className="font-semibold group-hover:text-green-dark">{r.title}</div>
                         <div className="text-[11.5px] text-faint">{r.statementMd.replace(/\s+/g, " ").slice(0, 80)}{r.statementMd.length > 80 ? "…" : ""}</div>
                       </Link>
-                    </Td>
-                    <Td className="hidden font-mono text-[12px] md:table-cell">{r.problemId}</Td>
-                    <Td className="hidden text-muted sm:table-cell">{r.givenLanguage}</Td>
-                    <Td align="right" className="font-medium">{r.hackPoints}</Td>
-                    <Td align="right" className="hidden text-muted lg:table-cell">{r.failPenalty ? `−${r.failPenalty}` : "0"}</Td>
-                    <Td><StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot></Td>
-                    <Td>
+                    </TableCell>
+                    <TableCell className="hidden font-mono text-[12px] md:table-cell">{r.problemId}</TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">{r.givenLanguage}</TableCell>
+                    <TableCell className="font-medium text-right tabular-nums">{r.hackPoints}</TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell text-right tabular-nums">{r.failPenalty ? `−${r.failPenalty}` : "0"}</TableCell>
+                    <TableCell><StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot></TableCell>
+                    <TableCell>
                       <Menu items={[
                         { label: "Edit", onSelect: () => router.push(`/admin/phase1/hacking/${r.id}`) },
                         ...(s === "live" ? [{ label: "Unpublish", onSelect: () => setPending({ kind: "unpublish", id: r.id, title: r.title }) }] : []),
@@ -265,11 +268,11 @@ function HackList() {
                         ...(s === "draft" ? [{ label: "Publish (prove a breaking input first)", disabled: true, onSelect: () => undefined }] : []),
                         ...(!r.voided ? [{ label: "Void", danger: true, onSelect: () => setPending({ kind: "void", id: r.id, title: r.title }) }] : []),
                       ]} />
-                    </Td>
-                  </Tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
+            </TableBody>
           </Table>
           {shown.length === 0 && <EmptyState compact title="Nothing matches" body="Try another filter." />}
         </Section>
@@ -306,51 +309,51 @@ function Review() {
     <div className="space-y-4">
       <StatRow cols={4}>
         <Stat label="Participants" value={rows.length} icon={<Icon.Users size={13} />} hint={`${rows.filter((r) => r.disqualified).length} disqualified`} />
-        <Stat label="Provisional" value={provisional} tone={provisional ? "amber" : "ink"} icon={<Icon.Clock size={13} />} hint={provisional ? "items still with an evaluator" : "every item graded"} />
-        <Stat label="Selected" value={chosen.size} tone="green" icon={<Icon.Check size={13} />} hint={dirty ? "unsaved selection" : `${decided} decided so far`} />
+        <Stat label="Provisional" value={provisional} tone={provisional ? "warning" : "default"} icon={<Icon.Clock size={13} />} hint={provisional ? "items still with an evaluator" : "every item graded"} />
+        <Stat label="Selected" value={chosen.size} tone="success" icon={<Icon.Check size={13} />} hint={dirty ? "unsaved selection" : `${decided} decided so far`} />
         <Stat label="Top score" value={rows[0]?.points ?? 0} icon={<Icon.Trophy size={13} />} hint={rows[0]?.name} />
       </StatRow>
-      {provisional > 0 && <Alert tone="warning" title={`${provisional} participant${provisional === 1 ? " has" : "s have"} ungraded items`}>Their totals are provisional. You may still select; grades can follow and the selection can be revised until Phase 2 opens.</Alert>}
+      {provisional > 0 && <Alert variant="warning"><AlertTitle>{`${provisional} participant${provisional === 1 ? " has" : "s have"} ungraded items`}</AlertTitle><AlertDescription>Their totals are provisional. You may still select; grades can follow and the selection can be revised until Phase 2 opens.</AlertDescription></Alert>}
       <Section
         title="Who advances"
         description="Tick the finalists. Everyone is notified when you confirm; the selection can be revised until Phase 2 opens."
         actions={
           <div className="flex items-center gap-2">
             <input type="number" min={1} className="h-8 w-20 rounded-box border border-line-2 px-2 text-[13px]" placeholder="Top N" value={topN} onChange={(e) => setTopN(e.target.value)} aria-label="Select the top N" />
-            <Button size="sm" variant="secondary" onClick={pickTop} disabled={!Number(topN)}>Select top {topN || "N"}</Button>
+            <Button size="sm" variant="outline" onClick={pickTop} disabled={!Number(topN)}>Select top {topN || "N"}</Button>
             <Button size="sm" variant="ghost" onClick={() => setChosen(new Set())}>Clear</Button>
           </div>
         }
         padded={false}
         footer={
-          <ReasonAction label={`Confirm selection · ${chosen.size}`} variant="primary" size="md" title="Set who advances to Phase 2"
+          <ReasonAction label={`Confirm selection · ${chosen.size}`} variant="default" size="default" title="Set who advances to Phase 2"
             description={<span><strong>{chosen.size}</strong> participant{chosen.size === 1 ? "" : "s"} will be selected; everyone else is marked not selected. Announce the basis before Phase 1 if you have not.</span>}
             onConfirm={async (reason) => { await api.post("/api/admin/phase1/advance", { participant_ids: [...chosen], reason }); toast({ title: "Selection saved", description: "Participants have been notified.", tone: "success" }); await load(); }} />
         }
       >
         <Table>
-          <thead>
-            <tr>
-              <Th className="w-10"><span className="sr-only">Select</span></Th>
-              <Th className="w-16" align="right">Rank</Th>
-              <Th>Participant</Th>
-              <Th align="right">Points</Th>
-              <Th className="hidden sm:table-cell">Submitted</Th>
-              <Th>Decision</Th>
-            </tr>
-          </thead>
-          <tbody>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10"><span className="sr-only">Select</span></TableHead>
+              <TableHead className="w-16 text-right tabular-nums">Rank</TableHead>
+              <TableHead>Participant</TableHead>
+              <TableHead className="text-right tabular-nums">Points</TableHead>
+              <TableHead className="hidden sm:table-cell">Submitted</TableHead>
+              <TableHead>Decision</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((s) => (
-              <Tr key={s.participant_id} selected={chosen.has(s.participant_id)} className={s.disqualified ? "opacity-50" : ""}>
-                <Td><input type="checkbox" className="h-4 w-4 accent-green" disabled={s.disqualified} checked={chosen.has(s.participant_id)} onChange={(e) => toggle(s.participant_id, e.target.checked)} aria-label={`Select ${s.name}`} /></Td>
-                <Td align="right" className="font-semibold">{s.rank || "—"}</Td>
-                <Td className="font-medium">{s.name}</Td>
-                <Td align="right" className="font-semibold">{s.points}{s.provisional && <span className="ml-1 text-faint" title="provisional">*</span>}</Td>
-                <Td className="hidden text-faint sm:table-cell">{s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "never finished"}</Td>
-                <Td>{s.disqualified ? <StatusDot tone="red">Disqualified</StatusDot> : s.advanced === true ? <StatusDot tone="green">Advancing</StatusDot> : s.advanced === false ? <StatusDot tone="grey">Not selected</StatusDot> : <StatusDot tone="amber">Undecided</StatusDot>}</Td>
-              </Tr>
+              <TableRow key={s.participant_id} data-state={chosen.has(s.participant_id) ? "selected" : undefined} className={s.disqualified ? "opacity-50" : ""}>
+                <TableCell><input type="checkbox" className="h-4 w-4 accent-green" disabled={s.disqualified} checked={chosen.has(s.participant_id)} onChange={(e) => toggle(s.participant_id, e.target.checked)} aria-label={`Select ${s.name}`} /></TableCell>
+                <TableCell className="font-semibold text-right tabular-nums">{s.rank || "—"}</TableCell>
+                <TableCell className="font-medium">{s.name}</TableCell>
+                <TableCell className="font-semibold text-right tabular-nums">{s.points}{s.provisional && <span className="ml-1 text-faint" title="provisional">*</span>}</TableCell>
+                <TableCell className="hidden text-faint sm:table-cell">{s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "never finished"}</TableCell>
+                <TableCell>{s.disqualified ? <StatusDot tone="destructive">Disqualified</StatusDot> : s.advanced === true ? <StatusDot tone="success">Advancing</StatusDot> : s.advanced === false ? <StatusDot tone="neutral">Not selected</StatusDot> : <StatusDot tone="warning">Undecided</StatusDot>}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
+          </TableBody>
         </Table>
       </Section>
     </div>

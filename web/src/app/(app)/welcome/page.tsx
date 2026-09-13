@@ -34,7 +34,7 @@ export default function WelcomePage() {
         <div className="flex flex-col items-center text-center">
           <Mark size={52} />
           <h1 className="mt-4 text-[26px] font-semibold tracking-[-0.02em] sm:text-3xl">Welcome to Codolympics</h1>
-          <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-muted">First you prove yourself with puzzles and hacking. Then you bid for the problems you want to solve. Here is the whole day in one page.</p>
+          <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-muted-foreground">First you prove yourself with puzzles and hacking. Then you bid for the problems you want to solve. Here is the whole day in one page.</p>
         </div>
 
         <section className="mt-8">
@@ -45,7 +45,7 @@ export default function WelcomePage() {
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-box bg-navy text-green-bright">{s.icon}</span>
                 <div className="min-w-0">
                   <div className="text-[13.5px] font-semibold"><span className="mr-1.5 text-faint">{i + 1}.</span>{s.title}</div>
-                  <p className="mt-1 text-[12.5px] leading-relaxed text-muted">{s.body}</p>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{s.body}</p>
                 </div>
               </li>
             ))}
@@ -58,15 +58,15 @@ export default function WelcomePage() {
             {RULES.map(([t, b]) => (
               <li key={t} className="flex gap-3 px-4 py-3">
                 <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-tint text-green-dark"><Icon.Check size={12} strokeWidth={3} /></span>
-                <div className="min-w-0"><div className="text-[13px] font-semibold">{t}</div><div className="mt-0.5 text-[12.5px] leading-relaxed text-muted">{b}</div></div>
+                <div className="min-w-0"><div className="text-[13px] font-semibold">{t}</div><div className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">{b}</div></div>
               </li>
             ))}
           </ul>
         </section>
 
         <div className="mt-8 flex flex-col items-center gap-3">
-          <Button size="lg" icon={<Icon.ArrowRight size={16} />} onClick={ready}>I&apos;m ready</Button>
-          <Link href="/dashboard" className="text-[12.5px] text-faint hover:text-muted">Skip for now</Link>
+          <Button size="lg" onClick={ready}><Icon.ArrowRight size={16} /> I&apos;m ready</Button>
+          <Link href="/dashboard" className="text-[12.5px] text-faint hover:text-muted-foreground">Skip for now</Link>
         </div>
       </div>
     </PageBody>
