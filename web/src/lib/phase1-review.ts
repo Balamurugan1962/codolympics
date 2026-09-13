@@ -111,7 +111,7 @@ export async function gradingQueue() {
 
 export async function gradeAnswer(
   graderId: string,
-  input: { participantId: string; questionId: number; manualScore?: number; explainScore?: number; comment?: string },
+  input: { participantId: string; questionId: number; manualScore?: number; explainScore?: number; comment?: string; flagged?: boolean },
 ): Promise<void> {
   const [q] = await db.select().from(p1Question).where(eq(p1Question.id, input.questionId));
   if (!q) throw errors.notFound("question");
@@ -123,6 +123,7 @@ export async function gradeAnswer(
       .set({
         ...(input.manualScore !== undefined ? { manualScore: input.manualScore } : {}),
         ...(input.explainScore !== undefined ? { explainScore: input.explainScore } : {}),
+        ...(input.flagged !== undefined ? { flagged: input.flagged } : {}),
         gradeComment: input.comment ?? null, gradedBy: graderId, gradedAt: new Date(),
       })
       .where(and(eq(p1Answer.participantId, input.participantId), eq(p1Answer.questionId, input.questionId)));

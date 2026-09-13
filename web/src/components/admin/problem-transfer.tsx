@@ -135,7 +135,7 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
                 <div className="flex flex-wrap items-center gap-2">
                   <Icon.Check size={14} className="shrink-0 text-green" />
                   <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium">{one.id}</span>
-                  {one.version ? <Badge variant="info">{one.version}</Badge> : <Badge variant="warning">no package</Badge>}
+                  {one.version ? <Badge variant="neutral">{one.version}</Badge> : <Badge variant="warning">no package</Badge>}
                   {one.version && (one.validated ? <Badge variant="success">validated</Badge> : <Badge variant="warning">not validated</Badge>)}
                   {one.details ? (
                     <Badge variant="neutral">

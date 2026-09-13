@@ -15,6 +15,7 @@ export const GET = route(async () => {
       items: g.items.map((i) => ({
         participant_id: i.a.participantId, name: i.name, answer: i.a.answer, explanation: i.a.explanation,
         manual_score: i.a.manualScore, explain_score: i.a.explainScore, comment: i.a.gradeComment, graded_by: i.a.gradedBy,
+        flagged: i.a.flagged, auto_score: i.a.autoScore,
       })),
     })),
   });

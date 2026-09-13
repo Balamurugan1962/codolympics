@@ -378,6 +378,10 @@ export const p1Answer = pgTable(
     gradedBy: text("graded_by"),
     gradedAt: ts("graded_at"),
     gradeComment: text("grade_comment"),
+    // An evaluator marking their own work for a second look — a borderline
+    // answer, or one they want an administrator to settle. Never shown to the
+    // participant; a flag is a note between graders.
+    flagged: boolean("flagged").notNull().default(false),
     // Validator scoring runs through the judge at section close.
     scoreJobId: text("score_job_id"),
     scoreState: text("score_state").$type<"pending" | "queued" | "done" | "error">(),

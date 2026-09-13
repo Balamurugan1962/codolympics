@@ -231,7 +231,7 @@ export default function ProblemsPage() {
                           <span className="font-semibold group-hover:text-brand-dark">
                             {q?.title ?? (p?.hack_only ? <span className="font-mono">{id}</span> : <span className="font-normal text-faint">Untitled</span>)}
                           </span>
-                          {p?.hack_only && <Badge variant="info">Hacking</Badge>}
+                          {p?.hack_only && <Badge variant="neutral">Hacking</Badge>}
                           {q?.status === "sold" && <Badge variant="neutral">Sold</Badge>}
                         </div>
                         <div className="font-mono text-[11.5px] text-faint">{id}</div>

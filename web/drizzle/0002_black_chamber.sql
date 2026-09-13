@@ -1,0 +1,1 @@
+ALTER TABLE "p1_answer" ADD COLUMN "flagged" boolean DEFAULT false NOT NULL;

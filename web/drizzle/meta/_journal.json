@@ -15,6 +15,13 @@
       "when": 1789325024104,
       "tag": "0001_flawless_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789328681313,
+      "tag": "0002_black_chamber",
+      "breakpoints": true
     }
   ]
 }

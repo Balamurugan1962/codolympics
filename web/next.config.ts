@@ -13,6 +13,14 @@ const config: NextConfig = {
    */
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*"],
 
+  /*
+   * A second instance can be run against a scratch database without disturbing
+   * the one that is serving the contest — `NEXT_DIST_DIR=.next-scratch next dev
+   * -p 3100` — because two servers sharing one build directory fight over it.
+   * Unset everywhere except that case, so the normal build is untouched.
+   */
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+
   // The contest hall has no internet. Nothing may be fetched at runtime from
   // anywhere but this server, so no remote images, fonts or scripts.
   images: { unoptimized: true },

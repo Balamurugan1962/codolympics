@@ -1,65 +1,36 @@
 "use client";
 
 /**
- * How the day runs, on one screen.
+ * Where a competitor lands after registering.
  *
- * Reachable from the account menu at any time, so someone can check the rules
- * mid-auction without losing their place. Deliberately the same six rules as
- * the waiting screen and no more: a page nobody finishes is a page nobody
- * read, and this is competition time.
+ * The screen itself is shared with the dashboard's registration hold — see
+ * WelcomeScreen. What this page adds is the forward: when the organisers start
+ * the contest, it takes the competitor into it rather than leaving a hall of
+ * people on a rules page waiting to be told to click something.
+ *
+ * The forward fires on a *change* of phase rather than on arrival, because the
+ * account menu links here mid-contest: someone opening the rules during the
+ * auction wants to read them, not be bounced out of them.
  */
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 
-import { RulesGrid } from "@/components/contest/waiting";
-import { Icon } from "@/components/icons";
-import { Logo } from "@/components/logo";
-import { Button } from "@/components/ui/button";
+import { useContest } from "@/components/contest-provider";
+import { WelcomeScreen } from "@/components/contest/welcome-screen";
 
-const STEPS = [
-  { icon: <Icon.Puzzle size={18} />, title: "Section A · Puzzles", body: "Answer in any order; change anything until it closes." },
-  { icon: <Icon.Bug size={18} />, title: "Section B · Hacking", body: "Each given solution is wrong. Send an input that breaks it." },
-  { icon: <Icon.Gavel size={18} />, title: "Auction", body: "Bid for problems one at a time. Win one and only you may solve it." },
-  { icon: <Icon.Code size={18} />, title: "Coding", body: "Solve what you own. Ties break on total solve time." },
-];
+export default function WelcomePage() {
+  const { state } = useContest();
+  const router = useRouter();
+  const phase = state?.contest.phase ?? "registration";
+  const arrivedIn = useRef(phase);
+  const started = arrivedIn.current === "registration" && phase !== "registration";
 
-export default function HowItWorksPage() {
-  return (
-    <div className="mx-auto flex h-[calc(100vh-56px)] max-w-3xl flex-col justify-center overflow-hidden px-6 py-6 animate-fade-in">
-      <div className="flex flex-col items-center text-center">
-        <Logo inverse={false} size={44} />
-        <h1 className="mt-5 text-[27px] font-semibold tracking-[-0.02em] sm:text-[32px]">How the day runs</h1>
-        <p className="mt-2.5 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
-          First you prove yourself with puzzles and hacking. Then you bid for the problems you want to solve.
-        </p>
-      </div>
+  useEffect(() => {
+    if (!started || state?.viewer.role !== "participant") return;
+    // A beat so the status line can be read before the screen changes.
+    const t = setTimeout(() => router.replace("/dashboard"), 1200);
+    return () => clearTimeout(t);
+  }, [started, router, state?.viewer.role]);
 
-      <ol className="mt-7 grid gap-3 sm:grid-cols-2">
-        {STEPS.map((s, i) => (
-          <li key={s.title} className="flex gap-3.5 rounded-lg border bg-card p-4 shadow-xs">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-navy text-brand-bright">{s.icon}</span>
-            <div className="min-w-0">
-              <div className="text-[14.5px] font-semibold">
-                <span className="mr-1.5 text-faint">{i + 1}.</span>
-                {s.title}
-              </div>
-              <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{s.body}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-
-      <div className="mt-6 border-t pt-5">
-        <h2 className="mb-4 text-center text-[12px] font-semibold tracking-[0.08em] text-faint uppercase">The rules that matter</h2>
-        <RulesGrid />
-      </div>
-
-      <div className="mt-6 flex justify-center">
-        <Button size="lg" asChild>
-          <Link href="/dashboard">
-            <Icon.ArrowRight size={15} /> Back to the contest
-          </Link>
-        </Button>
-      </div>
-    </div>
-  );
+  return <WelcomeScreen forwarding={started} />;
 }
