@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, SearchInput } from "@/components/ui/field";
+import { Hint } from "@/components/ui/hint";
 import { SimpleSelect } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Menu } from "@/components/ui/menu";
@@ -36,6 +37,18 @@ import { api, errorMessage } from "@/lib/client";
 const STATE: Record<QuestionState, { label: string; tone: "success" | "warning" | "info" | "neutral" }> = {
   draft: { label: "Draft", tone: "warning" }, ready: { label: "Ready", tone: "info" }, live: { label: "Live", tone: "success" }, void: { label: "Void", tone: "neutral" },
 };
+
+/**
+ * Readiness that arrived in a zip. Worth saying quietly rather than demoting
+ * the question to a draft: the proof is real, it just did not happen here.
+ */
+function ProvenElsewhere() {
+  return (
+    <span className="ml-1 align-middle">
+      <Hint>Proven on the install this was imported from, not re-run here. Open it and run the check again if you want it proven on this machine.</Hint>
+    </span>
+  );
+}
 
 function useQuestionActions(section: "puzzles" | "hacking", reload: () => Promise<void>) {
   const { toast } = useToast();
@@ -145,7 +158,10 @@ export function PuzzleList() {
                     <TableCell className="hidden md:table-cell"><Badge variant="outline">{KIND_LABEL[r.kind]}</Badge></TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell">{GRADING_LABEL[r.grading]}{r.explainPoints > 0 && <span className="text-faint"> + reasoning</span>}</TableCell>
                     <TableCell className="font-medium text-right tabular-nums">{r.points}{r.explainPoints > 0 && <span className="text-faint"> +{r.explainPoints}</span>}</TableCell>
-                    <TableCell><StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot></TableCell>
+                    <TableCell>
+                      <StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot>
+                      {r.verifiedElsewhere && <ProvenElsewhere />}
+                    </TableCell>
                     <TableCell>
                       <Menu items={[
                         { label: "Edit", icon: <Icon.Edit size={15} />, onSelect: () => router.push(`/admin/phase1/puzzles/${r.id}`) },
@@ -235,7 +251,10 @@ export function HackList() {
                     <TableCell className="hidden text-muted-foreground sm:table-cell">{r.givenLanguage}</TableCell>
                     <TableCell className="font-medium text-right tabular-nums">{r.hackPoints}</TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell text-right tabular-nums">{r.failPenalty ? `−${r.failPenalty}` : "0"}</TableCell>
-                    <TableCell><StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot></TableCell>
+                    <TableCell>
+                      <StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot>
+                      {r.verifiedElsewhere && <ProvenElsewhere />}
+                    </TableCell>
                     <TableCell>
                       <Menu items={[
                         { label: "Edit", icon: <Icon.Edit size={15} />, onSelect: () => router.push(`/admin/phase1/hacking/${r.id}`) },

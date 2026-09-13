@@ -8,9 +8,11 @@
  * without the other gives you a problem nobody can solve or a question the
  * judge has never heard of. One zip carries both.
  *
- * Nothing imported is published. A package that goes live without someone here
- * validating it is how a contest discovers on the day that its tests were built
- * against a different checker.
+ * A validation travels with the package it belongs to, so one proven where it
+ * was exported arrives proven — re-running it is the work an import exists to
+ * save. Publishing is still yours: a set someone hands you is not a set to put
+ * in front of participants unlooked-at. (The Settings import is the other case
+ * — your own setup coming back — and does restore what was live.)
  */
 import { useState } from "react";
 
@@ -25,7 +27,7 @@ import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
-type One = { id: string; version: string | null; details: boolean; hints: number; warnings: string[] };
+type One = { id: string; version: string | null; details: boolean; hints: number; validated: boolean; live: boolean; warnings: string[] };
 type Result = { imported: One[] };
 
 export function problemExportHref(id: string): string {
@@ -85,9 +87,10 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
       const r = await api.post<Result>("/api/admin/problems/import", form);
       setResult(r);
       const n = r.imported.length;
+      const unproven = r.imported.filter((one) => one.version && !one.validated).length;
       toast({
         title: n === 1 ? `Imported ${r.imported[0].id}` : `Imported ${n} problems`,
-        description: "Nothing was published — validate each package first.",
+        description: unproven ? `${unproven} still to validate here. Nothing was published.` : "Already validated where it was exported. Nothing was published.",
         tone: "success",
       });
       await onImported();
@@ -107,7 +110,7 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
       description={
         result
           ? undefined
-          : "One problem, every problem, or a plain judge package. Nothing is published — validate each one first."
+          : "One problem, every problem, or a plain judge package. A package proven where it was exported arrives proven; nothing is published."
       }
       footer={
         result ? (
@@ -133,6 +136,7 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
                   <Icon.Check size={14} className="shrink-0 text-green" />
                   <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium">{one.id}</span>
                   {one.version ? <Badge variant="info">{one.version}</Badge> : <Badge variant="warning">no package</Badge>}
+                  {one.version && (one.validated ? <Badge variant="success">validated</Badge> : <Badge variant="warning">not validated</Badge>)}
                   {one.details ? (
                     <Badge variant="neutral">
                       details · {one.hints} hint{one.hints === 1 ? "" : "s"}
@@ -155,8 +159,9 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
             <Icon.Info />
             <AlertTitle>Nothing is live yet</AlertTitle>
             <AlertDescription>
-              Every package arrived unpublished. Open each problem, run its validation, then publish — an import cannot know whether these
-              tests were built against the checker on this judge.
+              {result.imported.every((one) => !one.version || one.validated)
+                ? "Every package came with a validation that passed where it was exported, so there is nothing to re-run — open each problem and publish it when you are ready. Re-validate first if this machine is slower than the one they were proven on."
+                : "Open each problem marked not validated, run its validation, then publish. The ones that arrived validated were proven where they were exported; re-run those only if this machine is slower."}
             </AlertDescription>
           </Alert>
         </div>

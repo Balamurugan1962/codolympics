@@ -27,7 +27,7 @@ describe("participant views", () => {
       id: 1, title: "Crack the password", bodyMd: "...", category: "constraint", kind: "set", grading: "validator", points: 10,
       explainPoints: 0, orderIndex: 0, published: true, voided: false, config: {}, answerKey: { members: ["SECRET"] },
       modelAnswer: "MODEL", validatorPy: "def check(e): return True", pointsPerEntry: 1, maxEntries: 100,
-      formatRegex: "^\\d{4}$", formatHint: "four digits", ready: true,
+      formatRegex: "^\\d{4}$", formatHint: "four digits", ready: true, verifiedElsewhere: false,
     });
     const s = JSON.stringify(view);
     expect(s).not.toContain("SECRET");
@@ -40,8 +40,12 @@ describe("participant views", () => {
     const view = participantHackQuestion({
       id: 1, title: "t", statementMd: "s", constraintsMd: "c", problemId: "hack-01", givenSource: "int main(){}", givenLanguage: "cpp",
       hackPoints: 20, failPenalty: 0, orderIndex: 0, published: true, voided: false, ready: true,
+      // The input that proves the question breaks is kept so the proof can be
+      // repeated -- which makes it an answer, and answers do not travel here.
+      breakingInput: "999999 BREAKS-IT", verifiedElsewhere: true,
     });
     expect(view.given_source).toBe("int main(){}");
+    expect(JSON.stringify(view)).not.toContain("BREAKS-IT");
     expect(JSON.stringify(view)).not.toContain("problem_id"); // the judge package id is internal
   });
 

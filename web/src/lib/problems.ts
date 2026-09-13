@@ -196,6 +196,8 @@ export type ValidationRecord = {
   max_time_ms: number | null;
   time_limit_ms: number | null;
   ok: boolean;
+  /** Set when the record arrived in a zip rather than being run here. */
+  imported?: string | null;
 };
 
 async function recordValidation(id: string, version: string, report: ValidationReport): Promise<void> {
@@ -220,6 +222,25 @@ async function recordValidation(id: string, version: string, report: ValidationR
   } catch {
     /* a package we cannot write to still validated; the record is a convenience */
   }
+}
+
+/**
+ * Mark the validation that travelled with an imported package as travelled.
+ *
+ * The result is kept -- re-running it is exactly the work an import exists to
+ * save -- but where it ran is part of the result, and the UI says so rather
+ * than letting a carried "AC, 7/7" read as if this judge had produced it.
+ */
+export async function stampImportedValidation(id: string, version: string): Promise<ValidationRecord | null> {
+  const record = await validationOf(id, version);
+  if (!record) return null;
+  const stamped: ValidationRecord = { ...record, imported: new Date().toISOString() };
+  try {
+    await fs.writeFile(path.join(dirFor(id, version), "validation.json"), JSON.stringify(stamped, null, 2) + "\n");
+  } catch {
+    /* the record is a convenience; an unwritable package still carries its own copy */
+  }
+  return stamped;
 }
 
 export async function validationOf(id: string, version: string): Promise<ValidationRecord | null> {
@@ -250,7 +271,12 @@ export async function publishVersion(actorId: string, input: { id: string; versi
   await fs.symlink(input.version, tmp);
   await fs.rename(tmp, link); // atomic replace of the symlink
 
-  await db.update(question).set({ problemVersion: input.version, validated: false }).where(eq(question.id, input.id));
+  // Publishing does not undo a validation. The flag follows the version being
+  // published: a version with a passing record stays validated (including one
+  // that arrived in a zip), and one without becomes unvalidated, which is what
+  // publishing an unproven upload actually means.
+  const record = await validationOf(input.id, input.version);
+  await db.update(question).set({ problemVersion: input.version, validated: Boolean(record?.ok) }).where(eq(question.id, input.id));
   await audit({ actorId, action: "problem.publish", target: input.id, reason: input.reason, detail: { version: input.version, rejudged: affected } });
 
   const rejudged = affected > 0 ? await rejudgeQuestion(input.id) : 0;

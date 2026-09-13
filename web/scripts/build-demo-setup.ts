@@ -2,13 +2,25 @@
  * Builds the demo setup zip.
  *
  * Runs against a scratch database and a scratch problems volume, seeds the
- * content from demo-content.ts through the app's own functions, then exports
- * with the app's own exporter. Going through the real code paths rather than
- * hand-writing a zip is the point: if the format changes, this breaks loudly
- * instead of producing a file that no longer imports.
+ * content from demo-content.ts through the app's own functions, proves all of
+ * it through the real judge, then exports with the app's own exporter. Going
+ * through the real code paths rather than hand-writing a zip is the point: if
+ * the format changes, this breaks loudly instead of producing a file that no
+ * longer imports.
+ *
+ * Proving matters as much as seeding: a setup zip carries its proofs, so a
+ * demo built without them would land needing every package validated, every
+ * puzzle self-tested and both hacks broken by hand — which is exactly the
+ * morning this file exists to avoid.
+ *
+ * It needs a judge of its own, because the judge reads packages off the volume
+ * and this volume is a scratch one:
+ *
+ *   JUDGE_PROBLEMS_DIR=/tmp/seed-problems JUDGE_SERVICE_TOKEN=… \
+ *     .venv/bin/uvicorn app.main:app --port 8002        # from judge/
  *
  *   DATABASE_URL=postgres://…/contest_seed \
- *   PROBLEMS_DIR=/tmp/seed-problems \
+ *   PROBLEMS_DIR=/tmp/seed-problems JUDGE_URL=http://127.0.0.1:8002 \
  *   pnpm tsx scripts/build-demo-setup.ts out.zip
  */
 import { eq } from "drizzle-orm";
@@ -18,8 +30,8 @@ import path from "node:path";
 
 import { db } from "../src/db";
 import { contest, hint, question } from "../src/db/schema";
-import { createHack, createPuzzle } from "../src/lib/phase1-admin";
-import { uploadPackage } from "../src/lib/problems";
+import { createHack, createPuzzle, publishHack, publishPuzzle, testHack, testPuzzle } from "../src/lib/phase1-admin";
+import { publishVersion, uploadPackage, validateVersion } from "../src/lib/problems";
 import { createStaff } from "../src/lib/registration";
 import { exportSetup } from "../src/lib/setup-package";
 
@@ -98,8 +110,10 @@ async function main() {
   console.log("staff: admin (administrator), bala (evaluator)");
 
   // --- Phase 2 problems --------------------------------------------------
+  // Validated and published here so the zip carries both: an import restores
+  // what was live, and keeps the validation rather than asking for it again.
   for (const [i, p] of PROBLEMS.entries()) {
-    await uploadPackage(ACTOR, { id: p.id, zip: packageFor(p), reason: "demo setup" });
+    const { version } = await uploadPackage(ACTOR, { id: p.id, zip: packageFor(p), reason: "demo setup" });
     await db.insert(question).values({
       id: p.id,
       title: p.title,
@@ -111,19 +125,31 @@ async function main() {
       auctionOrder: i + 1,
     });
     await db.insert(hint).values(p.hints.map((h, idx) => ({ questionId: p.id, idx, price: h.price, bodyMd: h.bodyMd })));
-    console.log(`problem ${p.id}: ${p.tests.length} tests, ${p.hints.length} hints`);
+
+    const report = await validateVersion(p.id, version);
+    if (!report.ok) throw new Error(`${p.id} ${version} did not validate: ${JSON.stringify(report.reference ?? report)}`);
+    await publishVersion(ACTOR, { id: p.id, version, reason: "demo setup", confirmedRejudge: 0 });
+    const slowest = report.reference?.max_time_ms ?? 0;
+    console.log(`problem ${p.id}: ${p.tests.length} tests, ${p.hints.length} hints, validated (${slowest.toFixed(0)} ms of ${p.timeLimitMs} ms), published`);
   }
 
   // --- Phase 1 -----------------------------------------------------------
   for (const q of PUZZLES) {
-    const { maxEntriesHint, ...input } = q as typeof q & { maxEntriesHint?: boolean };
+    const { maxEntriesHint, selfTest, ...input } = q as typeof q & { maxEntriesHint?: boolean; selfTest?: Record<string, unknown> };
     void maxEntriesHint;
-    await createPuzzle(ACTOR, input as never, "demo setup");
-    console.log(`puzzle: ${q.title} (${q.kind}/${q.grading})`);
+    const id = await createPuzzle(ACTOR, input as never, "demo setup");
+    const test = await testPuzzle(id, (selfTest ?? {}) as never);
+    if (!test.ready) throw new Error(`puzzle "${q.title}" does not pass its own self-test: ${test.detail}`);
+    await publishPuzzle(ACTOR, id, true, "demo setup");
+    console.log(`puzzle: ${q.title} (${q.kind}/${q.grading}) — ${test.detail}`);
   }
   for (const h of HACKS) {
-    await uploadPackage(ACTOR, { id: h.problemId, zip: hackPackageFor(h), reason: "demo setup" });
-    await createHack(
+    const { version } = await uploadPackage(ACTOR, { id: h.problemId, zip: hackPackageFor(h), reason: "demo setup" });
+    // A hacking package has to be live: a participant's attempt is judged
+    // against the package's *current* version, and with none published every
+    // attempt comes back as an internal error.
+    await publishVersion(ACTOR, { id: h.problemId, version, reason: "demo setup", confirmedRejudge: 0 });
+    const id = await createHack(
       ACTOR,
       {
         title: h.title,
@@ -138,7 +164,10 @@ async function main() {
       },
       "demo setup",
     );
-    console.log(`hack: ${h.title} (breaks on ${JSON.stringify(h.breakingInput)})`);
+    const proof = await testHack(id, h.breakingInput);
+    if (!proof.ready) throw new Error(`hack "${h.title}" is not broken by its own input: ${proof.detail}`);
+    await publishHack(ACTOR, id, true, "demo setup");
+    console.log(`hack: ${h.title} — ${proof.detail}`);
   }
 
   // --- export ------------------------------------------------------------

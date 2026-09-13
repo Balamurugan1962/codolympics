@@ -9,13 +9,17 @@ import { PUZZLES } from "./demo-content";
 import { distinctEntries, normaliseAnswer, scoreAuto, type Q } from "../src/lib/phase1-puzzles";
 import { judge } from "../src/lib/judge";
 
-/** What a participant who knows the answer would submit, and what they should get. */
-const EXPECT: Record<string, { answer: unknown; want: number; note: string }> = {
-  "The next tile": { answer: 1, want: 10, note: "picks '19'" },
-  "Who was in the building?": { answer: [0], want: 15, note: "picks Ana's only" },
-  "The missing word": { answer: "Root", want: 8, note: "'Root', wrong case on purpose" },
-  Handshakes: { answer: "66", want: 10, note: "66" },
-  "Put the build in order": { answer: [1, 2, 0, 3], want: 12, note: "compile, run, compare, report" },
+/**
+ * What a right answer is worth. The answer itself comes from the question's own
+ * `selfTest`, so there is one copy of it: two copies drift, and the one that
+ * drifts is always the one nobody runs.
+ */
+const EXPECT: Record<string, { want: number; note: string }> = {
+  "The next tile": { want: 10, note: "picks '19'" },
+  "Who was in the building?": { want: 15, note: "picks Ana's only" },
+  "The missing word": { want: 8, note: "'Root', wrong case on purpose" },
+  Handshakes: { want: 10, note: "66" },
+  "Put the build in order": { want: 12, note: "compile, run, compare, report" },
 };
 /** And what a wrong answer should get, so a pass is not just "everything scores". */
 const WRONG: Record<string, unknown> = {
@@ -33,7 +37,8 @@ async function main() {
 
     if (p.grading === "auto") {
       const e = EXPECT[p.title];
-      const got = scoreAuto(q, normaliseAnswer(q, e.answer));
+      const intended = (p as { selfTest?: { answer?: unknown } }).selfTest?.answer;
+      const got = scoreAuto(q, normaliseAnswer(q, intended));
       const wrong = scoreAuto(q, normaliseAnswer(q, WRONG[p.title]));
       const ok = got === e.want && wrong < e.want;
       if (!ok) bad++;

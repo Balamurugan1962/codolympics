@@ -122,15 +122,24 @@ export function ValidateAllButton({ onDone }: { onDone: () => Promise<void> }) {
   );
 }
 
-/** What the last validation found, wherever it ran. Provenance, not permission. */
+/**
+ * What the last validation found, and where it ran.
+ *
+ * An imported package keeps its result rather than being re-validated — that
+ * is the work an import exists to save — so this has to be honest about whose
+ * machine produced it. The record says: a validation run here carries no
+ * `imported` stamp, one that arrived in a zip does.
+ */
 export function ValidationNote({
   record,
-  validatedHere,
 }: {
-  record: { at: string; verdict: string | null; passed: number | null; testcases: number; max_time_ms: number | null; time_limit_ms: number | null; ok: boolean } | null;
-  validatedHere: boolean;
+  record: {
+    at: string; verdict: string | null; passed: number | null; testcases: number;
+    max_time_ms: number | null; time_limit_ms: number | null; ok: boolean; imported?: string | null;
+  } | null;
 }) {
   if (!record) return null;
+  const validatedHere = !record.imported;
   const headroom =
     record.max_time_ms !== null && record.time_limit_ms
       ? `${record.max_time_ms.toFixed(0)} ms of ${record.time_limit_ms} ms`
@@ -150,8 +159,8 @@ export function ValidationNote({
         <>
           {" — "}
           {tight
-            ? "close to the limit, so this says little about a slower machine. Validate here before publishing."
-            : "re-validate here before publishing; another machine's timings are not this one's."}
+            ? "that was close to the limit, so it says little about a slower machine. Worth re-validating here."
+            : "carried from the zip, not re-run here. Re-validate if this machine is slower than the one it was proven on."}
         </>
       )}
     </div>

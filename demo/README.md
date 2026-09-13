@@ -75,10 +75,20 @@ live, with a selection basis written out.
 
 ## After importing
 
-Nothing arrives published — that is deliberate, since an import cannot know
-whether these tests were built against the checker on your judge. For each
-problem: open it, run **Validate**, then **Publish**. For Phase 1: open each
-question, run its self-test, then publish.
+Nothing to do. Every package was validated against a real judge, every puzzle
+passed its self-test, both hacking questions were broken by their own input,
+and all of it was live when the zip was made — so it arrives validated, ready
+and published, and the contest can be started as it stands.
+
+Each carried result is marked as having been proven elsewhere, because the one
+thing a zip cannot carry is how fast your machine is: a reference that ran at
+1900 ms of a 2000 ms limit on the machine that exported it will time out on a
+slower one. Everything in this set has far more headroom than that (the slowest
+reference runs in about 125 ms), but if you want the proof done here, open any
+problem and run **Validate**, or use **Validate all** under Problems.
+
+Importing into a contest that has already started publishes nothing: publishing
+mid-round changes what participants can see, so it is left to you.
 
 ## The two kinds of Python in here
 
@@ -112,15 +122,30 @@ Both read through the same `Reader`: `.int(lo, hi)`, `.word()`, `.line()`,
 ## Rebuilding it
 
 `scripts/demo-content.ts` holds the content and `scripts/build-demo-setup.ts`
-seeds a scratch database and exports through the app's own exporter, so a change
-to the zip format breaks the build loudly instead of producing a file that no
-longer imports.
+seeds a scratch database, proves everything through a real judge, and exports
+through the app's own exporter — so a change to the zip format breaks the build
+loudly instead of producing a file that no longer imports, and a question that
+stops working breaks it before anyone ships the zip.
+
+It needs a judge of its own, because the judge reads packages off the volume and
+this build uses a scratch one. Start a second one on 8002 pointing at it:
+
+```
+cd judge
+JUDGE_PROBLEMS_DIR=/tmp/seed-problems \
+  JUDGE_SERVICE_TOKEN=$(grep ^JUDGE_SERVICE_TOKEN= ../web/.env | cut -d= -f2) \
+  JUDGE_GO_JUDGE_URL=http://127.0.0.1:5050 \
+  .venv/bin/uvicorn app.main:app --port 8002
+```
+
+Then, with the sandbox container running:
 
 ```
 docker exec web-postgres-1 psql -U contest -d postgres -c "create database contest_seed;"
 cd web
 DATABASE_URL=postgres://contest:contest@localhost:5432/contest_seed pnpm db:migrate
 DATABASE_URL=postgres://contest:contest@localhost:5432/contest_seed \
-  PROBLEMS_DIR=/tmp/seed-problems \
+  PROBLEMS_DIR=/tmp/seed-problems JUDGE_URL=http://127.0.0.1:8002 \
+  JUDGE_SERVICE_TOKEN=$(grep ^JUDGE_SERVICE_TOKEN= .env | cut -d= -f2) \
   pnpm tsx scripts/build-demo-setup.ts ../demo/codolympics-demo-setup.zip
 ```

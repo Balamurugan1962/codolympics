@@ -16,6 +16,12 @@
 // Phase 1, Section A — one of every kind, across all three grading modes
 // ---------------------------------------------------------------------------
 
+/**
+ * Section A. Each carries a `selfTest`: what someone who knows the answer would
+ * submit. The app's self-test is what marks a question ready, so keeping the
+ * intended answer beside the question means the demo set can be proven by the
+ * same code path an author uses, and arrives in the zip already proven.
+ */
 export const PUZZLES = [
   {
     title: "The next tile",
@@ -31,6 +37,7 @@ export const PUZZLES = [
     answerKey: { option: 1 },
     modelAnswer: "Odd numbers: step n has 2n − 1 tiles, so step 10 has 19.",
     maxEntries: 100,
+    selfTest: { answer: 1 },
   },
   {
     title: "Who was in the building?",
@@ -46,6 +53,7 @@ export const PUZZLES = [
     answerKey: { options: [0] },
     modelAnswer: "If Ana is first then Ben did not arrive before her, so only Ana's statement is necessarily false.",
     maxEntries: 100,
+    selfTest: { answer: [0] },
   },
   {
     title: "The missing word",
@@ -62,6 +70,7 @@ export const PUZZLES = [
     modelAnswer: "The root (equivalently, the top) of the heap.",
     formatHint: "one word",
     maxEntries: 100,
+    selfTest: { answer: "Root" },
   },
   {
     title: "Handshakes",
@@ -77,6 +86,7 @@ export const PUZZLES = [
     answerKey: { value: 66 },
     modelAnswer: "C(12,2) = 12·11/2 = 66.",
     maxEntries: 100,
+    selfTest: { answer: "66" },
   },
   {
     title: "Put the build in order",
@@ -92,6 +102,7 @@ export const PUZZLES = [
     answerKey: { order: [1, 2, 0, 3] },
     modelAnswer: "Compile, run, compare, report.",
     maxEntries: 100,
+    selfTest: { answer: [1, 2, 0, 3] },
   },
   {
     title: "Every factor of 36",
@@ -119,6 +130,9 @@ export const PUZZLES = [
 `,
     modelAnswer: "1, 2, 3, 4, 6, 9, 12, 18, 36 — nine factors.",
     maxEntriesHint: true,
+    // The validator has to accept every factor and reject the three ways of
+    // getting it wrong: a non-divisor, a non-number, and two answers on a line.
+    selfTest: { shouldPass: ["1", "2", "3", "4", "6", "9", "12", "18", "36"], shouldFail: ["5", "banana", "12 18"] },
   },
   {
     title: "Why does the auction use a restarting countdown?",
@@ -134,6 +148,8 @@ export const PUZZLES = [
     modelAnswer:
       "It prevents sniping: with a fixed close, the winning move is to bid in the last second, which rewards reflexes and a fast network rather than judgement. A restarting countdown means the lot only closes when nobody wants it more. The cost is that a contested lot can run far longer than planned, so the round's timing becomes unpredictable.",
     maxEntries: 100,
+    // Manual grading: the model answer above is the whole self-test.
+    selfTest: {},
   },
 ];
 
