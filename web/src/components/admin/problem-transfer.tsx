@@ -22,11 +22,11 @@ import { Field } from "@/components/ui/field";
 import { FileDrop } from "@/components/ui/file-drop";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { Summary, SummaryItem } from "@/components/ui/summary";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
-type Result = { id: string; version: string | null; details: boolean; hints: number; warnings: string[] };
+type One = { id: string; version: string | null; details: boolean; hints: number; warnings: string[] };
+type Result = { imported: One[] };
 
 export function problemExportHref(id: string): string {
   return `/api/admin/problems/${encodeURIComponent(id)}/export`;
@@ -43,12 +43,21 @@ export function problemExportMenuItem(id: string) {
   };
 }
 
-export function ImportProblemButton({ onImported }: { onImported: () => Promise<void> }) {
+/** Import, and export-everything, beside the New button. */
+export function ProblemTransferActions({ onImported }: { onImported: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
         <Icon.Upload size={14} /> Upload a problem
+      </Button>
+      <Button
+        variant="outline"
+        onClick={() => {
+          window.location.href = "/api/admin/problems/export";
+        }}
+      >
+        <Icon.Download size={14} /> Export all
       </Button>
       {open && <ImportDialog onClose={() => setOpen(false)} onImported={onImported} />}
     </>
@@ -75,7 +84,12 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
       if (id.trim()) form.set("id", id.trim());
       const r = await api.post<Result>("/api/admin/problems/import", form);
       setResult(r);
-      toast({ title: `Imported ${r.id}`, description: r.version ? `Uploaded as ${r.version}.` : "Details only.", tone: "success" });
+      const n = r.imported.length;
+      toast({
+        title: n === 1 ? `Imported ${r.imported[0].id}` : `Imported ${n} problems`,
+        description: "Nothing was published — validate each package first.",
+        tone: "success",
+      });
       await onImported();
     } catch (err) {
       setError(errorMessage(err));
@@ -89,11 +103,11 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
       open
       onClose={onClose}
       size="lg"
-      title={result ? `Imported ${result.id}` : "Upload a problem"}
+      title={result ? (result.imported.length === 1 ? `Imported ${result.imported[0].id}` : `Imported ${result.imported.length} problems`) : "Upload a problem"}
       description={
         result
           ? undefined
-          : "A zip exported from this app, or a plain judge package. Nothing is published — validate it first."
+          : "One problem, every problem, or a plain judge package. Nothing is published — validate each one first."
       }
       footer={
         result ? (
@@ -112,30 +126,39 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
     >
       {result ? (
         <div className="space-y-4">
-          <Summary cols={3}>
-            <SummaryItem label="Problem" mono>
-              {result.id}
-            </SummaryItem>
-            <SummaryItem label="Package">
-              {result.version ? <Badge variant="info">{result.version}</Badge> : <span className="text-faint">none in the zip</span>}
-            </SummaryItem>
-            <SummaryItem label="Details">
-              {result.details ? `imported · ${result.hints} hint${result.hints === 1 ? "" : "s"}` : <span className="text-faint">none</span>}
-            </SummaryItem>
-          </Summary>
-          {result.warnings.length > 0 && (
-            <Alert variant="warning">
-              <Icon.Alert />
-              <AlertTitle>Before this can be auctioned</AlertTitle>
-              <AlertDescription>
-                <ul className="ml-4 list-disc space-y-0.5">
-                  {result.warnings.map((w) => (
-                    <li key={w}>{w}</li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
-          )}
+          <ul className="divide-y rounded-md border">
+            {result.imported.map((one) => (
+              <li key={one.id} className="px-3.5 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Icon.Check size={14} className="shrink-0 text-green" />
+                  <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium">{one.id}</span>
+                  {one.version ? <Badge variant="info">{one.version}</Badge> : <Badge variant="warning">no package</Badge>}
+                  {one.details ? (
+                    <Badge variant="neutral">
+                      details · {one.hints} hint{one.hints === 1 ? "" : "s"}
+                    </Badge>
+                  ) : (
+                    <Badge variant="warning">no details</Badge>
+                  )}
+                </div>
+                {one.warnings.length > 0 && (
+                  <ul className="mt-1.5 ml-6 list-disc space-y-0.5 text-[11.5px] text-muted-foreground">
+                    {one.warnings.map((w) => (
+                      <li key={w}>{w}</li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+          <Alert variant="info">
+            <Icon.Info />
+            <AlertTitle>Nothing is live yet</AlertTitle>
+            <AlertDescription>
+              Every package arrived unpublished. Open each problem, run its validation, then publish — an import cannot know whether these
+              tests were built against the checker on this judge.
+            </AlertDescription>
+          </Alert>
         </div>
       ) : (
         <div className="space-y-4">
@@ -143,12 +166,12 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
             file={file}
             onFile={setFile}
             label="Drop a problem zip here, or browse"
-            hint="question.json + package/, or a judge package with problem.json at its root"
+            hint="one problem, a problems/ bundle, or a judge package with problem.json at its root"
           />
           <Field
             label="Problem id"
             hint="optional"
-            help="Taken from the zip when it was exported from this app. Give one for a plain judge package, or to import under a different id."
+            help="Taken from the zip when it was exported from this app, and ignored for a bundle. Give one for a plain judge package."
           >
             <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="e.g. two-sum" className="font-mono sm:w-64" />
           </Field>

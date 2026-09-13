@@ -113,6 +113,35 @@ export async function exportProblem(id: string): Promise<{ filename: string; zip
   return { filename: `${id}.zip`, zip: zipSync(files, { level: 6 }) };
 }
 
+/**
+ * Every problem, as one zip. Each keeps the same shape it has on its own, one
+ * directory down, so a bundle can be unzipped and a single problem handed to
+ * someone without repacking anything.
+ */
+export async function exportAllProblems(): Promise<{ filename: string; zip: Uint8Array }> {
+  const described = await db.select({ id: question.id }).from(question).orderBy(asc(question.auctionOrder), asc(question.id));
+  let onDisk: string[] = [];
+  try {
+    onDisk = (await fs.readdir(ROOT, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch {
+    /* no volume yet */
+  }
+  // A package with no details, and details with no package, are both worth
+  // carrying — they are exactly the half-finished work someone wants to move.
+  const ids = [...new Set([...described.map((q) => q.id), ...onDisk])].filter((id) => ID.test(id));
+  if (ids.length === 0) throw errors.notFound("problems");
+
+  const files: Files = {};
+  for (const id of ids) {
+    const one = unzipSync((await exportProblem(id)).zip);
+    for (const [name, data] of Object.entries(one)) files[`problems/${id}/${name}`] = data;
+  }
+  files["manifest.json"] = strToU8(JSON.stringify({ format: FORMAT, type: "problems", exported_at: new Date().toISOString(), ids }, null, 2) + "\n");
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  return { filename: `codolympics-problems-${stamp}.zip`, zip: zipSync(files, { level: 6 }) };
+}
+
 export type ProblemImport = {
   id: string;
   version: string | null;
@@ -122,6 +151,45 @@ export type ProblemImport = {
 };
 
 const NOISE = /(^|\/)(__MACOSX\/|\.DS_Store$|Thumbs\.db$)/;
+
+/**
+ * A bundle holds `problems/<id>/…`; anything else is a single problem. Split
+ * here rather than teaching the single importer about bundles, so one problem
+ * is imported by exactly the same code either way.
+ */
+export async function importProblems(
+  actorId: string,
+  zip: Uint8Array,
+  input: { id?: string; reason: string },
+): Promise<ProblemImport[]> {
+  let files: Record<string, Uint8Array>;
+  try {
+    files = unzipSync(zip);
+  } catch {
+    throw errors.invalid("that is not a valid zip file");
+  }
+
+  const dirs = [
+    ...new Set(
+      Object.keys(files)
+        .filter((n) => !NOISE.test(n) && n.startsWith("problems/") && n.endsWith("/question.json"))
+        .map((n) => n.slice(0, n.lastIndexOf("/") + 1)),
+    ),
+  ].sort();
+  if (dirs.length === 0) return [await importProblem(actorId, zip, input)];
+
+  const out: ProblemImport[] = [];
+  for (const dir of dirs) {
+    const one: Files = {};
+    for (const [name, data] of Object.entries(files)) {
+      if (name.startsWith(dir) && !NOISE.test(name)) one[name.slice(dir.length)] = data;
+    }
+    // The id in the bundle path wins over anything typed in the dialog: a
+    // bundle is many problems and one typed id cannot name them all.
+    out.push(await importProblem(actorId, zipSync(one, { level: 0 }), { reason: input.reason }));
+  }
+  return out;
+}
 
 /**
  * Import a problem zip: the package becomes a new unpublished version, and the

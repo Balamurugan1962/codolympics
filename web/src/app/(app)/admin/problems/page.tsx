@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { ImportProblemButton, problemExportMenuItem } from "@/components/admin/problem-transfer";
+import { ProblemTransferActions, problemExportMenuItem } from "@/components/admin/problem-transfer";
 import { DifficultyBadge } from "@/components/admin/question-details-form";
 import { Icon } from "@/components/icons";
 import { Badge, StatusDot } from "@/components/ui/badge";
@@ -120,7 +120,7 @@ export default function ProblemsPage() {
         description="Every judge package and what participants see of it. A problem is auctionable once it is validated, described and published."
         actions={
           <>
-            <ImportProblemButton onImported={load} />
+            <ProblemTransferActions onImported={load} />
             <Button asChild>
               <Link href="/admin/problems/new">
                 <Icon.Plus size={14} /> New problem
