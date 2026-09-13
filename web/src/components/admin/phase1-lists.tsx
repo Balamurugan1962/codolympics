@@ -151,7 +151,7 @@ export function PuzzleList() {
                     <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
                     <TableCell>
                       <Link href={`/admin/phase1/puzzles/${r.id}`} className="group block">
-                        <div className="font-semibold group-hover:text-brand-dark">{r.title}</div>
+                        <div className="font-semibold group-hover:text-brand-deep">{r.title}</div>
                         <div className="text-[11.5px] text-faint">{CATEGORY_LABEL[r.category]} · {r.bodyMd.replace(/\s+/g, " ").slice(0, 80)}{r.bodyMd.length > 80 ? "…" : ""}</div>
                       </Link>
                     </TableCell>
@@ -243,7 +243,7 @@ export function HackList() {
                     <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
                     <TableCell>
                       <Link href={`/admin/phase1/hacking/${r.id}`} className="group block">
-                        <div className="font-semibold group-hover:text-brand-dark">{r.title}</div>
+                        <div className="font-semibold group-hover:text-brand-deep">{r.title}</div>
                         <div className="text-[11.5px] text-faint">{r.statementMd.replace(/\s+/g, " ").slice(0, 80)}{r.statementMd.length > 80 ? "…" : ""}</div>
                       </Link>
                     </TableCell>

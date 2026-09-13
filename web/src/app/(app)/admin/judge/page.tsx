@@ -131,7 +131,7 @@ export default function JudgePage() {
               </AlertTitle>
               <AlertDescription>
                 An internal error is the judge's fault, not the competitor's, and it scores nothing. Open them in{" "}
-                <Link href="/admin/submissions" className="font-semibold text-brand-dark hover:underline">
+                <Link href="/admin/submissions" className="font-semibold text-brand-deep hover:underline">
                   Submissions
                 </Link>{" "}
                 and rejudge once the cause is fixed.

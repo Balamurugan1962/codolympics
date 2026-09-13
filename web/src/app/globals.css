@@ -2,6 +2,20 @@
 @import "tw-animate-css";
 
 /*
+ * Never scan build output for class names.
+ *
+ * Tailwind v4 finds its own content, and what it skips by default is whatever
+ * git ignores. That is the right rule and it is one `.gitignore` edit away
+ * from being wrong, so it is stated here too: a build cache scanned as source
+ * yields class names invented from the bytes of a .pack file, and CSS
+ * generated from those can fail to parse — which takes down every page, with
+ * an error pointing at a line of generated CSS that exists in no source file.
+ */
+@source not "../../.next";
+@source not "../../.next-build";
+@source not "../../.next-scratch";
+
+/*
  * Codolympics design system.
  *
  * Two layers of tokens, both pointing at the same HackerRank palette:

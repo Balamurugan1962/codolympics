@@ -34,7 +34,7 @@ export default function Phase1LeaderboardPage() {
               <TableBody>{board.standings.map((s) => (
                 <TableRow key={s.participant_id} data-state={s.participant_id === me ? "selected" : undefined}>
                   <TableCell className="font-semibold text-right tabular-nums">{s.rank ? `#${s.rank}` : "—"}</TableCell>
-                  <TableCell className="font-medium">{s.name}{s.participant_id === me && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-dark">you</span>}</TableCell>
+                  <TableCell className="font-medium">{s.name}{s.participant_id === me && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-deep">you</span>}</TableCell>
                   <TableCell className="font-semibold text-right tabular-nums">{s.points}{s.provisional && <span className="ml-1 text-faint" title="some items not yet graded">*</span>}</TableCell>
                   <TableCell className="hidden text-faint sm:table-cell">{s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</TableCell>
                   <TableCell>{s.advanced === true ? <Badge variant="success">advancing</Badge> : s.advanced === false ? <Badge variant="neutral">not selected</Badge> : null}</TableCell>

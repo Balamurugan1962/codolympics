@@ -112,7 +112,7 @@ export function Phase1Standings({ rows, compact = false }: { rows: P1Row[] | nul
                 <Rank rank={r.disqualified ? 0 : r.rank} />
               </TableCell>
               <TableCell>
-                <Link href={`/admin/participants/${r.participant_id}`} className="font-medium hover:text-brand-dark hover:underline">
+                <Link href={`/admin/participants/${r.participant_id}`} className="font-medium hover:text-brand-deep hover:underline">
                   {r.name}
                 </Link>
                 {r.advanced === true && <Badge variant="success" className="ml-2">advanced</Badge>}
@@ -197,7 +197,7 @@ export function Phase2Standings({ rows, compact = false }: { rows: P2Row[] | nul
                 <Rank rank={r.rank} />
               </TableCell>
               <TableCell>
-                <Link href={`/admin/participants/${r.participant_id}`} className="font-medium hover:text-brand-dark hover:underline">
+                <Link href={`/admin/participants/${r.participant_id}`} className="font-medium hover:text-brand-deep hover:underline">
                   {r.name}
                 </Link>
               </TableCell>
@@ -241,9 +241,15 @@ export function StandingsCard({
   return (
     <Section
       title={phase === "phase1" ? "Phase 1 standings" : "Phase 2 standings"}
-      description={count ? `Top 10 of ${count}. Everyone is listed on the full board.` : undefined}
+      description={
+        count
+          ? count > 10
+            ? `Top 10 of ${count}. Everyone is listed on the full board.`
+            : `All ${count} ${count === 1 ? "competitor" : "competitors"}.`
+          : undefined
+      }
       actions={
-        <Link href={href} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-dark hover:underline">
+        <Link href={href} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-deep hover:underline">
           Full board <Icon.ChevronRight size={13} />
         </Link>
       }

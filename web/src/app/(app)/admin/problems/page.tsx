@@ -228,7 +228,7 @@ export default function ProblemsPage() {
                     <TableCell>
                       <Link href={`/admin/problems/${encodeURIComponent(id)}`} className="group block">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold group-hover:text-brand-dark">
+                          <span className="font-semibold group-hover:text-brand-deep">
                             {q?.title ?? (p?.hack_only ? <span className="font-mono">{id}</span> : <span className="font-normal text-faint">Untitled</span>)}
                           </span>
                           {p?.hack_only && <Badge variant="neutral">Hacking</Badge>}

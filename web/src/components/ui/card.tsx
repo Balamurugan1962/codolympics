@@ -3,18 +3,22 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /*
- * A panel: white, one hairline border, barely any shadow.
+ * A panel: white, one hairline border, no shadow at all.
  *
  * Tuned away from the shadcn defaults on purpose — stock cards are airy
  * (rounded-xl, 24px padding, 24px gaps) and this application is dense. Header
- * and footer carry their own rules so a card reads as one object with bands,
- * the way HackerRank's panels do, instead of floating boxes inside a box.
+ * and footer carry their own rules so a card reads as one object with bands
+ * instead of floating boxes inside a box.
+ *
+ * Flat is deliberate. A shadow says "this is above the page", and on a screen
+ * where twelve panels sit side by side none of them is above anything; the
+ * border already separates them and the shadow is just grey fuzz.
  */
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
-      className={cn("flex flex-col rounded-lg border bg-card text-card-foreground shadow-xs", className)}
+      className={cn("flex flex-col rounded-md border bg-card text-card-foreground", className)}
       {...props}
     />
   );

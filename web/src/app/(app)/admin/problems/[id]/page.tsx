@@ -194,7 +194,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
                 <TableCell className="font-mono text-[12.5px] font-semibold">{v}</TableCell>
                 <TableCell>{v === problem.current ? <StatusDot tone="success">Live</StatusDot> : <StatusDot tone="neutral">Not live</StatusDot>}</TableCell>
                 <TableCell className="hidden text-muted-foreground sm:table-cell">{v === problem.versions.at(-1) ? "latest upload" : ""}</TableCell>
-                <TableCell className="text-right tabular-nums">{v === version ? <span className="text-[12px] font-semibold text-brand-dark">Selected</span> : <Button size="sm" variant="ghost" onClick={() => { setVersion(v); setReport(null); }}>Select</Button>}</TableCell>
+                <TableCell className="text-right tabular-nums">{v === version ? <span className="text-[12px] font-semibold text-brand-deep">Selected</span> : <Button size="sm" variant="ghost" onClick={() => { setVersion(v); setReport(null); }}>Select</Button>}</TableCell>
               </TableRow>
             ))}
           </TableBody>

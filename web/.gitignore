@@ -1,5 +1,11 @@
 node_modules/
 .next/
+# Sibling build directories (NEXT_DIST_DIR, see next.config.ts). These must be
+# ignored, not merely untracked: Tailwind's automatic content detection skips
+# whatever git ignores, and a build cache it does *not* skip gets scanned as
+# source — the binary .pack files then yield garbage class names, and the CSS
+# it generates from them can fail to parse, which 500s every page in the app.
+.next-*/
 out/
 .env
 *.tsbuildinfo
