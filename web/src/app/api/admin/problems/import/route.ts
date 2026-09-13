@@ -1,14 +1,14 @@
 import { errors, json, route } from "@/lib/api";
-import { importProblem } from "@/lib/problem-package";
+import { importProblems } from "@/lib/problem-package";
 import { requireApiViewer } from "@/lib/session";
 
 const MAX_BYTES = 64 * 1024 * 1024;
 
 /**
- * Import a problem zip: package and details in one go. The package lands as a
- * new unpublished version -- a package that goes live without someone here
- * validating it is how a contest finds out on the day that its tests were built
- * against a different checker.
+ * Import one problem or a whole bundle: package and details in one go. Every
+ * package lands as a new unpublished version -- one that goes live without
+ * someone here validating it is how a contest finds out on the day that its
+ * tests were built against a different checker.
  */
 export const POST = route(async (req) => {
   const viewer = await requireApiViewer("admin", "evaluator");
@@ -22,5 +22,5 @@ export const POST = route(async (req) => {
   if (file.size > MAX_BYTES) throw errors.invalid("that zip is larger than 64 MB");
 
   const zip = new Uint8Array(await file.arrayBuffer());
-  return json(await importProblem(viewer.id, zip, { id, reason }));
+  return json({ imported: await importProblems(viewer.id, zip, { id, reason }) });
 });
