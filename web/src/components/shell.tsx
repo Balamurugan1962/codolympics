@@ -170,15 +170,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </Tooltip>
             )}
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  aria-label={CONNECTION[connection].label}
-                  className={cn("size-2 rounded-full", CONNECTION[connection].dot)}
-                />
-              </TooltipTrigger>
-              <TooltipContent>{CONNECTION[connection].hint}</TooltipContent>
-            </Tooltip>
+            {/* Silence is the healthy state: the dot appears only when the
+                stream is not live, so it means something when you see it. */}
+            {connection !== "open" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span aria-label={CONNECTION[connection].label} className={cn("size-2 rounded-full", CONNECTION[connection].dot)} />
+                </TooltipTrigger>
+                <TooltipContent>{CONNECTION[connection].hint}</TooltipContent>
+              </Tooltip>
+            )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -39,7 +39,7 @@ function Clock() {
   );
 }
 
-/** The shape every waiting screen takes: one mark, one line, one explanation. */
+/** The shape the other waiting screens take: one mark, one line, one explanation. */
 function Hold({
   eyebrow,
   title,
@@ -62,63 +62,62 @@ function Hold({
   );
 }
 
-const RULES: [string, string][] = [
-  ["Two sections, then an auction", "Puzzles and hacking decide who goes through. Finalists then bid for the problems they want to solve."],
+/** Six lines, because six is what someone actually reads while waiting. */
+export const RULES: [string, string][] = [
+  ["Two sections, then an auction", "Puzzles and hacking decide who goes through. Finalists bid for the problems they want."],
   ["Same money for everyone", "Every finalist starts the auction with an identical balance. Money is never score."],
-  ["Solving is all-or-nothing", "A solved problem earns its full score. Wrong submissions cost nothing, so submit as often as you like."],
-  ["Hidden tests stay hidden", "You see the samples and the number of the failing test — never its contents, at any price."],
-  ["One seat, one session", "Signing in elsewhere ends this one. Your answers and code are saved on the server as you type."],
-  ["Nothing moves by itself", "Organisers start each section. This screen changes on its own when they do — do not refresh."],
+  ["Solving is all-or-nothing", "A solved problem earns its full score. Wrong submissions cost nothing."],
+  ["Hidden tests stay hidden", "You see the samples and which test failed — never its contents, at any price."],
+  ["One seat, one session", "Signing in elsewhere ends this one. Your work is saved on the server as you type."],
+  ["Nothing moves by itself", "Organisers start each section. This screen changes on its own — do not refresh."],
 ];
 
-/** Registration: they are in, and there is nothing to do until the organisers start. */
+export function RulesGrid({ className }: { className?: string }) {
+  return (
+    <ul className={cn("grid gap-x-6 gap-y-2.5 text-left sm:grid-cols-2", className)}>
+      {RULES.map(([t, b]) => (
+        <li key={t} className="flex gap-2.5">
+          <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-green-tint text-green-dark">
+            <Icon.Check size={10} strokeWidth={3.5} />
+          </span>
+          <div className="min-w-0">
+            <div className="text-[12.5px] leading-snug font-semibold">{t}</div>
+            <div className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">{b}</div>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Registration: they are in, and there is nothing to do until the organisers
+ * start. Sized to one screen — a competitor should never have to scroll to
+ * find out whether anything is being asked of them.
+ */
 export function Waiting() {
   const { state } = useContest();
-  const [rules, setRules] = useState(false);
   const name = state?.viewer.name ?? "";
 
   return (
-    <div className="animate-fade-in">
-      <Hold
-        eyebrow="You are registered"
-        title={`You're in${name ? `, ${name}` : ""}`}
-        body={
-          <>
-            Nothing is required of you yet. When the organisers open Section A this screen becomes the puzzles, by itself — leave it open and
-            do not refresh.
-          </>
-        }
-      >
-        <div className="flex flex-col items-center gap-5">
-          <div className="flex flex-col items-center">
-            <Clock />
-            <span className="mt-2 flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
-              <span className="size-1.5 animate-pulse rounded-full bg-green" />
-              Waiting for the organisers to start
-            </span>
-          </div>
+    <div className="flex h-[calc(100vh-56px)] flex-col items-center justify-center overflow-hidden px-6 py-6 text-center animate-fade-in">
+      <Mark size={36} />
+      <div className="mt-3.5 text-[11px] font-semibold tracking-[0.12em] text-faint uppercase">You are registered</div>
+      <h1 className="mt-1.5 text-[22px] font-semibold tracking-[-0.02em] sm:text-[26px]">{name ? `You're in, ${name}` : "You're in"}</h1>
+      <p className="mt-2 max-w-md text-[13px] leading-relaxed text-muted-foreground">
+        Nothing is required of you yet. When the organisers open Section A this screen becomes the puzzles, by itself — leave it open and do
+        not refresh.
+      </p>
 
-          <Button variant="ghost" size="sm" onClick={() => setRules((v) => !v)}>
-            <Icon.Book size={14} /> {rules ? "Hide the rules" : "Read the rules while you wait"}
-          </Button>
-        </div>
+      <div className="mt-6 flex flex-col items-center">
+        <Clock />
+        <span className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+          <span className="size-1.5 animate-pulse rounded-full bg-green" />
+          Waiting for the organisers to start
+        </span>
+      </div>
 
-        {rules && (
-          <ul className="mt-6 divide-y rounded-lg border bg-card text-left shadow-xs">
-            {RULES.map(([t, b]) => (
-              <li key={t} className="flex gap-3 px-4 py-3">
-                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-green-tint text-green-dark">
-                  <Icon.Check size={12} strokeWidth={3} />
-                </span>
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold">{t}</div>
-                  <div className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">{b}</div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Hold>
+      <RulesGrid className="mt-7 w-full max-w-2xl" />
     </div>
   );
 }
