@@ -24,11 +24,19 @@ export function Mark({ size = 28, className = "" }: { size?: number; className?:
   );
 }
 
-export function Logo({ inverse = true, size = 28 }: { inverse?: boolean; size?: number }) {
+/**
+ * The mark and the wordmark together — that pair is the logo, and the tile on
+ * its own is only ever a favicon or an avatar. The wordmark scales with the
+ * mark so the lockup holds at any size.
+ */
+export function Logo({ inverse = true, size = 28, className = "" }: { inverse?: boolean; size?: number; className?: string }) {
   return (
-    <span className="inline-flex items-center gap-2.5">
+    <span className={`inline-flex items-center ${className}`} style={{ gap: size * 0.3 }}>
       <Mark size={size} />
-      <span className={`text-[17px] font-bold tracking-[-0.02em] ${inverse ? "text-white" : "text-ink"}`}>
+      <span
+        className={`font-bold tracking-[-0.02em] ${inverse ? "text-white" : "text-ink"}`}
+        style={{ fontSize: Math.round(size * 0.62) }}
+      >
         Cod<span className={inverse ? "text-brand-bright" : "text-brand"}>olympics</span>
       </span>
     </span>
