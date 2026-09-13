@@ -188,7 +188,7 @@ export default function NewProblemPage() {
 
         {key === "review" && inspection && (
           <>
-            {allIssues.length > 0 && <Alert variant="destructive"><AlertTitle>"Not ready to create"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{allIssues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
+            {allIssues.length > 0 && <Alert variant="destructive"><AlertTitle>Not ready to create</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{allIssues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
             <Section title="Summary" description={hackOnly ? "A hacking problem: the judge holds the reference solution and validator; the question itself is written under Phase 1." : "Everything below is what will be created."}>
               <Summary cols={4}>
                 <SummaryItem label="Id" mono>{id.trim()}</SummaryItem>
@@ -247,15 +247,15 @@ function nextVersion(p: P): string {
 }
 
 function IssueList({ issues }: { issues: string[] }) {
-  return <Alert variant="destructive"><AlertTitle>"Fix these before continuing"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>;
+  return <Alert variant="destructive"><AlertTitle>Fix these before continuing</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>;
 }
 
 function Inspection({ r }: { r: PackageInspection }) {
   const pj = r.problem;
   return (
     <div className="mt-4 space-y-4">
-      {r.issues.length > 0 && <Alert variant="destructive"><AlertTitle>"The judge would reject this package"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{r.issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
-      {r.warnings.length > 0 && <Alert variant="warning"><AlertTitle>"Worth a look"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{r.warnings.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
+      {r.issues.length > 0 && <Alert variant="destructive"><AlertTitle>The judge would reject this package</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{r.issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
+      {r.warnings.length > 0 && <Alert variant="warning"><AlertTitle>Worth a look</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{r.warnings.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="rounded-box border border-line">
           <div className="border-b border-line bg-page/60 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">What is in it</div>

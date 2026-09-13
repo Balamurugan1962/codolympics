@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { Skeleton } from "./skeleton";
+
 /**
  * A single number with a label and, where it helps, one line saying what it
  * means right now. A statistic without that line is trivia.
@@ -49,4 +51,15 @@ export function StatRow({ children, cols = 4, className }: { children: ReactNode
     5: "sm:grid-cols-2 lg:grid-cols-5",
   };
   return <div className={cn("grid grid-cols-2 gap-3", map[cols], className)}>{children}</div>;
+}
+
+/** A Stat that has not arrived yet. Same box, same height, so nothing moves when it does. */
+export function StatSkeleton() {
+  return (
+    <div className="rounded-lg border bg-card px-4 py-3.5 shadow-xs" aria-hidden>
+      <Skeleton className="h-3 w-20" />
+      <Skeleton className="mt-3 h-6 w-16" />
+      <Skeleton className="mt-2.5 h-2.5 w-28" />
+    </div>
+  );
 }

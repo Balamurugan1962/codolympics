@@ -31,7 +31,7 @@ export default function LeaderboardPage() {
         <EmptyState icon={<Icon.Eye size={20} />} title="Standings are hidden" body="The organisers have chosen not to show the leaderboard during this contest." />
       ) : (
         <div className="space-y-3">
-          {board.mode === "frozen" && <Alert variant="warning"><AlertTitle>"Leaderboard frozen"</AlertTitle><AlertDescription>Shown as of {board.frozen_at ? new Date(board.frozen_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "the freeze"}. Results after that are not reflected until it is unfrozen.</AlertDescription></Alert>}
+          {board.mode === "frozen" && <Alert variant="warning"><AlertTitle>Leaderboard frozen</AlertTitle><AlertDescription>Shown as of {board.frozen_at ? new Date(board.frozen_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "the freeze"}. Results after that are not reflected until it is unfrozen.</AlertDescription></Alert>}
           {mine && (
             <div className="flex items-center gap-4 rounded-box border border-green/40 bg-green-tint px-4 py-3 text-[13px]">
               <Icon.Trophy size={18} className="text-green-dark" />

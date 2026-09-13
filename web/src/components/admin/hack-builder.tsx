@@ -159,7 +159,7 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
         <>
           <Section title="The judge problem" description="A hacking package on the judge: limits, validator.py and the stored reference solution. Upload it under Problems with hack_only set in problem.json.">
             {problems && hackProblems.length === 0 && (
-              <Alert variant="warning"><AlertTitle>"No hacking packages on the judge"</AlertTitle><AlertDescription>
+              <Alert variant="warning"><AlertTitle>No hacking packages on the judge</AlertTitle><AlertDescription>
                 Create one first: <Link href="/admin/problems/new" className="font-semibold text-green-dark hover:underline">New problem</Link> with <code className="rounded bg-page px-1 text-[11.5px]">&quot;hack_only&quot;: true</code> and a <code className="rounded bg-page px-1 text-[11.5px]">reference</code> in problem.json.
               </AlertDescription></Alert>
             )}
@@ -266,7 +266,7 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
 
 function StepIssues({ issues }: { issues: string[] }) {
   if (issues.length === 0) return null;
-  return <Alert variant="warning"><AlertTitle>"Before this step is complete"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>;
+  return <Alert variant="warning"><AlertTitle>Before this step is complete</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>;
 }
 
 function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChanged?: () => Promise<void> }) {
@@ -284,7 +284,7 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
 
   return (
     <>
-      {dirty && <Alert variant="warning"><AlertTitle>"Unsaved changes"</AlertTitle><AlertDescription>The proof runs against the saved version. Save first (the footer).</AlertDescription></Alert>}
+      {dirty && <Alert variant="warning"><AlertTitle>Unsaved changes</AlertTitle><AlertDescription>The proof runs against the saved version. Save first (the footer).</AlertDescription></Alert>}
       <Section title="Where it stands">
         <Checklist items={[
           { ok: true, label: "Saved", detail: `Question #${hack.id} · judge problem ${hack.problemId}` },
@@ -319,7 +319,7 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
         <div className="flex flex-wrap items-center gap-2">
           {hack.published
             ? <ReasonAction label="Unpublish" title="Unpublish this question?" description="It disappears from Section B. Judged attempts are kept." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/unpublish`, { reason }); toast({ title: "Unpublished", tone: "success" }); await onChanged?.(); }} />
-            : <ReasonAction label="Publish" variant="default" size="default" disabled={!hack.ready || hack.voided} title="Publish this question?" description="Participants see it when Section B is open. A breaking input is proven." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await onChanged?.(); }} />}
+            : <ReasonAction label="Publish" variant="default" size="default" disabled={!hack.ready || hack.voided} title="Publish this question?" defaultReason="Verified and ready for Section B." description="Participants see it when Section B is open. A breaking input is proven." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await onChanged?.(); }} />}
           {!hack.ready && !hack.published && <span className="text-[12px] text-muted-foreground">Publishing unlocks once a breaking input is proven.</span>}
           <span className="flex-1" />
           {!hack.voided && <ReasonAction label="Void" variant="destructive" title="Void this question?" description="It scores for nobody and every total is recomputed. This cannot be undone." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await onChanged?.(); }} />}

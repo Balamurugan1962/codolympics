@@ -468,7 +468,7 @@ function describeKey(f: Form): string {
 
 function StepIssues({ issues }: { issues: string[] }) {
   if (issues.length === 0) return null;
-  return <Alert variant="warning"><AlertTitle>"Before this step is complete"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>;
+  return <Alert variant="warning"><AlertTitle>Before this step is complete</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>;
 }
 
 function PreviewCard({ view }: { view: PuzzleView }) {
@@ -507,7 +507,7 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
 
   return (
     <>
-      {dirty && <Alert variant="warning"><AlertTitle>"Unsaved changes"</AlertTitle><AlertDescription>The self-test runs against the saved version. Save first (the footer) so the test proves what participants will get.</AlertDescription></Alert>}
+      {dirty && <Alert variant="warning"><AlertTitle>Unsaved changes</AlertTitle><AlertDescription>The self-test runs against the saved version. Save first (the footer) so the test proves what participants will get.</AlertDescription></Alert>}
       <Section title="Where it stands">
         <Checklist items={[
           { ok: true, label: "Saved", detail: `Puzzle #${puzzle.id}` },
@@ -560,7 +560,7 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
         <div className="flex flex-wrap items-center gap-2">
           {puzzle.published
             ? <ReasonAction label="Unpublish" title="Unpublish this puzzle?" description="It disappears from Section A. Saved answers are kept." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/unpublish`, { reason }); toast({ title: "Unpublished", tone: "success" }); await onChanged?.(); }} />
-            : <ReasonAction label="Publish" variant="default" size="default" disabled={!puzzle.ready || puzzle.voided} title="Publish this puzzle?" description="Participants see it when Section A is open. It has passed its self-test." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await onChanged?.(); }} />}
+            : <ReasonAction label="Publish" variant="default" size="default" disabled={!puzzle.ready || puzzle.voided} title="Publish this puzzle?" defaultReason="Self-test passes; ready for Section A." description="Participants see it when Section A is open. It has passed its self-test." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await onChanged?.(); }} />}
           {!puzzle.ready && !puzzle.published && <span className="text-[12px] text-muted-foreground">Publishing unlocks when the self-test passes.</span>}
           <span className="flex-1" />
           {!puzzle.voided && <ReasonAction label="Void" variant="destructive" title="Void this puzzle?" description="It scores for nobody and every total is recomputed. This cannot be undone." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await onChanged?.(); }} />}

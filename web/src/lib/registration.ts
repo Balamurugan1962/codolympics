@@ -74,6 +74,53 @@ export async function registerParticipant(input: {
   return created.id;
 }
 
+/**
+ * An administrator adding a participant by hand: someone whose machine would
+ * not load the page, someone who arrived late, someone whose account had to be
+ * removed and rebuilt.
+ *
+ * Unlike self-registration this ignores the registration gate — that gate
+ * exists to stop competitors adding themselves once the contest has started,
+ * not to stop an organiser fixing it. The balance still comes from the same
+ * setting as everyone else's, so a late arrival is not advantaged, and the
+ * reason goes into the audit log in the same transaction.
+ */
+export async function createParticipant(
+  actorId: string,
+  input: { username: string; password: string; preferredLanguage?: string | null; reason: string },
+): Promise<string> {
+  const c = await getContest();
+  const created = await createUser(input.username, input.password, {
+    preferredLanguage: input.preferredLanguage ?? null,
+  });
+
+  await db.transaction(async (tx) => {
+    await tx.update(user).set({ role: "participant" }).where(eq(user.id, created.id));
+    await tx.insert(participant).values({
+      userId: created.id,
+      balance: c.startingBalance,
+      preferredLanguage: input.preferredLanguage ?? null,
+    });
+    await tx.insert(ledger).values({
+      participantId: created.id,
+      delta: c.startingBalance,
+      balanceAfter: c.startingBalance,
+      reason: "starting_balance",
+    });
+    await audit(
+      {
+        actorId,
+        action: "participant.create",
+        target: created.id,
+        reason: input.reason,
+        detail: { username: input.username, balance: c.startingBalance, phase: c.phase },
+      },
+      tx,
+    );
+  });
+  return created.id;
+}
+
 /** An administrator creating an evaluator or another administrator. */
 export async function createStaff(
   actorId: string,

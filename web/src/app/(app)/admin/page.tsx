@@ -15,8 +15,10 @@ import { PHASE_LABEL, PHASE_STEPS } from "@/components/shell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { Stat, StatRow } from "@/components/ui/stat";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Stat, StatRow, StatSkeleton } from "@/components/ui/stat";
 import { Stepper } from "@/components/ui/stepper";
 import { Summary, SummaryItem } from "@/components/ui/summary";
 import { useToast } from "@/components/ui/toast";
@@ -36,6 +38,8 @@ export default function AdminDashboard() {
   const [checks, setChecks] = useState<Checks | null>(null);
   const [ready, setReady] = useState<Readiness | null>(null);
 
+  const [loaded, setLoaded] = useState(false);
+
   const load = useCallback(async () => {
     const [h, c, r] = await Promise.all([
       api.get<Health>("/api/admin/health"),
@@ -45,6 +49,7 @@ export default function AdminDashboard() {
     setHealth(h);
     setChecks(c);
     setReady(r);
+    setLoaded(true);
   }, []);
   const bump = lastEvent?.name === "phase" ? lastEvent.at : 0;
   useEffect(() => {
@@ -71,6 +76,9 @@ export default function AdminDashboard() {
         }
       />
 
+      {!loaded ? (
+        <DashboardSkeleton />
+      ) : (
       <div className="space-y-5">
         {judgeDown && health && (
           <Alert variant="destructive">
@@ -164,6 +172,7 @@ export default function AdminDashboard() {
                   <ReasonAction
                     label={`Advance to ${PHASE_LABEL[checks.next]}`}
                     title={`Advance to ${PHASE_LABEL[checks.next]}?`}
+                    defaultReason={`${PHASE_LABEL[c.phase]} is finished; moving the contest on to ${PHASE_LABEL[checks.next]}.`}
                     variant="default"
                     size="default"
                     icon={<Icon.ArrowRight size={15} />}
@@ -186,6 +195,7 @@ export default function AdminDashboard() {
                     <ReasonAction
                       label="Extend round"
                       title="Extend the current round"
+                      defaultReason={`Giving everyone more time in ${PHASE_LABEL[c.phase]}.`}
                       icon={<Icon.Timer size={14} />}
                       fields={[{ name: "minutes", label: "Minutes to add", type: "number", defaultValue: "10" }]}
                       onConfirm={async (reason, v) => {
@@ -199,6 +209,7 @@ export default function AdminDashboard() {
                     <ReasonAction
                       label={c.registration_open ? "Close registration" : "Reopen registration"}
                       title={c.registration_open ? "Close registration?" : "Reopen registration?"}
+                      defaultReason={c.registration_open ? "The roster is final; closing registration before Phase 1." : "Someone still needs to register; reopening."}
                       icon={c.registration_open ? <Icon.Lock size={14} /> : <Icon.Unlock size={14} />}
                       description="The roster must be final before Phase 1, because everyone starts with the same money."
                       onConfirm={async (reason) => {
@@ -218,7 +229,35 @@ export default function AdminDashboard() {
 
         <ReadinessLink ready={ready} />
       </div>
+      )}
     </PageBody>
+  );
+}
+
+/** The dashboard's own shape, greyed out. Nothing claims a value it does not have yet. */
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-5" aria-busy>
+      <StatRow cols={4}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <StatSkeleton key={i} />
+        ))}
+      </StatRow>
+      <Card className="overflow-hidden">
+        <CardHeader>
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="mt-1 h-3 w-72" />
+        </CardHeader>
+        <div className="border-b bg-muted/30 px-5 py-3.5">
+          <Skeleton className="h-4 w-full max-w-2xl" />
+        </div>
+        <div className="flex gap-2 px-5 py-4">
+          <Skeleton className="h-9 w-44" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+      </Card>
+      <Skeleton className="h-16 w-full rounded-lg" />
+    </div>
   );
 }
 
@@ -269,6 +308,7 @@ function LiveAuction() {
           <ReasonAction
             label="Close bidding"
             title="Close bidding on the open lot"
+            defaultReason={lot ? `Closing bidding on ${lot.title} by hand.` : "Closing bidding by hand."}
             disabled={!lot}
             icon={<Icon.Gavel size={14} />}
             description="The highest bidder wins it immediately. If there are no bids it goes unsold."
@@ -280,6 +320,7 @@ function LiveAuction() {
           <ReasonAction
             label="Disable timer"
             title="Disable the countdown on this lot"
+            defaultReason={lot ? `Running ${lot.title} to a manual close.` : "Running this lot to a manual close."}
             disabled={!lot}
             icon={<Icon.Pause size={14} />}
             description="Bidding then stays open until you close it by hand."

@@ -255,6 +255,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
           <ReasonAction
             label={problem.current === version ? `${version} is live` : `Publish ${version}`} variant="default" size="default" disabled={!version || problem.current === version}
             title={`Publish ${version}?`}
+            defaultReason={problem.current ? `Replacing ${problem.current} with ${version}.` : `Making ${version} the live package.`}
             description={blast > 0
               ? <span>This rejudges <strong>{blast}</strong> submission{blast === 1 ? "" : "s"} already made on this question. Verdicts may change; you will be asked what to do with the outcome.</span>
               : "No submissions exist for this question yet, so nothing is rejudged."}
@@ -277,6 +278,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
             <div className="flex flex-wrap gap-2">
               {(["stand", "refund", "void"] as const).map((o) => (
                 <ReasonAction key={o} label={o === "stand" ? "Let verdicts stand" : o === "refund" ? "Refund the owner" : "Void the question"} variant={o === "void" ? "destructive" : "outline"}
+                  defaultReason={o === "stand" ? "The rejudge changed nothing material; the new verdicts stand." : o === "refund" ? "The rejudge disadvantaged the owner; refunding what they paid." : "The package was wrong; this question scores for nobody."}
                   title={o === "stand" ? "Let the new verdicts stand?" : o === "refund" ? "Refund the owner?" : "Void this question?"}
                   description={o === "stand" ? "The rejudged verdicts count as they are." : o === "refund" ? "The owner keeps the question and gets the price back." : "Scores for nobody; the owner is refunded the price and every hint bought."}
                   onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/rejudge-outcome`, { reason, outcome: o }); toast({ title: "Recorded", tone: "success" }); onChange(); }} />
@@ -310,7 +312,7 @@ function Details({ id, question, testcases, onChange }: { id: string; question: 
 
   return (
     <div className={`space-y-4 ${dirty ? "pb-20" : ""}`}>
-      {!question && <Alert variant="info"><AlertTitle>"No details yet"</AlertTitle><AlertDescription>Participants would see nothing for this problem. Fill these in and save.</AlertDescription></Alert>}
+      {!question && <Alert variant="info"><AlertTitle>No details yet</AlertTitle><AlertDescription>Participants would see nothing for this problem. Fill these in and save.</AlertDescription></Alert>}
       <Section title="Question" description="What participants see when they win it. The judge never reads any of this.">
         <QuestionBasicsFields d={d} onChange={setD} testcases={testcases} />
       </Section>
@@ -320,6 +322,7 @@ function Details({ id, question, testcases, onChange }: { id: string; question: 
       {question && question.status !== "void" && (
         <Section title="Void" description="Removes the question from play. It scores for nobody; the owner is refunded the price and every hint bought for it.">
           <ReasonAction label="Void this question" variant="destructive" title={`Void ${id}?`} description="This cannot be undone."
+            defaultReason={`${id} is unusable as set; removing it from play.`}
             onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/void`, { reason }); toast({ title: "Question voided", tone: "success" }); onChange(); }} />
         </Section>
       )}
