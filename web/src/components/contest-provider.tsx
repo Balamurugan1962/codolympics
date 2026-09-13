@@ -96,7 +96,15 @@ export function ContestProvider({ initial, children }: { initial: ContestState; 
       if (name === "auction") setState((s) => (s ? { ...s, auction: data } : s));
       else if (name === "phase") setState((s) => (s ? { ...s, contest: data } : s));
       else if (name === "balance" && typeof data.balance === "number") setState((s) => (s?.me ? { ...s, me: { ...s.me, balance: data.balance } } : s));
-      else if (["balance", "notify", "announce", "verdict", "hack"].includes(name)) void refresh();
+      else if (name === "verdict") {
+        // A running judgement emits a progress tick roughly once a second.
+        // Re-reading the whole contest for each one is most of a round's
+        // traffic and changes nothing on screen — the workspace polls the one
+        // submission it is watching. Only a finished judgement moves anything
+        // else: the score, the cooldown, the leaderboard.
+        const d = data as { state?: string; cancelled?: boolean; rejudge?: boolean };
+        if (d.state === "done" || d.cancelled || d.rejudge) void refresh();
+      } else if (["balance", "notify", "announce", "hack"].includes(name)) void refresh();
     };
     for (const name of ["hello", "ping", "phase", "auction", "balance", "verdict", "hack", "announce", "notify", "leaderboard"]) {
       es.addEventListener(name, on(name));

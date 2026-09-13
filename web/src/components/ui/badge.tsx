@@ -91,6 +91,12 @@ const VERDICTS: Record<string, { label: string; variant: "success" | "destructiv
   IE: { label: "Judge error", variant: "neutral" },
 };
 
+/** The same words the badge uses, for anywhere a badge will not fit. */
+function verdictLabel(verdict: string | null | undefined): string {
+  if (!verdict) return "Pending";
+  return VERDICTS[verdict]?.label ?? verdict;
+}
+
 function VerdictBadge({ verdict, className }: { verdict: string | null | undefined; className?: string }) {
   if (!verdict) return <Badge variant="neutral" className={className}>Pending</Badge>;
   const v = VERDICTS[verdict];
@@ -101,4 +107,4 @@ function VerdictBadge({ verdict, className }: { verdict: string | null | undefin
   );
 }
 
-export { Badge, badgeVariants, StatusDot, VerdictBadge };
+export { Badge, badgeVariants, StatusDot, VerdictBadge, verdictLabel };
