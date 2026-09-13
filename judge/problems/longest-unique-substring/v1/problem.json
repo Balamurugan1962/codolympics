@@ -1,0 +1,10 @@
+{
+  "id": "longest-unique-substring",
+  "time_limit_ms": 3000,
+  "memory_limit_mb": 256,
+  "compare": "tokens",
+  "reference": {
+    "language": "python",
+    "file": "solution.py"
+  }
+}

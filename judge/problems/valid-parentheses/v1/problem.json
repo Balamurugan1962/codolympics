@@ -1,0 +1,10 @@
+{
+  "id": "valid-parentheses",
+  "time_limit_ms": 2000,
+  "memory_limit_mb": 256,
+  "compare": "tokens",
+  "reference": {
+    "language": "python",
+    "file": "solution.py"
+  }
+}
