@@ -10,13 +10,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useContest } from "@/components/contest-provider";
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
+import { LocalTime, plainText } from "@/components/local-time";
 import { ReasonAction } from "@/components/reason-action";
 import { PHASE_LABEL, PHASE_STEPS } from "@/components/shell";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/input";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { useToast } from "@/components/ui/toast";
@@ -202,34 +202,22 @@ function LiveAuction() {
 }
 
 function Announce({ className = "" }: { className?: string }) {
-  const { toast } = useToast();
   const { state } = useContest();
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
   const recent = state?.announcements ?? [];
-
-  async function send() {
-    setBusy(true);
-    try { await api.post("/api/admin/announcements", { body_md: text }); setText(""); toast({ title: "Announced to everyone", tone: "success" }); }
-    catch (err) { toast({ title: "Not sent", description: errorMessage(err), tone: "error" }); } finally { setBusy(false); }
-  }
-
   return (
-    <Section className={className} title="Announcements" description="Appears on every screen at once and stays readable for the rest of the contest." padded={false}>
-      <div className="flex gap-2 border-b border-line p-4">
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Markdown is fine" onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) void send(); }} />
-        <Button loading={busy} disabled={!text.trim()} icon={<Icon.Send size={14} />} onClick={send}>Send</Button>
-      </div>
+    <Section className={className} title="Announcements" description="Appear on every screen at once and stay readable for the rest of the contest." padded={false}
+      actions={<Link href="/admin/announcements"><Button size="sm" icon={<Icon.Send size={14} />}>New announcement</Button></Link>}>
       {recent.length === 0 ? (
-        <EmptyState compact icon={<Icon.Bell size={18} />} title="Nothing announced yet" />
+        <EmptyState compact icon={<Icon.Bell size={18} />} title="Nothing announced yet" body="Announce the selection basis before Phase 1 and the leaderboard mode before the first auction." />
       ) : (
         <ul className="divide-y divide-line">
           {recent.slice(0, 5).map((a) => (
             <li key={a.id} className="px-4 py-2.5">
-              <div className="text-[11px] text-faint">{new Date(a.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
-              <div className="mt-0.5 line-clamp-2 text-[12.5px] leading-relaxed">{a.bodyMd}</div>
+              <div className="text-[11px] text-faint"><LocalTime iso={a.createdAt} /></div>
+              <div className="mt-0.5 line-clamp-2 text-[12.5px] leading-relaxed">{plainText(a.bodyMd)}</div>
             </li>
           ))}
+          <li className="px-4 py-2 text-right"><Link href="/admin/announcements" className="text-[12px] font-semibold text-green-dark hover:underline">All announcements</Link></li>
         </ul>
       )}
     </Section>

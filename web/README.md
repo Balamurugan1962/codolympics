@@ -76,7 +76,8 @@ src/
   app/api/               route handlers: check, call the engine, respond
   app/(app)/             signed-in pages; layout loads state and opens SSE
   app/(auth)/            sign-in and registration
-  components/            shell (participants and evaluators), admin/ (the
+  components/            shell (participants and evaluators), local-time (a
+                         timestamp the server must not format), admin/ (the
                          console sidebar, the problem, puzzle and hacking
                          builders), phase1/ and problems/ (question views
                          shared by participants and admin previews),
@@ -103,11 +104,25 @@ an offset measured on every SSE event.
 `jury_detail`, an answer key, a validator, a model answer or a hack verdict.
 
 **Every administrator mutation requires a reason** and writes the audit log in
-the same transaction as the change.
+the same transaction as the change. That includes the two irreversible ones in
+Settings → Danger zone: *Reset the contest* removes every participant and
+everything they did and returns to registration, keeping problems, Phase 1
+questions and settings; *Wipe everything* also deletes every package on the
+judge, every question and the settings. Both need their phrase typed, and the
+server checks it again. The audit log itself is never truncated.
+
+**Announcements have their own page** (`/admin/announcements`): Markdown with a
+preview, a Send button, and the history. They reach every signed-in screen at
+once over SSE and stay on every participant's home page.
 
 **Money is only ever moved in `auction.ts`, `hints.ts` and `admin.ts`**, always
 under `FOR UPDATE`, always with a ledger row. The lock order is lot → participant
 and nothing else ever locks in a different order.
+
+**A timestamp from server-rendered state goes through `<LocalTime>`.** The
+server is UTC and the hall is not, so formatting one during render makes the
+markup disagree with the browser and React discards it. Data fetched in the
+browser has no such problem and formats inline.
 
 **Monaco is bundled**, not loaded from a CDN. Fonts are the system stack. The
 page loads nothing from outside the contest server.

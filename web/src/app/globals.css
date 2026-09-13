@@ -62,6 +62,11 @@
 .prose-statement table { border-collapse: collapse; margin: .75em 0; }
 .prose-statement th, .prose-statement td { border: 1px solid var(--color-line); padding: .35em .6em; }
 .prose-statement ul, .prose-statement ol { padding-left: 1.4em; margin: .5em 0; }
+.prose-statement ul { list-style: disc; }
+.prose-statement ol { list-style: decimal; }
+.prose-statement li { margin: .2em 0; }
+.prose-statement li::marker { color: var(--color-faint); }
+.prose-statement blockquote { border-left: 3px solid var(--color-line-2); padding-left: .8em; margin: .6em 0; color: var(--color-muted); }
 .prose-statement strong { font-weight: 600; }
 
 /* --- motion, focus, scroll -------------------------------------------- */

@@ -5,13 +5,17 @@
  * explains why it matters. A save bar appears only when something changed and
  * asks for the reason that goes into the audit log.
  */
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { useContest } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
+import { PHASE_LABEL } from "@/components/shell";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { SettingRow } from "@/components/ui/form";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
@@ -92,6 +96,8 @@ export default function SettingsPage() {
           <SettingRow label="Coding Round 1" description="The main solving round after the first auction.">{numberField("coding1Minutes", "minutes")}</SettingRow>
           <SettingRow label="Final round" description="The last solving round. The contest ends when it closes.">{numberField("finalMinutes", "minutes")}</SettingRow>
         </Section>
+
+        <DangerZone onReset={async () => { const fresh = await api.get<C>("/api/admin/contest"); setC(fresh); setOrig(fresh); }} />
       </div>
 
       {dirty && (
@@ -107,5 +113,135 @@ export default function SettingsPage() {
         </div>
       )}
     </PageBody>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+type Scope = "run" | "everything";
+
+const SCOPES: Record<Scope, { title: string; button: string; phrase: string; body: string; keeps: string[]; removes: string[] }> = {
+  run: {
+    title: "Reset the contest",
+    button: "Reset the contest",
+    phrase: "reset the contest",
+    body: "Returns to registration with nobody signed up, as if the day had not started. Use it after a rehearsal, or to run the contest a second time with the same problems.",
+    keeps: ["Problems, packages and hints", "Phase 1 puzzles and hacking questions", "Every setting on this page", "Administrator and evaluator accounts", "The audit log"],
+    removes: ["Every participant account and session", "Every answer, hack attempt and submission", "Every bid, lot and ownership", "Every balance, purchase and ledger entry", "Announcements and notifications"],
+  },
+  everything: {
+    title: "Wipe everything",
+    button: "Wipe everything",
+    phrase: "wipe everything",
+    body: "Everything above, and the content too: every problem package is deleted from the judge, every question and Phase 1 question is removed, and the settings return to their defaults. What is left is an empty installation.",
+    keeps: ["Administrator and evaluator accounts", "The audit log"],
+    removes: ["Everything a reset removes", "Every problem package on the judge", "Every auction question and hint", "Every Phase 1 puzzle and hacking question", "Your settings — back to the defaults"],
+  },
+};
+
+/**
+ * The bottom of the page, where the irreversible things live. Each one says
+ * what it keeps and what it removes, and asks for the phrase to be typed —
+ * the same phrase the server checks.
+ */
+function DangerZone({ onReset }: { onReset: () => Promise<void> }) {
+  const { state } = useContest();
+  const [open, setOpen] = useState<Scope | null>(null);
+  const phase = state?.contest.phase ?? "registration";
+  const running = phase !== "registration" && phase !== "ended";
+
+  return (
+    <>
+      <section className="overflow-hidden rounded-box border border-red/40">
+        <div className="border-b border-red/30 bg-red-tint px-5 py-3.5">
+          <h2 className="flex items-center gap-2 text-[14px] font-semibold text-red"><Icon.Alert size={15} /> Danger zone</h2>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-muted">Irreversible, and there is no backup taken for you. Export the results from the audit log first if this contest counted for anything.</p>
+        </div>
+        <div className="bg-card">
+          {(Object.keys(SCOPES) as Scope[]).map((scope) => {
+            const s = SCOPES[scope];
+            return (
+              <div key={scope} className="flex flex-col gap-3 border-b border-line px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-[13px] font-semibold">{s.title}</div>
+                  <p className="mt-0.5 max-w-xl text-[12px] leading-relaxed text-muted">{s.body}</p>
+                </div>
+                <Button variant="danger" className="shrink-0 sm:ml-4" onClick={() => setOpen(scope)}>{s.button}</Button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {running && (
+        <p className="flex items-start gap-2 px-1 text-[12px] leading-relaxed text-muted">
+          <Icon.Alert size={14} className="mt-0.5 shrink-0 text-amber" />
+          The contest is in <strong className="font-semibold text-ink">{PHASE_LABEL[phase] ?? phase}</strong> right now. Both of these end it for everyone who is signed in.
+        </p>
+      )}
+
+      {open && <ResetDialog scope={open} running={running} onClose={() => setOpen(null)} onDone={onReset} />}
+    </>
+  );
+}
+
+function ResetDialog({ scope, running, onClose, onDone }: { scope: Scope; running: boolean; onClose: () => void; onDone: () => Promise<void> }) {
+  const { toast } = useToast();
+  const { refresh } = useContest();
+  const router = useRouter();
+  const s = SCOPES[scope];
+  const [confirm, setConfirm] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const ready = confirm.trim().toLowerCase() === s.phrase && reason.trim().length >= 3;
+
+  async function run() {
+    setBusy(true); setError(null);
+    try {
+      const r = await api.post<{ participants: number; packages: number }>("/api/admin/contest/reset", { scope, reason: reason.trim(), confirm: confirm.trim() });
+      toast({
+        title: scope === "everything" ? "Everything wiped" : "Contest reset",
+        description: `${r.participants} participant account${r.participants === 1 ? "" : "s"} removed${r.packages ? `, ${r.packages} package${r.packages === 1 ? "" : "s"} deleted` : ""}. Back to registration.`,
+        tone: "success", duration: 8000,
+      });
+      onClose();
+      await onDone(); await refresh(); router.refresh();
+    } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog open onClose={onClose} title={`${s.title}?`}>
+      <p className="text-[13px] leading-relaxed text-muted">{s.body}</p>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-box border border-red/30 bg-red-tint/50 p-3">
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-red">Removed for good</div>
+          <ul className="space-y-1 text-[12px] leading-snug">{s.removes.map((x) => <li key={x} className="flex gap-1.5"><Icon.X size={12} className="mt-0.5 shrink-0 text-red" />{x}</li>)}</ul>
+        </div>
+        <div className="rounded-box border border-line bg-page p-3">
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Kept</div>
+          <ul className="space-y-1 text-[12px] leading-snug">{s.keeps.map((x) => <li key={x} className="flex gap-1.5"><Icon.Check size={12} className="mt-0.5 shrink-0 text-green" />{x}</li>)}</ul>
+        </div>
+      </div>
+
+      {running && <div className="mt-4"><Alert tone="warning">The contest is running. Everyone signed in is thrown out and the phase goes back to registration.</Alert></div>}
+
+      <div className="mt-4 space-y-3">
+        <Field label={<>Type <span className="font-mono font-semibold text-ink">{s.phrase}</span> to confirm</>}>
+          <Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={s.phrase} autoFocus autoComplete="off" spellCheck={false} />
+        </Field>
+        <Field label="Reason" help="Recorded in the audit log, which survives the reset.">
+          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. rehearsal finished, starting the real contest" />
+        </Field>
+      </div>
+
+      {error && <div className="mt-3"><Alert tone="error">{error}</Alert></div>}
+
+      <div className="mt-5 flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
+        <Button variant="danger" onClick={run} loading={busy} disabled={!ready}>{s.button}</Button>
+      </div>
+    </Dialog>
   );
 }

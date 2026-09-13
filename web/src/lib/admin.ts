@@ -3,13 +3,14 @@
  * function here takes a reason and writes the audit log inside the same
  * transaction as the change. Affected participants are notified.
  */
-import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, getTableName, inArray, isNull, sql } from "drizzle-orm";
+import type { PgTable } from "drizzle-orm/pg-core";
 
 import { db } from "@/db";
 import { user } from "@/db/auth-schema";
 import {
-  announcement, auditLog, contest, hintPurchase, judgement, ledger, notification, ownership,
-  p1Answer, p1HackQuestion, p1Question, participant, question, submission,
+  announcement, auditLog, bid, contest, draft, hint, hintPurchase, judgement, ledger, lot, notification, ownership,
+  p1Advancement, p1Answer, p1HackAttempt, p1HackQuestion, p1Question, participant, question, submission,
 } from "@/db/schema";
 
 import { errors } from "./api";
@@ -18,6 +19,7 @@ import { auth } from "./auth";
 import { getContest, phaseSnapshot } from "./contest";
 import { publish } from "./events";
 import { judge } from "./judge";
+import { deleteAllPackages } from "./problems";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -56,6 +58,56 @@ export async function updateContest(actorId: string, patch: ContestPatch, reason
   });
   publish("phase", phaseSnapshot(await getContest()));
   if (patch.leaderboardMode) publish("leaderboard", {});
+}
+
+// ---------------------------------------------------------------------------
+// The reset (Settings → Danger zone)
+// ---------------------------------------------------------------------------
+
+/** Everything a run of the contest produces. Content and settings are not in this list. */
+const RUN_TABLES: PgTable[] = [bid, lot, ownership, hintPurchase, ledger, judgement, submission, draft, notification, announcement, p1Answer, p1HackAttempt, p1Advancement, participant];
+/** What the organisers authored. Only "wipe everything" touches these. */
+const CONTENT_TABLES: PgTable[] = [hint, question, p1Question, p1HackQuestion];
+
+const SETTINGS_DEFAULTS = {
+  startingBalance: 1000, bidIncrement: 10, countdownSeconds: 15, openingWindowSeconds: 30, ownershipCap: null,
+  coding1Minutes: 90, finalMinutes: 60, p1PuzzlesMinutes: 45, p1HackingMinutes: 45, p1SelectionBasis: "",
+  p1LeaderboardMode: "hidden" as const, leaderboardMode: "live" as const,
+};
+
+export type ResetScope = "run" | "everything";
+
+/**
+ * Put the contest back to the start. "run" removes every participant account
+ * and everything they did, and returns the contest to registration; problems,
+ * Phase 1 questions, settings, staff accounts and the audit log are kept.
+ * "everything" also deletes every problem, package, Phase 1 question and hint
+ * and restores the default settings. The reset itself is audit-logged.
+ */
+export async function resetContest(actorId: string, input: { scope: ResetScope; reason: string }): Promise<{ participants: number; packages: number }> {
+  const everything = input.scope === "everything";
+  const names = (tables: PgTable[]) => tables.map((t) => `"${getTableName(t)}"`).join(", ");
+  const [{ participants }] = await db.select({ participants: count() }).from(participant);
+
+  await db.transaction(async (tx) => {
+    await tx.execute(sql.raw(`truncate table ${names(RUN_TABLES)} restart identity cascade`));
+    await tx.delete(user).where(eq(user.role, "participant")); // sessions and accounts cascade
+    if (everything) {
+      await tx.execute(sql.raw(`truncate table ${names(CONTENT_TABLES)} restart identity cascade`));
+    } else {
+      await tx.update(question).set({ status: "unsold" }).where(eq(question.status, "sold"));
+    }
+    await tx
+      .update(contest)
+      .set({ phase: "registration", phaseEndsAt: null, registrationOpen: true, leaderboardFrozenAt: null, ...(everything ? SETTINGS_DEFAULTS : {}) })
+      .where(eq(contest.id, 1));
+    await audit({ actorId, action: everything ? "contest.wipe" : "contest.reset", reason: input.reason, detail: { participants, scope: input.scope } }, tx);
+  });
+
+  const packages = everything ? await deleteAllPackages() : 0;
+  publish("phase", phaseSnapshot(await getContest()));
+  publish("leaderboard", {});
+  return { participants, packages };
 }
 
 // ---------------------------------------------------------------------------
