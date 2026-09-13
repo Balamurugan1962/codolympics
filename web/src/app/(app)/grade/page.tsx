@@ -52,7 +52,7 @@ export default function GradePage() {
       />
       <div className="mb-4 rounded-box border border-line bg-card px-4 py-3">
         <div className="flex items-center justify-between text-[13px]"><span className="font-semibold">{graded} of {data.total} graded</span><span className="text-muted-foreground">{data.ungraded} left</span></div>
-        <div className="mt-2 h-1.5 w-full rounded bg-line"><div className="h-1.5 rounded bg-green transition-[width]" style={{ width: `${pct}%` }} /></div>
+        <div className="mt-2 h-1.5 w-full rounded bg-line"><div className="h-1.5 rounded bg-brand transition-[width]" style={{ width: `${pct}%` }} /></div>
       </div>
       {data.groups.length === 0 || !g ? <EmptyState icon={<Icon.Check size={20} />} title="Nothing to grade" body="No manual answers or explanations have been submitted yet." /> : (
         <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -62,7 +62,7 @@ export default function GradePage() {
                 const left = leftIn(x);
                 return (
                   <li key={x.question.id}>
-                    <button onClick={() => setCurrent(i)} className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-green-tint font-semibold" : "text-muted-foreground hover:bg-page hover:text-ink"}`}>
+                    <button onClick={() => setCurrent(i)} className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-brand-tint font-semibold" : "text-muted-foreground hover:bg-page hover:text-ink"}`}>
                       <span className={`h-2 w-2 shrink-0 rounded-full ${left ? "bg-amber-bg" : "bg-green"}`} /><span className="truncate">{x.question.title}</span><span className="ml-auto text-[11.5px] text-faint">{left ? `${left} left` : "done"}</span>
                     </button>
                   </li>

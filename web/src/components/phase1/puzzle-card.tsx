@@ -79,7 +79,7 @@ export function AnswerInput({ q, value, disabled, onChange }: { q: PuzzleView; v
         {options.length === 0 && <p className="text-[12.5px] text-faint">No options yet.</p>}
         {options.map((o, i) => (
           <label key={i} className={`flex cursor-pointer items-center gap-3 rounded-box border px-3 py-2.5 text-[13px] transition-colors ${value === i ? "border-green bg-green-tint" : "border-line bg-card hover:border-line-2"} ${disabled ? "cursor-default" : ""}`}>
-            <input type="radio" className="accent-green" disabled={disabled} checked={value === i} onChange={() => onChange(i, true)} />
+            <input type="radio" className="accent-brand" disabled={disabled} checked={value === i} onChange={() => onChange(i, true)} />
             <span className="min-w-0 flex-1">{o || <span className="text-faint">Option {i + 1}</span>}</span>
           </label>
         ))}
@@ -93,7 +93,7 @@ export function AnswerInput({ q, value, disabled, onChange }: { q: PuzzleView; v
         {options.length === 0 && <p className="text-[12.5px] text-faint">No options yet.</p>}
         {options.map((o, i) => (
           <label key={i} className={`flex cursor-pointer items-center gap-3 rounded-box border px-3 py-2.5 text-[13px] transition-colors ${arr.includes(i) ? "border-green bg-green-tint" : "border-line bg-card hover:border-line-2"} ${disabled ? "cursor-default" : ""}`}>
-            <input type="checkbox" className="accent-green" disabled={disabled} checked={arr.includes(i)} onChange={(e) => onChange(e.target.checked ? [...arr, i].sort((a, b) => a - b) : arr.filter((x) => x !== i), true)} />
+            <input type="checkbox" className="accent-brand" disabled={disabled} checked={arr.includes(i)} onChange={(e) => onChange(e.target.checked ? [...arr, i].sort((a, b) => a - b) : arr.filter((x) => x !== i), true)} />
             <span className="min-w-0 flex-1">{o || <span className="text-faint">Option {i + 1}</span>}</span>
           </label>
         ))}

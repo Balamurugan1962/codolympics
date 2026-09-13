@@ -33,8 +33,8 @@ export default function LeaderboardPage() {
         <div className="space-y-3">
           {board.mode === "frozen" && <Alert variant="warning"><AlertTitle>Leaderboard frozen</AlertTitle><AlertDescription>Shown as of {board.frozen_at ? new Date(board.frozen_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "the freeze"}. Results after that are not reflected until it is unfrozen.</AlertDescription></Alert>}
           {mine && (
-            <div className="flex items-center gap-4 rounded-box border border-green/40 bg-green-tint px-4 py-3 text-[13px]">
-              <Icon.Trophy size={18} className="text-green-dark" />
+            <div className="flex items-center gap-4 rounded-box border border-brand/40 bg-brand-tint px-4 py-3 text-[13px]">
+              <Icon.Trophy size={18} className="text-brand-dark" />
               <span className="font-semibold">You are #{mine.rank}</span>
               <span className="text-muted-foreground">{mine.score} points · {mine.solved} solved · {fmt(mine.total_time_ms)}</span>
             </div>
@@ -46,7 +46,7 @@ export default function LeaderboardPage() {
                 {board.standings.map((s) => (
                   <TableRow key={s.participant_id} data-state={s.participant_id === me ? "selected" : undefined}>
                     <TableCell className="font-semibold text-right tabular-nums">{s.rank <= 3 ? <Badge variant={s.rank === 1 ? "success" : "neutral"}>#{s.rank}</Badge> : `#${s.rank}`}</TableCell>
-                    <TableCell className="font-medium">{s.name}{s.participant_id === me && <span className="ml-1.5 text-[11.5px] font-semibold text-green-dark">you</span>}</TableCell>
+                    <TableCell className="font-medium">{s.name}{s.participant_id === me && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-dark">you</span>}</TableCell>
                     <TableCell className="font-semibold text-right tabular-nums">{s.score}</TableCell>
                     <TableCell className="hidden sm:table-cell text-right tabular-nums">{s.solved}</TableCell>
                     <TableCell className="hidden md:table-cell text-right tabular-nums">{fmt(s.total_time_ms)}</TableCell>

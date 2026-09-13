@@ -61,13 +61,13 @@ export default function PuzzlesPage() {
           <div className="rounded-box border border-line bg-card">
             <div className="border-b border-line px-4 py-3">
               <div className="flex items-center justify-between text-[13px]"><span className="font-semibold">Questions</span><span className="text-muted-foreground">{answered.size} of {total} answered</span></div>
-              <div className="mt-2 h-1.5 w-full rounded bg-line"><div className="h-1.5 rounded bg-green transition-[width]" style={{ width: `${pct}%` }} /></div>
+              <div className="mt-2 h-1.5 w-full rounded bg-line"><div className="h-1.5 rounded bg-brand transition-[width]" style={{ width: `${pct}%` }} /></div>
             </div>
             <ol className="pane max-h-[50vh] overflow-auto p-2 lg:max-h-[calc(100vh-15rem)]">
               {data.questions.map((x, i) => (
                 <li key={x.id}>
                   <button onClick={() => setCurrent(i)} aria-current={i === current ? "true" : undefined}
-                    className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-green-tint font-semibold text-ink" : "text-muted-foreground hover:bg-page hover:text-ink"}`}>
+                    className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-brand-tint font-semibold text-ink" : "text-muted-foreground hover:bg-page hover:text-ink"}`}>
                     <span className={`h-2 w-2 shrink-0 rounded-full ${answered.has(x.id) ? "bg-green" : "border border-line-2"}`} aria-label={answered.has(x.id) ? "answered" : "unanswered"} />
                     <span className="truncate">{i + 1}. {x.title}</span>
                     <span className="ml-auto text-[11.5px] tabular-nums text-faint">{x.points}</span>

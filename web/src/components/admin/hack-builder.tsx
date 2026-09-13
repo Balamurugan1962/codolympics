@@ -160,7 +160,7 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
           <Section title="The judge problem" description="A hacking package on the judge: limits, validator.py and the stored reference solution. Upload it under Problems with hack_only set in problem.json.">
             {problems && hackProblems.length === 0 && (
               <Alert variant="warning"><AlertTitle>No hacking packages on the judge</AlertTitle><AlertDescription>
-                Create one first: <Link href="/admin/problems/new" className="font-semibold text-green-dark hover:underline">New problem</Link> with <code className="rounded bg-page px-1 text-[11.5px]">&quot;hack_only&quot;: true</code> and a <code className="rounded bg-page px-1 text-[11.5px]">reference</code> in problem.json.
+                Create one first: <Link href="/admin/problems/new" className="font-semibold text-brand-dark hover:underline">New problem</Link> with <code className="rounded bg-page px-1 text-[11.5px]">&quot;hack_only&quot;: true</code> and a <code className="rounded bg-page px-1 text-[11.5px]">reference</code> in problem.json.
               </AlertDescription></Alert>
             )}
             <div className="mt-3 space-y-4">

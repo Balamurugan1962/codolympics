@@ -164,7 +164,7 @@ function PuzzleList() {
                     <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
                     <TableCell>
                       <Link href={`/admin/phase1/puzzles/${r.id}`} className="group block">
-                        <div className="font-semibold group-hover:text-green-dark">{r.title}</div>
+                        <div className="font-semibold group-hover:text-brand-dark">{r.title}</div>
                         <div className="text-[11.5px] text-faint">{CATEGORY_LABEL[r.category]} · {r.bodyMd.replace(/\s+/g, " ").slice(0, 80)}{r.bodyMd.length > 80 ? "…" : ""}</div>
                       </Link>
                     </TableCell>
@@ -251,7 +251,7 @@ function HackList() {
                     <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
                     <TableCell>
                       <Link href={`/admin/phase1/hacking/${r.id}`} className="group block">
-                        <div className="font-semibold group-hover:text-green-dark">{r.title}</div>
+                        <div className="font-semibold group-hover:text-brand-dark">{r.title}</div>
                         <div className="text-[11.5px] text-faint">{r.statementMd.replace(/\s+/g, " ").slice(0, 80)}{r.statementMd.length > 80 ? "…" : ""}</div>
                       </Link>
                     </TableCell>
@@ -345,7 +345,7 @@ function Review() {
           <TableBody>
             {rows.map((s) => (
               <TableRow key={s.participant_id} data-state={chosen.has(s.participant_id) ? "selected" : undefined} className={s.disqualified ? "opacity-50" : ""}>
-                <TableCell><input type="checkbox" className="h-4 w-4 accent-green" disabled={s.disqualified} checked={chosen.has(s.participant_id)} onChange={(e) => toggle(s.participant_id, e.target.checked)} aria-label={`Select ${s.name}`} /></TableCell>
+                <TableCell><input type="checkbox" className="h-4 w-4 accent-brand" disabled={s.disqualified} checked={chosen.has(s.participant_id)} onChange={(e) => toggle(s.participant_id, e.target.checked)} aria-label={`Select ${s.name}`} /></TableCell>
                 <TableCell className="font-semibold text-right tabular-nums">{s.rank || "—"}</TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
                 <TableCell className="font-semibold text-right tabular-nums">{s.points}{s.provisional && <span className="ml-1 text-faint" title="provisional">*</span>}</TableCell>

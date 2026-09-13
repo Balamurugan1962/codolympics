@@ -9,17 +9,17 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex min-h-screen">
       <aside className="relative hidden w-[44%] max-w-xl flex-col justify-between overflow-hidden bg-navy px-12 py-12 text-white lg:flex">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-green-bright/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-green/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-brand-bright/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-brand/10 blur-3xl" />
 
         <div className="relative flex items-center gap-2.5">
           <Mark size={28} />
-          <span className="text-[17px] font-bold tracking-tight">Cod<span className="text-green-bright">olympics</span></span>
+          <span className="text-[17px] font-bold tracking-tight">Cod<span className="text-brand-bright">olympics</span></span>
         </div>
 
         <div className="relative">
           <h2 className="max-w-sm text-[28px] font-semibold leading-[1.2] tracking-[-0.02em]">
-            Prove yourself, then <span className="text-green-bright">bid</span> for the problems you want to solve.
+            Prove yourself, then <span className="text-brand-bright">bid</span> for the problems you want to solve.
           </h2>
           <ul className="mt-8 space-y-5 text-[13.5px] leading-relaxed text-white/70">
             {[
@@ -28,7 +28,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               ["Scoring", "Solving is all-or-nothing. Wrong submissions cost nothing; ties break on solve time."],
             ].map(([k, v]) => (
               <li key={k} className="flex gap-3">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-green-bright" />
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-bright" />
                 <span><span className="font-semibold text-white">{k}.</span> {v}</span>
               </li>
             ))}
@@ -41,7 +41,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <main className="flex flex-1 flex-col">
         <div className="flex items-center gap-2.5 px-6 py-5 lg:hidden">
           <Mark size={24} />
-          <span className="text-[15px] font-bold tracking-tight text-ink">Cod<span className="text-green-dark">olympics</span></span>
+          <span className="text-[15px] font-bold tracking-tight text-ink">Cod<span className="text-brand-dark">olympics</span></span>
         </div>
         <div className="flex flex-1 items-center justify-center px-6 py-8 sm:py-12">
           <div className="w-full max-w-[380px]">{children}</div>

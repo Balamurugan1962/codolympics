@@ -42,7 +42,7 @@ export default function WelcomePage() {
           <ol className="grid gap-3 sm:grid-cols-2">
             {STEPS.map((s, i) => (
               <li key={s.title} className="flex gap-3.5 rounded-box border border-line bg-card p-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-box bg-navy text-green-bright">{s.icon}</span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-box bg-navy text-brand-bright">{s.icon}</span>
                 <div className="min-w-0">
                   <div className="text-[13.5px] font-semibold"><span className="mr-1.5 text-faint">{i + 1}.</span>{s.title}</div>
                   <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{s.body}</p>

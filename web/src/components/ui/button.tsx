@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 /*
  * HackerRank buttons are semibold, square-ish and quiet until you need them
- * loud: one green primary per view, outlines for everything else.
+ * loud: one red primary per view, outlines for everything else.
  *
  * `loading` is part of the primitive rather than each caller's business —
  * almost every button here posts something, and a button that stays clickable
@@ -18,12 +18,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-xs hover:bg-green-dark active:bg-green-dark",
+        default: "bg-primary text-primary-foreground shadow-xs hover:bg-brand-dark active:bg-brand-dark",
         destructive: "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/30",
         outline: "border border-input bg-card text-foreground shadow-xs hover:border-line-2 hover:bg-muted",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/70",
         ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
-        link: "text-green-dark underline-offset-4 hover:underline",
+        link: "text-brand-dark underline-offset-4 hover:underline",
         navy: "bg-navy text-white shadow-xs hover:bg-navy-2",
       },
       size: {

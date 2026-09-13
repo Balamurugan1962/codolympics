@@ -39,7 +39,7 @@ export function FileDrop({
   if (file) {
     return (
       <div className="flex items-center gap-3 rounded-lg border bg-card px-3.5 py-3 shadow-xs">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-green-tint text-green-dark">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-brand-tint text-brand-dark">
           <Icon.Check size={16} strokeWidth={3} />
         </span>
         <div className="min-w-0 flex-1">
@@ -74,7 +74,7 @@ export function FileDrop({
       }}
       className={cn(
         "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed px-4 py-9 text-center transition-colors",
-        over ? "border-green bg-green-tint/60" : "border-line-2 bg-muted/40 hover:border-green hover:bg-green-tint/30",
+        over ? "border-brand bg-brand-tint/60" : "border-line-2 bg-muted/40 hover:border-brand hover:bg-brand-tint/30",
         disabled && "pointer-events-none opacity-50",
       )}
     >

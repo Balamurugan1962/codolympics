@@ -8,13 +8,18 @@
  *
  *   1. The shadcn/ui semantic set (--background, --primary, --border, …). Every
  *      shadcn component reads these, so re-theming is one block of CSS.
- *   2. A small brand set (--navy, --green-bright, --amber …) for the handful of
+ *   2. A small brand set (--navy, --brand-bright, --amber …) for the handful of
  *      surfaces shadcn has no word for: the navy chrome, the phase timeline,
  *      the verdict colours.
  *
  * Light only, like HackerRank and like the hall projector. There is no dark
  * palette on purpose — an untested second theme on contest day is a risk with
  * no upside.
+ *
+ * The accent is red. That collides with the colour of failure, so the two are
+ * kept deliberately apart: the brand red is bright and confident, destructive
+ * red is noticeably darker, and *success* stays green because a green tick is
+ * what a verdict means — brand colour and verdict colour are different jobs.
  *
  * Fonts are the system stack: the hall has no internet, so no font files are
  * fetched. Everything else the page needs is bundled.
@@ -33,8 +38,8 @@
   --popover: #ffffff;
   --popover-foreground: #0e141e;
 
-  /* Action */
-  --primary: #1ba94c;
+  /* Action — the brand accent */
+  --primary: #d31f35;
   --primary-foreground: #ffffff;
   --secondary: #eef0f3;
   --secondary-foreground: #0e141e;
@@ -42,20 +47,21 @@
   /* Quiet */
   --muted: #f1f3f5;
   --muted-foreground: #5b6672;
-  --accent: #e8f7ee;
-  --accent-foreground: #127a37;
+  --accent: #fdecee;
+  --accent-foreground: #a8172a;
 
-  /* Alarm */
-  --destructive: #d0342c;
+  /* Alarm. Darker than the brand red on purpose: a destructive button must not
+     look like the ordinary primary one. */
+  --destructive: #96111f;
   --destructive-foreground: #ffffff;
 
   /* Lines */
   --border: #e3e6ea;
   --input: #d3d8de;
-  --ring: #1ba94c;
+  --ring: #d31f35;
 
   /* Charts, in the order they get used */
-  --chart-1: #1ba94c;
+  --chart-1: #d31f35;
   --chart-2: #0f74d6;
   --chart-3: #f2a900;
   --chart-4: #d0342c;
@@ -64,12 +70,12 @@
   /* The navy sidebar */
   --sidebar: #0e141e;
   --sidebar-foreground: rgba(255, 255, 255, 0.72);
-  --sidebar-primary: #00ea64;
+  --sidebar-primary: #ff5a6b;
   --sidebar-primary-foreground: #0e141e;
   --sidebar-accent: rgba(255, 255, 255, 0.1);
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #00ea64;
+  --sidebar-ring: #ff5a6b;
 
   /* Brand tokens shadcn has no name for */
   --navy: #0e141e;
@@ -77,12 +83,19 @@
   --ink: #0e141e;
   --faint: #7d8792;
   --line-2: #c9cfd6;
+  /* The brand: used for actions, selection, focus and the chrome. */
+  --brand: #d31f35;
+  --brand-dark: #a8172a;
+  --brand-bright: #ff5a6b;
+  --brand-tint: #fdecee;
+
+  /* Semantics, independent of the brand. Green means correct, accepted, done. */
   --green: #1ba94c;
   --green-dark: #127a37;
-  --green-bright: #00ea64;
+  --green-bright: #00ea64; /* "ok" on the navy chrome, where the mid green disappears */
   --green-tint: #e8f7ee;
-  --red: #d0342c;
-  --red-tint: #fbe9e8;
+  --red: #c0182a;
+  --red-tint: #fbe9ec;
   --amber: #b47300;
   --amber-bg: #f2a900;
   --amber-tint: #fdf3d8;
@@ -133,6 +146,10 @@
   --color-line: var(--border);
   --color-line-2: var(--line-2);
   --color-page: var(--background);
+  --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-bright: var(--brand-bright);
+  --color-brand-tint: var(--brand-tint);
   --color-green: var(--green);
   --color-green-dark: var(--green-dark);
   --color-green-bright: var(--green-bright);
@@ -209,7 +226,7 @@
 .prose-statement h2 { font-size: 1.15em; margin: 1.3em 0 .5em; }
 .prose-statement h3 { font-size: 1.02em; margin: 1.2em 0 .4em; }
 .prose-statement p { margin: .7em 0; }
-.prose-statement a { color: var(--green-dark); text-decoration: underline; text-underline-offset: 2px; }
+.prose-statement a { color: var(--brand-dark); text-decoration: underline; text-underline-offset: 2px; }
 .prose-statement pre {
   background: var(--muted);
   border: 1px solid var(--border);
@@ -249,8 +266,8 @@
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(27, 169, 76, .45); }
-  100% { box-shadow: 0 0 0 12px rgba(27, 169, 76, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(211, 31, 53, .45); }
+  100% { box-shadow: 0 0 0 12px rgba(211, 31, 53, 0); }
 }
 .animate-fade-in { animation: fade-in .16s ease-out; }
 .animate-rise-in { animation: rise-in .22s cubic-bezier(.16, 1, .3, 1); }

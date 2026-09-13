@@ -82,7 +82,7 @@ export function AnnouncementOverlay() {
         className="w-[min(46rem,calc(100vw-2rem))] gap-0 p-0 sm:max-w-3xl"
       >
         <div className="flex items-center gap-2.5 rounded-t-lg bg-navy px-5 py-3 text-white">
-          <span className="flex size-7 items-center justify-center rounded-full bg-green-bright text-navy">
+          <span className="flex size-7 items-center justify-center rounded-full bg-brand-bright text-navy">
             <Icon.Megaphone size={15} />
           </span>
           <DialogTitle className="text-[15px] font-semibold text-white">Announcement</DialogTitle>

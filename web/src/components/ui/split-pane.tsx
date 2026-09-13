@@ -47,7 +47,7 @@ export function SplitPane({ left, right, leftLabel = "Problem", rightLabel = "Co
         <div className="flex border-b border-line bg-card" role="tablist">
           {(["left", "right"] as const).map((t) => (
             <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-              className={`flex-1 border-b-2 py-2 text-sm font-semibold ${tab === t ? "border-green text-ink" : "border-transparent text-muted-foreground"}`}>
+              className={`flex-1 border-b-2 py-2 text-sm font-semibold ${tab === t ? "border-brand text-ink" : "border-transparent text-muted-foreground"}`}>
               {t === "left" ? leftLabel : rightLabel}
             </button>
           ))}
@@ -63,8 +63,8 @@ export function SplitPane({ left, right, leftLabel = "Problem", rightLabel = "Co
       <div role="separator" aria-orientation="vertical" aria-label="Resize panes" tabIndex={0}
         onPointerDown={() => { dragging.current = true; document.body.style.cursor = "col-resize"; document.body.style.userSelect = "none"; }}
         onKeyDown={(e) => { if (e.key === "ArrowLeft") setRatio((r) => Math.max(0.25, r - 0.02)); if (e.key === "ArrowRight") setRatio((r) => Math.min(0.75, r + 0.02)); }}
-        className="group relative w-1.5 shrink-0 cursor-col-resize bg-line hover:bg-green/60 focus:bg-green focus:outline-none">
-        <span className="absolute left-1/2 top-1/2 h-8 w-1 -translate-x-1/2 -translate-y-1/2 rounded bg-line-2 group-hover:bg-green" />
+        className="group relative w-1.5 shrink-0 cursor-col-resize bg-line hover:bg-brand/60 focus:bg-brand focus:outline-none">
+        <span className="absolute left-1/2 top-1/2 h-8 w-1 -translate-x-1/2 -translate-y-1/2 rounded bg-line-2 group-hover:bg-brand" />
       </div>
       <div className="min-h-0 min-w-0 flex-1 overflow-auto">{right}</div>
     </div>

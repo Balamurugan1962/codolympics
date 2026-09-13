@@ -117,7 +117,7 @@ export default function AnnouncementsPage() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="cursor-pointer bg-card transition-colors hover:border-green hover:bg-green-tint hover:text-green-dark"
+                className="cursor-pointer bg-card transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand-dark"
               >
                 <button type="button" onClick={() => setText(t.text)}>
                   {t.label}
@@ -145,7 +145,7 @@ export default function AnnouncementsPage() {
                   <div className="w-20 shrink-0 pt-0.5 text-[11.5px] leading-snug text-faint tabular-nums">
                     <div>{new Date(a.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                     <div>{new Date(a.createdAt).toLocaleDateString([], { day: "numeric", month: "short" })}</div>
-                    {i === 0 && <div className="mt-1 font-semibold text-green-dark">latest</div>}
+                    {i === 0 && <div className="mt-1 font-semibold text-brand-dark">latest</div>}
                   </div>
                   <div className="min-w-0 flex-1">
                     <Markdown>{a.bodyMd}</Markdown>

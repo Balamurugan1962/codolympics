@@ -355,8 +355,8 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
               {f.kind === "mcq_single" && (
                 <div className="space-y-1.5">
                   {clean(f.options).map((o, i) => (
-                    <label key={i} className={`flex cursor-pointer items-center gap-3 rounded-box border px-3 py-2.5 text-[13px] ${f.key_option === i ? "border-green bg-green-tint" : "border-line hover:border-line-2"}`}>
-                      <input type="radio" name="key" className="accent-green" checked={f.key_option === i} onChange={() => set("key_option", i)} /> <span className="flex-1">{o}</span>{f.key_option === i && <Badge variant="success">correct</Badge>}
+                    <label key={i} className={`flex cursor-pointer items-center gap-3 rounded-box border px-3 py-2.5 text-[13px] ${f.key_option === i ? "border-brand bg-brand-tint" : "border-line hover:border-line-2"}`}>
+                      <input type="radio" name="key" className="accent-brand" checked={f.key_option === i} onChange={() => set("key_option", i)} /> <span className="flex-1">{o}</span>{f.key_option === i && <Badge variant="success">correct</Badge>}
                     </label>
                   ))}
                   {clean(f.options).length < 2 && <p className="text-[12.5px] text-muted-foreground">Add the options first.</p>}
@@ -367,8 +367,8 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
                   {clean(f.options).map((o, i) => {
                     const on = f.key_options.includes(i);
                     return (
-                      <label key={i} className={`flex cursor-pointer items-center gap-3 rounded-box border px-3 py-2.5 text-[13px] ${on ? "border-green bg-green-tint" : "border-line hover:border-line-2"}`}>
-                        <input type="checkbox" className="accent-green" checked={on} onChange={(e) => set("key_options", e.target.checked ? [...f.key_options, i] : f.key_options.filter((x) => x !== i))} /> <span className="flex-1">{o}</span>{on && <Badge variant="success">correct</Badge>}
+                      <label key={i} className={`flex cursor-pointer items-center gap-3 rounded-box border px-3 py-2.5 text-[13px] ${on ? "border-brand bg-brand-tint" : "border-line hover:border-line-2"}`}>
+                        <input type="checkbox" className="accent-brand" checked={on} onChange={(e) => set("key_options", e.target.checked ? [...f.key_options, i] : f.key_options.filter((x) => x !== i))} /> <span className="flex-1">{o}</span>{on && <Badge variant="success">correct</Badge>}
                       </label>
                     );
                   })}
