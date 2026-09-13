@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 import { useContest } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
+import { SetupTransfer } from "@/components/admin/setup-transfer";
 import { PHASE_LABEL } from "@/components/shell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -182,6 +183,8 @@ export default function SettingsPage() {
             {numberField("finalMinutes", "minutes")}
           </SettingRow>
         </Section>
+
+        <SetupTransfer />
 
         <DangerZone
           onReset={async () => {
