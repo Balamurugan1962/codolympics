@@ -23,9 +23,9 @@ export function HackQuestionView({ q, index, total, hacked = false, eyebrowExtra
           <h2 className="mt-1 text-[17px] font-semibold leading-snug">{q.title || <span className="text-faint">Untitled question</span>}</h2>
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
-          <Badge tone="navy">{q.hack_points} pts</Badge>
-          {q.fail_penalty > 0 && <Badge tone="amber">−{q.fail_penalty} per miss</Badge>}
-          {hacked && <Badge tone="green">hacked</Badge>}
+          <Badge variant="navy">{q.hack_points} pts</Badge>
+          {q.fail_penalty > 0 && <Badge variant="warning">−{q.fail_penalty} per miss</Badge>}
+          {hacked && <Badge variant="success">hacked</Badge>}
         </div>
       </div>
       <div className="grid gap-5 p-5 lg:grid-cols-2">
@@ -33,13 +33,13 @@ export function HackQuestionView({ q, index, total, hacked = false, eyebrowExtra
           {q.statement_md.trim() ? <Markdown>{q.statement_md}</Markdown> : <p className="text-[13px] text-faint">The problem statement goes here.</p>}
           {q.constraints_md.trim() && (
             <div className="rounded-box border border-line bg-page p-3 text-[13px]">
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">Constraints</div>
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Constraints</div>
               <Markdown>{q.constraints_md}</Markdown>
             </div>
           )}
         </div>
         <div className="min-w-0">
-          <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">
+          <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
             <span>The given solution · {q.given_language}</span>
             <span className="font-normal normal-case tracking-normal text-faint">read only — it is wrong somewhere</span>
           </div>

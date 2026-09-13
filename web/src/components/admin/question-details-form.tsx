@@ -9,8 +9,10 @@ import { Icon } from "../icons";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ChoiceCards } from "../ui/choice";
-import { FormGrid } from "../ui/form";
-import { Field, Input, Textarea } from "../ui/input";
+import { FormGrid } from "../ui/field";
+import { Field } from "../ui/field";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import { MarkdownEditor } from "../ui/markdown-editor";
 
 export type QuestionDetails = {
@@ -41,7 +43,7 @@ export function hintIssues(hints: QuestionDetails["hints"]): string[] {
 }
 
 export function DifficultyBadge({ d }: { d: string }) {
-  return <Badge tone={d === "hard" ? "red" : d === "medium" ? "amber" : "green"}>{d}</Badge>;
+  return <Badge variant={d === "hard" ? "destructive" : d === "medium" ? "warning" : "success"}>{d}</Badge>;
 }
 
 export function QuestionBasicsFields({ d, onChange, testcases }: { d: QuestionDetails; onChange: (d: QuestionDetails) => void; testcases: number | null }) {
@@ -81,7 +83,7 @@ export function QuestionBasicsFields({ d, onChange, testcases }: { d: QuestionDe
       <Field label="Samples" help={testcases !== null ? `The first ${d.sample_count || 0} of the package's ${testcases} testcases are shown to the owner, read straight from the package so a sample can never disagree with what is judged. The rest stay hidden.` : "The first K testcases of the package are shown to the owner as samples; the rest stay hidden."}>
         <div className="flex items-center gap-2">
           <Input type="number" min={0} max={20} step={1} className="w-24" value={d.sample_count} onChange={(e) => set("sample_count", Number(e.target.value))} />
-          <span className="text-[12px] text-muted">testcases shown as samples</span>
+          <span className="text-[12px] text-muted-foreground">testcases shown as samples</span>
         </div>
       </Field>
     </div>
@@ -96,15 +98,15 @@ export function HintsEditor({ hints, onChange }: { hints: QuestionDetails["hints
       {hints.length === 0 ? (
         <div className="rounded-box border border-dashed border-line-2 px-4 py-6 text-center">
           <p className="text-[13px] font-medium">No hints.</p>
-          <p className="mt-0.5 text-[12px] text-muted">Someone with money and no idea will have nothing to buy. Hints are optional, but a problem without them cannot be nudged.</p>
-          <Button size="sm" variant="secondary" className="mt-3" icon={<Icon.Plus size={14} />} onClick={() => onChange([{ price: 50, body_md: "" }])}>Add the first hint</Button>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">Someone with money and no idea will have nothing to buy. Hints are optional, but a problem without them cannot be nudged.</p>
+          <Button size="sm" variant="outline" className="mt-3" onClick={() => onChange([{ price: 50, body_md: "" }])}><Icon.Plus size={14} /> Add the first hint</Button>
         </div>
       ) : (
         <ol className="space-y-3">
           {hints.map((h, i) => (
             <li key={i} className="rounded-box border border-line bg-card">
               <div className="flex items-center gap-3 border-b border-line bg-page/60 px-3.5 py-2">
-                <span className="text-[12px] font-semibold text-muted">Hint {i + 1}</span>
+                <span className="text-[12px] font-semibold text-muted-foreground">Hint {i + 1}</span>
                 <span className="text-[11.5px] text-faint">unlocks after hint {i}{i === 0 ? " — the first one anyone can buy" : ""}</span>
                 <div className="ml-auto flex items-center gap-1">
                   <Button size="sm" variant="ghost" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>↑</Button>
@@ -125,7 +127,7 @@ export function HintsEditor({ hints, onChange }: { hints: QuestionDetails["hints
         </ol>
       )}
       {hints.length > 0 && hints.length < 20 && (
-        <Button size="sm" variant="secondary" icon={<Icon.Plus size={14} />} onClick={() => onChange([...hints, { price: hints[hints.length - 1]?.price ?? 50, body_md: "" }])}>Add another hint</Button>
+        <Button size="sm" variant="outline" onClick={() => onChange([...hints, { price: hints[hints.length - 1]?.price ?? 50, body_md: "" }])}><Icon.Plus size={14} /> Add another hint</Button>
       )}
     </div>
   );

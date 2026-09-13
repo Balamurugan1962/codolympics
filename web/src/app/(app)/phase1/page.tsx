@@ -27,16 +27,16 @@ export default function Phase1Hub() {
       <div className="grid gap-3 sm:grid-cols-2">
         {cards.map((c) => (
           <Link key={c.href} href={c.href} className="group flex gap-4 rounded-box border border-line bg-card p-4 transition-[border-color,box-shadow] hover:border-line-2 hover:shadow-sm">
-            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-box ${c.state === "open" ? "bg-green-tint text-green-dark" : "bg-page text-muted"}`}>{c.icon}</span>
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-box ${c.state === "open" ? "bg-green-tint text-green-dark" : "bg-page text-muted-foreground"}`}>{c.icon}</span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[13.5px] font-semibold group-hover:text-green-dark">{c.title}</span>
-                {c.state === "open" && <Badge tone="green">open</Badge>}
-                {c.state === "closed" && <Badge tone="grey">closed</Badge>}
-                {c.state === "not yet" && <Badge tone="outline">not yet</Badge>}
-                {c.done && <Badge tone="blue">finished</Badge>}
+                {c.state === "open" && <Badge variant="success">open</Badge>}
+                {c.state === "closed" && <Badge variant="neutral">closed</Badge>}
+                {c.state === "not yet" && <Badge variant="outline">not yet</Badge>}
+                {c.done && <Badge variant="info">finished</Badge>}
               </div>
-              <div className="mt-1 text-[12.5px] leading-relaxed text-muted">{c.body}</div>
+              <div className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{c.body}</div>
             </div>
             <Icon.ChevronRight size={16} className="self-center text-faint" />
           </Link>

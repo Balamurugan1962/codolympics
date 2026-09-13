@@ -33,7 +33,7 @@ export default function EditPuzzlePage() {
         breadcrumb={crumb}
         title={puzzle.title}
         description={`Puzzle #${puzzle.id} · ${KIND_LABEL[puzzle.kind]} · ${puzzle.points} pts${puzzle.explainPoints ? ` + ${puzzle.explainPoints} reasoning` : ""}`}
-        actions={s === "live" ? <StatusDot tone="green">Live</StatusDot> : s === "ready" ? <StatusDot tone="blue">Ready to publish</StatusDot> : s === "void" ? <StatusDot tone="grey">Void</StatusDot> : <StatusDot tone="amber">Draft</StatusDot>}
+        actions={s === "live" ? <StatusDot tone="success">Live</StatusDot> : s === "ready" ? <StatusDot tone="info">Ready to publish</StatusDot> : s === "void" ? <StatusDot tone="neutral">Void</StatusDot> : <StatusDot tone="warning">Draft</StatusDot>}
       />
       <PuzzleBuilder existing={puzzle} initialStep={search.get("step") ?? undefined} onSaved={load} />
     </PageBody>

@@ -44,10 +44,10 @@ export default function HomePage() {
             <div className="min-w-0">
               <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-green-dark">Now · {PHASE_LABEL[phase]}</div>
               <h1 className="mt-1 text-[20px] font-semibold leading-tight sm:text-[22px]">{now.title}</h1>
-              <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted">{now.body}</p>
-              {contest.phase_ends_at && <p className="mt-2.5 flex items-center gap-1.5 text-[13px] text-muted"><Icon.Clock size={14} /> <Countdown until={contest.phase_ends_at} className="font-semibold text-ink" /> remaining</p>}
+              <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{now.body}</p>
+              {contest.phase_ends_at && <p className="mt-2.5 flex items-center gap-1.5 text-[13px] text-muted-foreground"><Icon.Clock size={14} /> <Countdown until={contest.phase_ends_at} className="font-semibold text-ink" /> remaining</p>}
             </div>
-            {now.cta && <Link href={now.cta.href} className="shrink-0"><Button size="lg" icon={now.cta.icon}>{now.cta.label}</Button></Link>}
+            {now.cta && <Link href={now.cta.href} className="shrink-0"><Button size="lg">now.cta.icon {now.cta.label}</Button></Link>}
           </div>
         </section>
 
@@ -58,7 +58,7 @@ export default function HomePage() {
         )}
 
         <StatRow cols={4}>
-          <Stat label="Balance" value={me ? me.balance.toLocaleString() : "—"} tone="green" icon={<Icon.Coins size={13} />} hint={phase.startsWith("auction") ? "available to bid" : "spend on hints"} />
+          <Stat label="Balance" value={me ? me.balance.toLocaleString() : "—"} tone="success" icon={<Icon.Coins size={13} />} hint={phase.startsWith("auction") ? "available to bid" : "spend on hints"} />
           <Stat label="Questions" value={questions.length} icon={<Icon.Code size={13} />} hint={`${questions.filter((q) => q.progress === "solved").length} solved`} />
           <Stat label="Rank" value={rank ? `#${rank.rank}` : "—"} icon={<Icon.Trophy size={13} />} hint={rank ? `${rank.score} points` : contest.leaderboard_mode === "hidden" ? "leaderboard hidden" : "no standings yet"} />
           <Stat label="Time left" value={<Countdown until={contest.phase_ends_at} />} icon={<Icon.Clock size={13} />} hint={contest.phase_ends_at ? "in this round" : "no deadline running"} />
@@ -66,9 +66,9 @@ export default function HomePage() {
 
         {inPhase2 && (
           <Section title="My questions" description="Only you can attempt these. Open one to read the statement and write code." padded={false}
-            actions={phase.startsWith("auction") && <Link href="/auction"><Button size="sm" variant="secondary" icon={<Icon.Gavel size={14} />}>Auction</Button></Link>}>
+            actions={phase.startsWith("auction") && <Link href="/auction"><Button size="sm" variant="outline"><Icon.Gavel size={14} /> Auction</Button></Link>}>
             {viewer.role === "participant" && !me?.advanced ? (
-              <EmptyState icon={<Icon.Lock size={18} />} title="You were not selected for Phase 2" body="Bidding and submitting are not available. You can still follow the leaderboard." action={<Link href="/leaderboard"><Button variant="secondary" size="sm">Leaderboard</Button></Link>} />
+              <EmptyState icon={<Icon.Lock size={18} />} title="You were not selected for Phase 2" body="Bidding and submitting are not available. You can still follow the leaderboard." action={<Link href="/leaderboard"><Button variant="outline" size="sm">Leaderboard</Button></Link>} />
             ) : questions.length === 0 ? (
               <EmptyState icon={<Icon.Gavel size={18} />} title="You don't own a question yet" body="Questions are won at auction. Lose every bid and there will be nothing to solve — bid with that in mind." action={phase.startsWith("auction") ? <Link href="/auction"><Button size="sm">Go to the auction</Button></Link> : undefined} />
             ) : (
@@ -82,9 +82,9 @@ export default function HomePage() {
                         <div className="text-[11.5px] text-faint">bought for {q.price_paid} · {q.attempts} attempt{q.attempts === 1 ? "" : "s"}{q.progress === "solved" ? " · solved" : ""}</div>
                       </div>
                       <div className="hidden items-center gap-2 sm:flex">
-                        <Badge tone={q.difficulty === "hard" ? "red" : q.difficulty === "medium" ? "amber" : "green"}>{q.difficulty}</Badge>
-                        <Badge tone="grey">{q.score} pts</Badge>
-                        {q.status === "void" && <Badge tone="red">voided</Badge>}
+                        <Badge variant={q.difficulty === "hard" ? "destructive" : q.difficulty === "medium" ? "warning" : "success"}>{q.difficulty}</Badge>
+                        <Badge variant="neutral">{q.score} pts</Badge>
+                        {q.status === "void" && <Badge variant="destructive">voided</Badge>}
                       </div>
                       <Icon.ChevronRight size={16} className="text-faint" />
                     </Link>
@@ -108,7 +108,7 @@ export default function HomePage() {
 }
 
 export function ProgressDot({ progress }: { progress: string }) {
-  const map: Record<string, [string, string]> = { solved: ["bg-green", "Solved"], judging: ["bg-blue animate-pulse", "Judging"], attempted: ["bg-amber", "Attempted"], unattempted: ["bg-line-2", "Not attempted"] };
+  const map: Record<string, [string, string]> = { solved: ["bg-green", "Solved"], judging: ["bg-blue animate-pulse", "Judging"], attempted: ["bg-amber-bg", "Attempted"], unattempted: ["bg-line-2", "Not attempted"] };
   const [cls, label] = map[progress] ?? map.unattempted;
   return <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${cls}`} title={label} aria-label={label} />;
 }

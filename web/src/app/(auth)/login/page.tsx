@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Icon } from "@/components/icons";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
 export default function LoginPage() {
@@ -30,10 +31,10 @@ export default function LoginPage() {
   return (
     <div className="animate-fade-in">
       <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Sign in</h1>
-      <p className="mt-1 text-[13px] text-muted">Use the display name you registered with.</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">Use the display name you registered with.</p>
 
       <form onSubmit={submit} className="mt-7 space-y-4">
-        {error && <Alert tone="error">{error}</Alert>}
+        {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         <Field label="Display name">
           <Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" required placeholder="e.g. Bala" />
         </Field>
@@ -43,10 +44,10 @@ export default function LoginPage() {
         <Button type="submit" size="lg" className="w-full" loading={busy}>Sign in</Button>
       </form>
 
-      <p className="mt-6 text-center text-[13px] text-muted">
+      <p className="mt-6 text-center text-[13px] text-muted-foreground">
         First time here? <Link href="/register" className="font-semibold text-green-dark hover:underline">Register</Link>
       </p>
-      <p className="mt-5 flex items-start gap-2 rounded-box bg-page px-3 py-2.5 text-[11.5px] leading-relaxed text-muted">
+      <p className="mt-5 flex items-start gap-2 rounded-box bg-page px-3 py-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
         <Icon.Info size={14} className="mt-0.5 shrink-0 text-faint" />
         Signing in here ends any session you have open on another machine. That is deliberate — one seat per person.
       </p>

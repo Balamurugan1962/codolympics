@@ -16,13 +16,13 @@ import { Markdown } from "@/components/markdown";
 import { StatementView } from "@/components/problems/statement-view";
 import { Badge, VerdictBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
+import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Select } from "@/components/ui/input";
+import { SimpleSelect } from "@/components/ui/select";
 import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SplitPane } from "@/components/ui/split-pane";
-import { Tabs } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
@@ -124,7 +124,7 @@ export default function WorkspacePage() {
     finally { setBusy(false); }
   }
 
-  if (error) return <div className="p-6"><EmptyState icon={<Icon.Lock size={22} />} title="You don't own this question" body={error} action={<Link href="/dashboard"><Button variant="secondary" size="sm">Back to home</Button></Link>} /></div>;
+  if (error) return <div className="p-6"><EmptyState icon={<Icon.Lock size={22} />} title="You don't own this question" body={error} action={<Link href="/dashboard"><Button variant="outline" size="sm">Back to home</Button></Link>} /></div>;
   if (!q) return <div className="workspace grid grid-cols-2 gap-1 p-1"><Skeleton className="h-full" /><Skeleton className="h-full" /></div>;
 
   const latest = q.history[0]?.judgement ?? null;
@@ -137,11 +137,21 @@ export default function WorkspacePage() {
       <div className="flex items-center gap-3 border-b border-line px-4 py-2">
         <Link href="/dashboard" className="text-faint hover:text-ink" aria-label="Back to my questions"><Icon.ChevronLeft /></Link>
         <h1 className="truncate text-[15px] font-semibold">{q.title}</h1>
-        <Badge tone={q.difficulty === "hard" ? "red" : q.difficulty === "medium" ? "amber" : "green"}>{q.difficulty}</Badge>
-        <Badge tone="grey">{q.score} pts</Badge>
-        {solved && <Badge tone="green"><Icon.Check size={12} strokeWidth={3} /> Solved</Badge>}
+        <Badge variant={q.difficulty === "hard" ? "destructive" : q.difficulty === "medium" ? "warning" : "success"}>{q.difficulty}</Badge>
+        <Badge variant="neutral">{q.score} pts</Badge>
+        {solved && <Badge variant="success"><Icon.Check size={12} strokeWidth={3} /> Solved</Badge>}
       </div>
-      <div className="px-4"><Tabs value={tab} onChange={setTab} tabs={[{ value: "problem", label: "Problem" }, { value: "submissions", label: `Submissions${q.history.length ? ` (${q.history.length})` : ""}` }, { value: "hints", label: `Hints ${q.hints.revealed.length}/${q.hints.total}` }]} /></div>
+      <div className="px-4">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+          <TabsList variant="line" className="w-full justify-start">
+            <TabsTrigger value="problem">Problem</TabsTrigger>
+            <TabsTrigger value="submissions">Submissions{q.history.length ? ` (${q.history.length})` : ""}</TabsTrigger>
+            <TabsTrigger value="hints">
+              Hints {q.hints.revealed.length}/{q.hints.total}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
       <div className="pane min-h-0 flex-1 overflow-auto p-4">
         {tab === "problem" && (
           <StatementView statementMd={q.statement_md} timeLimitMs={q.time_limit_ms} memoryLimitMb={q.memory_limit_mb} hiddenTestcases={q.hidden_testcases} samples={q.samples}
@@ -156,8 +166,8 @@ export default function WorkspacePage() {
                 {q.hints.next ? (
                   <div className="rounded-box border border-dashed border-line-2 p-4 text-center">
                     <div className="text-sm">Hint {q.hints.next.idx + 1} of {q.hints.total}</div>
-                    <div className="mb-3 text-xs text-muted">Author-written. Purchases are final.</div>
-                    <Button size="sm" icon={<Icon.Lightbulb />} variant="secondary" onClick={() => setHintDialog(true)}>Buy for {q.hints.next.price}</Button>
+                    <div className="mb-3 text-xs text-muted-foreground">Author-written. Purchases are final.</div>
+                    <Button size="sm" variant="outline" onClick={() => setHintDialog(true)}><Icon.Lightbulb /> Buy for {q.hints.next.price}</Button>
                   </div>
                 ) : <p className="text-center text-xs text-faint">Every hint is revealed.</p>}
               </>
@@ -171,9 +181,16 @@ export default function WorkspacePage() {
   const codePane = (
     <div className="flex h-full flex-col bg-[#1e1e1e]">
       <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-3 py-2 text-white/80">
-        <div className="w-48"><Select className="!h-8 !border-white/20 !bg-white/10 !text-white !text-[13px]" value={language} onChange={(e) => { setLanguage(e.target.value); if (!source.trim()) setSource(TEMPLATE[e.target.value] ?? ""); }} aria-label="Language">
-          {languages.length === 0 && <option value={language}>{language}</option>}{languages.map((l) => <option key={l.key} value={l.key} className="text-ink">{l.name}</option>)}
-        </Select></div>
+        <SimpleSelect
+          className="w-44 border-white/20 bg-white/10 text-white hover:border-white/40 [&_svg]:text-white/60"
+          value={language}
+          aria-label="Language"
+          onValueChange={(v) => {
+            setLanguage(v);
+            if (!source.trim()) setSource(TEMPLATE[v] ?? "");
+          }}
+          options={languages.length === 0 ? [{ value: language, label: language }] : languages.map((l) => ({ value: l.key, label: l.name }))}
+        />
         <button className="rounded px-2 py-1 text-xs hover:bg-white/10" onClick={() => { if (confirm("Replace your code with the template?")) onChange(TEMPLATE[language] ?? ""); }}>Reset</button>
         <span className="flex items-center gap-1 text-xs"><button className="rounded px-1.5 hover:bg-white/10" onClick={() => setFontSize((f) => Math.max(11, f - 1))} aria-label="Smaller text">A−</button><button className="rounded px-1.5 hover:bg-white/10" onClick={() => setFontSize((f) => Math.min(20, f + 1))} aria-label="Larger text">A+</button></span>
         <span className={`ml-auto text-xs ${saved === "failed" ? "font-semibold text-red" : "text-white/50"}`} aria-live="polite">{saved === "saving" ? "Saving…" : saved === "saved" ? "Saved" : saved === "failed" ? "Not saved!" : ""}</span>
@@ -192,7 +209,7 @@ export default function WorkspacePage() {
         <span className="hidden text-xs text-white/50 sm:inline"><Kbd>Ctrl</Kbd> + <Kbd>Enter</Kbd> to submit</span>
         <div className="ml-auto flex items-center gap-2">
           {inFlight && <Button variant="ghost" size="sm" className="!text-white/70 hover:!bg-white/10" onClick={cancel}>Cancel</Button>}
-          <Button onClick={submit} loading={busy || inFlight} disabled={!canSubmit} icon={<Icon.Play />}>
+          <Button onClick={submit} loading={busy || inFlight} disabled={!canSubmit}><Icon.Play /> 
             {inFlight ? "Judging…" : cooldown > 0 ? `Wait ${Math.ceil(cooldown / 1000)}s` : "Submit"}
           </Button>
         </div>
@@ -203,10 +220,10 @@ export default function WorkspacePage() {
   return (
     <div className="workspace">
       <SplitPane left={problemPane} right={codePane} storageKey="workspace" />
-      <Dialog open={hintDialog} onClose={() => setHintDialog(false)} title="Buy a hint">
+      <Modal open={hintDialog} onClose={() => setHintDialog(false)} title="Buy a hint">
         <p className="text-sm">Reveal hint <strong>{(q.hints.next?.idx ?? 0) + 1}</strong> for <strong>{q.hints.next?.price}</strong> coins? This cannot be undone.</p>
-        <div className="mt-4 flex justify-end gap-2"><Button variant="secondary" onClick={() => setHintDialog(false)}>Cancel</Button><Button onClick={buyHint} loading={busy}>Buy for {q.hints.next?.price}</Button></div>
-      </Dialog>
+        <div className="mt-4 flex justify-end gap-2"><Button variant="outline" onClick={() => setHintDialog(false)}>Cancel</Button><Button onClick={buyHint} loading={busy}>Buy for {q.hints.next?.price}</Button></div>
+      </Modal>
     </div>
   );
 }
@@ -244,7 +261,7 @@ function History({ history, sampleCount }: { history: Question["history"]; sampl
       {history.map((h, i) => (
         <li key={h.id} className="py-3 text-sm">
           <div className="flex items-center gap-3"><span className="w-6 text-xs text-faint">#{history.length - i}</span><VerdictBadge verdict={h.judgement.state === "done" ? h.judgement.verdict : null} /><span className="text-faint">{new Date(h.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · {h.language}</span>{h.judgement.max_time_ms ? <span className="ml-auto text-xs text-faint">{h.judgement.max_time_ms.toFixed(0)} ms</span> : null}</div>
-          <div className="mt-1 pl-9 text-muted">{explain(h.judgement, sampleCount)}</div>
+          <div className="mt-1 pl-9 text-muted-foreground">{explain(h.judgement, sampleCount)}</div>
         </li>
       ))}
     </ol>

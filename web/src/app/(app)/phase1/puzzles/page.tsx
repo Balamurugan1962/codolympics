@@ -7,10 +7,10 @@ import { useContest } from "@/components/contest-provider";
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
 import { PuzzleCard, defaultAnswer, type PuzzleView, type SaveStatus } from "@/components/phase1/puzzle-card";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
+import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Kbd } from "@/components/ui/kbd";
 import { PageBody } from "@/components/ui/page";
@@ -60,14 +60,14 @@ export default function PuzzlesPage() {
         <aside className="lg:sticky lg:top-28 lg:self-start">
           <div className="rounded-box border border-line bg-card">
             <div className="border-b border-line px-4 py-3">
-              <div className="flex items-center justify-between text-[13px]"><span className="font-semibold">Questions</span><span className="text-muted">{answered.size} of {total} answered</span></div>
+              <div className="flex items-center justify-between text-[13px]"><span className="font-semibold">Questions</span><span className="text-muted-foreground">{answered.size} of {total} answered</span></div>
               <div className="mt-2 h-1.5 w-full rounded bg-line"><div className="h-1.5 rounded bg-green transition-[width]" style={{ width: `${pct}%` }} /></div>
             </div>
             <ol className="pane max-h-[50vh] overflow-auto p-2 lg:max-h-[calc(100vh-15rem)]">
               {data.questions.map((x, i) => (
                 <li key={x.id}>
                   <button onClick={() => setCurrent(i)} aria-current={i === current ? "true" : undefined}
-                    className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-green-tint font-semibold text-ink" : "text-muted hover:bg-page hover:text-ink"}`}>
+                    className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-green-tint font-semibold text-ink" : "text-muted-foreground hover:bg-page hover:text-ink"}`}>
                     <span className={`h-2 w-2 shrink-0 rounded-full ${answered.has(x.id) ? "bg-green" : "border border-line-2"}`} aria-label={answered.has(x.id) ? "answered" : "unanswered"} />
                     <span className="truncate">{i + 1}. {x.title}</span>
                     <span className="ml-auto text-[11.5px] tabular-nums text-faint">{x.points}</span>
@@ -79,8 +79,8 @@ export default function PuzzlesPage() {
         </aside>
 
         <div className="min-w-0 space-y-3">
-          {!data.open && !finished && <Alert tone="warning" title="Section A is closed">Your answers are recorded as they were when it closed.</Alert>}
-          {finished && <Alert tone="success" title="You finished Section A">Your answers are locked and your submission time is recorded.</Alert>}
+          {!data.open && !finished && <Alert variant="warning"><AlertTitle>"Section A is closed"</AlertTitle><AlertDescription>Your answers are recorded as they were when it closed.</AlertDescription></Alert>}
+          {finished && <Alert variant="success"><AlertTitle>"You finished Section A"</AlertTitle><AlertDescription>Your answers are locked and your submission time is recorded.</AlertDescription></Alert>}
           {q ? <LiveQuestion key={q.id} index={current} total={total} q={q} saved={data.answers[q.id]} locked={locked} onSaved={load} />
             : <EmptyState icon={<Icon.Puzzle size={20} />} title="No puzzles published" body="The organisers have not published any questions yet." />}
         </div>
@@ -88,19 +88,19 @@ export default function PuzzlesPage() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1440px] items-center gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
-          <Button variant="secondary" size="sm" icon={<Icon.ChevronLeft size={14} />} onClick={() => go(-1)} disabled={current === 0}>Previous</Button>
-          <Button variant="secondary" size="sm" onClick={() => go(1)} disabled={current >= total - 1}>Next <Icon.ChevronRight size={14} /></Button>
+          <Button variant="outline" size="sm" onClick={() => go(-1)} disabled={current === 0}><Icon.ChevronLeft size={14} /> Previous</Button>
+          <Button variant="outline" size="sm" onClick={() => go(1)} disabled={current >= total - 1}>Next <Icon.ChevronRight size={14} /></Button>
           <span className="hidden text-[11.5px] text-faint sm:inline"><Kbd>←</Kbd> <Kbd>→</Kbd> to move</span>
-          <span className="ml-auto flex items-center gap-1.5 text-[13px] text-muted"><Icon.Clock size={14} /><Countdown until={data.phase_ends_at} className="font-semibold text-ink" /></span>
-          {finished ? <Badge tone="green">Finished</Badge> : <Button size="sm" icon={<Icon.Flag size={14} />} disabled={locked} onClick={() => setFinishOpen(true)}>Submit &amp; finish</Button>}
+          <span className="ml-auto flex items-center gap-1.5 text-[13px] text-muted-foreground"><Icon.Clock size={14} /><Countdown until={data.phase_ends_at} className="font-semibold text-ink" /></span>
+          {finished ? <Badge variant="success">Finished</Badge> : <Button size="sm" disabled={locked} onClick={() => setFinishOpen(true)}><Icon.Flag size={14} /> Submit &amp; finish</Button>}
         </div>
       </div>
 
-      <Dialog open={finishOpen} onClose={() => setFinishOpen(false)} title="Finish Section A?">
+      <Modal open={finishOpen} onClose={() => setFinishOpen(false)} title="Finish Section A?">
         <p className="text-[13px]">You have answered <strong>{answered.size}</strong> of <strong>{total}</strong>. After finishing you cannot change anything. Your submission time — the tiebreak — is recorded now.</p>
-        {answered.size < total && <div className="mt-3"><Alert tone="warning">{total - answered.size} question{total - answered.size === 1 ? "" : "s"} unanswered.</Alert></div>}
-        <div className="mt-5 flex justify-end gap-2"><Button variant="secondary" onClick={() => setFinishOpen(false)}>Keep working</Button><Button onClick={finish} icon={<Icon.Flag size={14} />}>Finish</Button></div>
-      </Dialog>
+        {answered.size < total && <div className="mt-3"><Alert variant="warning"><AlertDescription>{total - answered.size} question{total - answered.size === 1 ? "" : "s"} unanswered.</AlertDescription></Alert></div>}
+        <div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setFinishOpen(false)}>Keep working</Button><Button onClick={finish}><Icon.Flag size={14} /> Finish</Button></div>
+      </Modal>
     </PageBody>
   );
 }

@@ -13,17 +13,20 @@ import { ProblemPreview } from "@/components/admin/problem-preview";
 import { HintsEditor, QuestionBasicsFields, detailsIssues, EMPTY_DETAILS, hintIssues, type QuestionDetails } from "@/components/admin/question-details-form";
 import { Icon } from "@/components/icons";
 import { ReasonAction } from "@/components/reason-action";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileDrop } from "@/components/ui/file-drop";
-import { FormGrid } from "@/components/ui/form";
-import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { FormGrid } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { SimpleSelect } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { Checklist, Summary, SummaryItem } from "@/components/ui/summary";
-import { Table, Td, Th, Tr } from "@/components/ui/table";
-import { Tabs } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
@@ -63,12 +66,12 @@ export default function ProblemPage() {
     <PageBody width="wide">
       <PageHeader
         breadcrumb={<Link href="/admin/problems" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Problems</Link>}
-        title={<span className="flex flex-wrap items-center gap-2">{question?.title ?? id}{hackOnly && <Badge tone="blue">Hacking</Badge>}{question?.status === "void" && <Badge tone="red">Void</Badge>}{question?.status === "sold" && <Badge tone="grey">Sold</Badge>}</span>}
+        title={<span className="flex flex-wrap items-center gap-2">{question?.title ?? id}{hackOnly && <Badge variant="info">Hacking</Badge>}{question?.status === "void" && <Badge variant="destructive">Void</Badge>}{question?.status === "sold" && <Badge variant="neutral">Sold</Badge>}</span>}
         description={<span className="font-mono text-[12px]">{id}</span>}
         actions={
           <div className="flex items-center gap-3">
-            {problem && (validated ? <StatusDot tone="green">Validated</StatusDot> : <StatusDot tone="amber">Not validated</StatusDot>)}
-            {problem?.current ? <StatusDot tone="green">Live {problem.current}</StatusDot> : <StatusDot tone="grey">Not published</StatusDot>}
+            {problem && (validated ? <StatusDot tone="success">Validated</StatusDot> : <StatusDot tone="warning">Not validated</StatusDot>)}
+            {problem?.current ? <StatusDot tone="success">Live {problem.current}</StatusDot> : <StatusDot tone="neutral">Not published</StatusDot>}
           </div>
         }
       />
@@ -85,7 +88,7 @@ export default function ProblemPage() {
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[13px] font-semibold">{s.label}</span>
-                  <span className="block truncate text-[11.5px] text-muted">{s.detail}</span>
+                  <span className="block truncate text-[11.5px] text-muted-foreground">{s.detail}</span>
                 </span>
               </button>
             </li>
@@ -93,9 +96,13 @@ export default function ProblemPage() {
         })}
       </ol>
 
-      <div className="mb-4">
-        <Tabs value={tab} onChange={goTab} tabs={[{ value: "package", label: "Package" }, ...(hackOnly ? [] : [{ value: "details" as Tab, label: "Details & hints" }, { value: "preview" as Tab, label: "Preview" }])]} />
-      </div>
+      <Tabs value={tab} onValueChange={(v) => goTab(v as Tab)}>
+        <TabsList variant="line" className="mb-5 w-full justify-start border-b">
+          <TabsTrigger value="package">Package</TabsTrigger>
+          {!hackOnly && <TabsTrigger value="details">Details &amp; hints</TabsTrigger>}
+          {!hackOnly && <TabsTrigger value="preview">Preview</TabsTrigger>}
+        </TabsList>
+      </Tabs>
 
       {tab === "package" && (problem
         ? <Package id={id} problem={problem} question={question} onChange={load} />
@@ -139,7 +146,7 @@ function UploadVersion({ id, onChange, next }: { id: string; onChange: () => voi
           <Field label="Reason" className="flex-1" help="What changed in this version. Goes into the audit log.">
             <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. fixed testcase 7's answer" />
           </Field>
-          <Button onClick={upload} loading={busy} disabled={reason.trim().length < 3} icon={<Icon.Upload size={14} />}>Upload</Button>
+          <Button onClick={upload} loading={busy} disabled={reason.trim().length < 3}><Icon.Upload size={14} /> Upload</Button>
         </div>
       )}
     </div>
@@ -176,20 +183,20 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
     <div className="space-y-4">
       <Section title="Versions" description="Each upload is a complete package. Only the live one is judged; the others wait." padded={false}>
         <Table>
-          <thead><tr><Th>Version</Th><Th>Status</Th><Th className="hidden sm:table-cell">Notes</Th><Th className="w-32"><span className="sr-only">Select</span></Th></tr></thead>
-          <tbody>
+          <TableHeader><TableRow><TableHead>Version</TableHead><TableHead>Status</TableHead><TableHead className="hidden sm:table-cell">Notes</TableHead><TableHead className="w-32"><span className="sr-only">Select</span></TableHead></TableRow></TableHeader>
+          <TableBody>
             {[...problem.versions].reverse().map((v) => (
-              <Tr key={v} selected={v === version}>
-                <Td className="font-mono text-[12.5px] font-semibold">{v}</Td>
-                <Td>{v === problem.current ? <StatusDot tone="green">Live</StatusDot> : <StatusDot tone="grey">Not live</StatusDot>}</Td>
-                <Td className="hidden text-muted sm:table-cell">{v === problem.versions.at(-1) ? "latest upload" : ""}</Td>
-                <Td align="right">{v === version ? <span className="text-[12px] font-semibold text-green-dark">Selected</span> : <Button size="sm" variant="ghost" onClick={() => { setVersion(v); setReport(null); }}>Select</Button>}</Td>
-              </Tr>
+              <TableRow key={v} data-state={v === version ? "selected" : undefined}>
+                <TableCell className="font-mono text-[12.5px] font-semibold">{v}</TableCell>
+                <TableCell>{v === problem.current ? <StatusDot tone="success">Live</StatusDot> : <StatusDot tone="neutral">Not live</StatusDot>}</TableCell>
+                <TableCell className="hidden text-muted-foreground sm:table-cell">{v === problem.versions.at(-1) ? "latest upload" : ""}</TableCell>
+                <TableCell className="text-right tabular-nums">{v === version ? <span className="text-[12px] font-semibold text-green-dark">Selected</span> : <Button size="sm" variant="ghost" onClick={() => { setVersion(v); setReport(null); }}>Select</Button>}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
+          </TableBody>
         </Table>
         <div className="border-t border-line px-5 py-4">
-          <div className="mb-2 text-[12px] font-semibold text-muted">Add a version</div>
+          <div className="mb-2 text-[12px] font-semibold text-muted-foreground">Add a version</div>
           <UploadVersion id={id} onChange={onChange} next={nextVersion} />
         </div>
       </Section>
@@ -197,7 +204,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
       <Section
         title={<span className="flex items-center gap-2">Validate <span className="font-mono text-[12px] font-normal text-faint">{version}</span></span>}
         description="Prove the package before it goes live. The reference solution is the part that matters — it must pass every test within the limits. A wrong solution should fail, proving the tests bite."
-        footer={<Button onClick={validate} loading={busy} disabled={!version} icon={<Icon.Play size={14} />}>Run validation</Button>}
+        footer={<Button onClick={validate} loading={busy} disabled={!version}><Icon.Play size={14} /> Run validation</Button>}
       >
         <Summary cols={4} className="mb-5">
           <SummaryItem label="Testcases">{problem.testcases}</SummaryItem>
@@ -205,7 +212,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
           <SummaryItem label="Comparison">{problem.compare}</SummaryItem>
           <SummaryItem label="Reference">{problem.has_reference ? "stored in the package" : "supply one below"}</SummaryItem>
         </Summary>
-        {problem.has_reference && !reference && <div className="mb-4"><Alert tone="info">This package carries its own reference solution; validation uses it unless you paste another one below.</Alert></div>}
+        {problem.has_reference && !reference && <div className="mb-4"><Alert variant="info"><AlertDescription>This package carries its own reference solution; validation uses it unless you paste another one below.</AlertDescription></Alert></div>}
         <FormGrid cols={2}>
           <Field label={problem.has_reference ? "Reference solution (optional override)" : "Reference solution"} help="Must be accepted on every test.">
             <Textarea rows={7} className="font-mono text-[12px]" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Paste source…" />
@@ -217,23 +224,26 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
         {(reference || wrong) && (
           <div className="mt-4 max-w-xs">
             <Field label="Language of the pasted sources">
-              <Select value={lang} onChange={(e) => setLang(e.target.value)}>
-                {languages.length === 0 && <option value={lang}>{lang}</option>}
-                {languages.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}
-              </Select>
+              <SimpleSelect
+                className="w-full"
+                size="default"
+                value={lang}
+                onValueChange={setLang}
+                options={languages.length === 0 ? [{ value: lang, label: lang }] : languages.map((l) => ({ value: l.key, label: l.name }))}
+              />
             </Field>
           </div>
         )}
         {report && (
           <div className="mt-5">
-            <Alert tone={report.ok ? "success" : "error"} title={report.ok ? `${version} is valid` : `${version} has problems`}>
+            <Alert variant={report.ok ? "success" : "destructive"}><AlertTitle>{report.ok ? `${version} is valid` : `${version} has problems`}</AlertTitle><AlertDescription>
               <Checklist items={[
                 ...(report.reference ? [{ ok: report.reference.verdict === "AC", label: `Reference: ${report.reference.verdict}`, detail: `${report.reference.passed} passed · slowest ${report.reference.max_time_ms} ms${report.reference.first_fail !== null ? ` · first failure on test ${report.reference.first_fail}` : ""}` }] : []),
                 ...(report.wrong_solution ? [{ ok: report.wrong_solution.verdict !== "AC", label: `Wrong solution: ${report.wrong_solution.verdict}`, detail: report.wrong_solution.verdict === "AC" ? "it passed everything — the tests do not catch it" : "rejected, as it should be" }] : []),
                 ...(report.checker ? [{ ok: report.checker.compiled, label: report.checker.compiled ? "Checker compiles" : "Checker does not compile", detail: report.checker.output || undefined }] : []),
                 ...report.issues.map((i) => ({ ok: false, label: i })),
               ]} />
-            </Alert>
+            </AlertDescription></Alert>
           </div>
         )}
       </Section>
@@ -243,7 +253,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
         description={problem.current ? `${problem.current} is live. Publishing ${version} swaps it atomically.` : "Nothing is live yet. Publishing makes this version the one the judge runs."}
         footer={
           <ReasonAction
-            label={problem.current === version ? `${version} is live` : `Publish ${version}`} variant="primary" size="md" disabled={!version || problem.current === version}
+            label={problem.current === version ? `${version} is live` : `Publish ${version}`} variant="default" size="default" disabled={!version || problem.current === version}
             title={`Publish ${version}?`}
             description={blast > 0
               ? <span>This rejudges <strong>{blast}</strong> submission{blast === 1 ? "" : "s"} already made on this question. Verdicts may change; you will be asked what to do with the outcome.</span>
@@ -262,11 +272,11 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
         ]} />
         {blast > 0 && question && question.status !== "void" && (
           <div className="mt-5 border-t border-line pt-4">
-            <div className="mb-2 text-[12px] font-semibold text-muted">After a rejudge</div>
-            <p className="mb-3 text-[12.5px] text-muted">If verdicts changed and someone was disadvantaged, choose what happens. Every choice is audit-logged.</p>
+            <div className="mb-2 text-[12px] font-semibold text-muted-foreground">After a rejudge</div>
+            <p className="mb-3 text-[12.5px] text-muted-foreground">If verdicts changed and someone was disadvantaged, choose what happens. Every choice is audit-logged.</p>
             <div className="flex flex-wrap gap-2">
               {(["stand", "refund", "void"] as const).map((o) => (
-                <ReasonAction key={o} label={o === "stand" ? "Let verdicts stand" : o === "refund" ? "Refund the owner" : "Void the question"} variant={o === "void" ? "danger" : "secondary"}
+                <ReasonAction key={o} label={o === "stand" ? "Let verdicts stand" : o === "refund" ? "Refund the owner" : "Void the question"} variant={o === "void" ? "destructive" : "outline"}
                   title={o === "stand" ? "Let the new verdicts stand?" : o === "refund" ? "Refund the owner?" : "Void this question?"}
                   description={o === "stand" ? "The rejudged verdicts count as they are." : o === "refund" ? "The owner keeps the question and gets the price back." : "Scores for nobody; the owner is refunded the price and every hint bought."}
                   onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/rejudge-outcome`, { reason, outcome: o }); toast({ title: "Recorded", tone: "success" }); onChange(); }} />
@@ -300,7 +310,7 @@ function Details({ id, question, testcases, onChange }: { id: string; question: 
 
   return (
     <div className={`space-y-4 ${dirty ? "pb-20" : ""}`}>
-      {!question && <Alert tone="info" title="No details yet">Participants would see nothing for this problem. Fill these in and save.</Alert>}
+      {!question && <Alert variant="info"><AlertTitle>"No details yet"</AlertTitle><AlertDescription>Participants would see nothing for this problem. Fill these in and save.</AlertDescription></Alert>}
       <Section title="Question" description="What participants see when they win it. The judge never reads any of this.">
         <QuestionBasicsFields d={d} onChange={setD} testcases={testcases} />
       </Section>
@@ -309,7 +319,7 @@ function Details({ id, question, testcases, onChange }: { id: string; question: 
       </Section>
       {question && question.status !== "void" && (
         <Section title="Void" description="Removes the question from play. It scores for nobody; the owner is refunded the price and every hint bought for it.">
-          <ReasonAction label="Void this question" variant="danger" title={`Void ${id}?`} description="This cannot be undone."
+          <ReasonAction label="Void this question" variant="destructive" title={`Void ${id}?`} description="This cannot be undone."
             onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/void`, { reason }); toast({ title: "Question voided", tone: "success" }); onChange(); }} />
         </Section>
       )}
@@ -322,7 +332,7 @@ function Details({ id, question, testcases, onChange }: { id: string; question: 
             <div className="flex flex-1 items-center gap-2 sm:justify-end">
               <Input className="sm:max-w-xs" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason — recorded in the audit log" />
               {question && <Button variant="ghost" onClick={() => setD(initial)}>Discard</Button>}
-              <Button onClick={save} loading={busy} disabled={reason.trim().length < 3 || issues.length > 0} icon={<Icon.Check size={14} />}>Save</Button>
+              <Button onClick={save} loading={busy} disabled={reason.trim().length < 3 || issues.length > 0}><Icon.Check size={14} /> Save</Button>
             </div>
           </div>
         </div>
@@ -341,21 +351,21 @@ function Preview({ id, problem, question }: { id: string; problem: P | null; que
     void api.post<{ samples: { input: string; output: string }[] }>(`/api/admin/problems/${id}/samples`, { count, version: problem.current ?? problem.versions.at(-1) }).then((r) => setSamples(r.samples)).catch(() => setSamples([]));
   }, [id, problem, count]);
 
-  if (!question) return <Section padded={false}><div className="p-8 text-center text-[13px] text-muted">No details to preview yet — add them under Details & hints.</div></Section>;
+  if (!question) return <Section padded={false}><div className="p-8 text-center text-[13px] text-muted-foreground">No details to preview yet — add them under Details & hints.</div></Section>;
   return (
     <div className="space-y-4">
-      <Alert tone="info">This is the workspace's problem pane, rendered from the saved details and the {problem?.current ? "live" : "latest"} package.</Alert>
+      <Alert variant="info"><AlertDescription>This is the workspace's problem pane, rendered from the saved details and the {problem?.current ? "live" : "latest"} package.</AlertDescription></Alert>
       <ProblemPreview
         title={question.title} difficulty={question.difficulty} score={question.score} statementMd={question.statementMd}
         timeLimitMs={problem?.time_limit_ms ?? null} memoryLimitMb={problem?.memory_limit_mb ?? null}
         testcases={problem?.testcases ?? null} sampleCount={question.sampleCount} samples={samples ?? []}
       />
       <Section title="Hints, in the order they unlock" description="The owner sees only the next price until it is bought.">
-        {question.hints.length === 0 ? <p className="text-[13px] text-muted">None.</p> : (
+        {question.hints.length === 0 ? <p className="text-[13px] text-muted-foreground">None.</p> : (
           <ol className="divide-y divide-line">
             {question.hints.map((h) => (
               <li key={h.idx} className="flex gap-4 py-2.5 text-[13px]">
-                <span className="w-24 shrink-0 font-semibold tabular-nums text-muted">Hint {h.idx + 1} · {h.price}</span>
+                <span className="w-24 shrink-0 font-semibold tabular-nums text-muted-foreground">Hint {h.idx + 1} · {h.price}</span>
                 <span className="min-w-0 flex-1 whitespace-pre-wrap">{h.bodyMd}</span>
               </li>
             ))}

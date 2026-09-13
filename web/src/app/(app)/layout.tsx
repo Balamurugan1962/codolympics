@@ -1,7 +1,7 @@
 import { AdminShell } from "@/components/admin/admin-shell";
 import { ContestProvider, type ContestState } from "@/components/contest-provider";
 import { Shell } from "@/components/shell";
-import { ToastProvider } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/toast";
 import { requireViewer } from "@/lib/session";
 import { stateFor } from "@/lib/state";
 
@@ -16,9 +16,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const Frame = viewer.role === "admin" ? AdminShell : Shell;
   return (
     <ContestProvider initial={initial}>
-      <ToastProvider>
-        <Frame>{children}</Frame>
-      </ToastProvider>
+      <Frame>{children}</Frame>
+      <Toaster />
     </ContestProvider>
   );
 }

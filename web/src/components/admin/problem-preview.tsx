@@ -20,7 +20,7 @@ export function ProblemPreview({ title, difficulty, score, statementMd, timeLimi
         <span className="text-faint"><Icon.ChevronLeft size={16} /></span>
         <h3 className="truncate text-[15px] font-semibold">{title || <span className="text-faint">Untitled problem</span>}</h3>
         <DifficultyBadge d={difficulty} />
-        <Badge tone="grey">{score} pts</Badge>
+        <Badge variant="neutral">{score} pts</Badge>
       </div>
       <div className="flex gap-1 border-b border-line px-4">
         {["Problem", "Submissions", "Hints"].map((t, i) => (

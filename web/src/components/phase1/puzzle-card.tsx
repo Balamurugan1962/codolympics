@@ -11,7 +11,8 @@ import { Icon } from "../icons";
 import { Markdown } from "../markdown";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Input, Textarea } from "../ui/input";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 
 export type PuzzleView = {
   id: number; title: string; body_md: string; category: string; kind: string; grading: string; points: number; explain_points: number;
@@ -40,15 +41,15 @@ export function PuzzleCard({ q, index, total, answer, explanation, status, locke
           <h2 className="mt-1 text-[17px] font-semibold leading-snug">{q.title || <span className="text-faint">Untitled question</span>}</h2>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Badge tone="navy">{q.points} pts</Badge>
-          {q.explain_points > 0 && <Badge tone="grey">+{q.explain_points} reasoning</Badge>}
+          <Badge variant="navy">{q.points} pts</Badge>
+          {q.explain_points > 0 && <Badge variant="neutral">+{q.explain_points} reasoning</Badge>}
         </div>
       </div>
       <div className="space-y-5 p-5">
         {q.body_md.trim() ? <Markdown>{q.body_md}</Markdown> : <p className="text-[13px] text-faint">The question text goes here.</p>}
         <section className="rounded-box border border-line bg-page p-4">
           <div className="mb-3 flex items-center justify-between">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">Your answer</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Your answer</div>
             <span className={`text-[11.5px] ${status === "failed" ? "font-semibold text-red" : "text-faint"}`} aria-live="polite">{statusText}</span>
           </div>
           <AnswerInput q={q} value={answer} disabled={locked} onChange={onAnswer} />
@@ -56,7 +57,7 @@ export function PuzzleCard({ q, index, total, answer, explanation, status, locke
         </section>
         {q.explain_points > 0 && (
           <section>
-            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">
+            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
               Your reasoning <span className="font-normal normal-case tracking-normal text-faint">— marked by an evaluator, up to {q.explain_points} pts</span>
             </div>
             <Textarea rows={5} disabled={locked} value={explanation} onChange={(e) => onExplanation(e.target.value)} placeholder="Show how you got there." />
@@ -123,8 +124,8 @@ export function SequenceInput({ items, value, disabled, onChange }: { items: str
         <li key={idx} className="flex items-center gap-2 rounded-box border border-line bg-card px-3 py-2 text-[13px]">
           <span className="w-5 font-semibold tabular-nums text-faint">{pos + 1}.</span>
           <span className="min-w-0 flex-1">{items[idx]}</span>
-          <button type="button" disabled={disabled || pos === 0} onClick={() => move(pos, -1)} className="rounded p-1 text-muted hover:bg-page disabled:opacity-30" aria-label="Move up">↑</button>
-          <button type="button" disabled={disabled || pos === order.length - 1} onClick={() => move(pos, 1)} className="rounded p-1 text-muted hover:bg-page disabled:opacity-30" aria-label="Move down">↓</button>
+          <button type="button" disabled={disabled || pos === 0} onClick={() => move(pos, -1)} className="rounded p-1 text-muted-foreground hover:bg-page disabled:opacity-30" aria-label="Move up">↑</button>
+          <button type="button" disabled={disabled || pos === order.length - 1} onClick={() => move(pos, 1)} className="rounded p-1 text-muted-foreground hover:bg-page disabled:opacity-30" aria-label="Move down">↓</button>
         </li>
       ))}
       <li className="pt-1 text-[11.5px] text-faint">Use the arrows to put the items in the right order.</li>
@@ -147,7 +148,7 @@ export function ListInput({ value, max, disabled, hint, check, onChange }: { val
     <div>
       <div className="flex max-w-md gap-2">
         <Input disabled={disabled} value={draft} placeholder={hint ?? "Add an entry, press Enter"} onChange={(e) => { setDraft(e.target.value); setErr(null); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
-        <Button type="button" variant="secondary" disabled={disabled || value.length >= max} onClick={add}>Add</Button>
+        <Button type="button" variant="outline" disabled={disabled || value.length >= max} onClick={add}>Add</Button>
       </div>
       {err && <p className="mt-1.5 flex items-center gap-1 text-[12px] font-semibold text-red"><Icon.Alert size={12} /> {err}</p>}
       {value.length > 0 && (

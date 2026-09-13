@@ -9,7 +9,7 @@ import { useState } from "react";
 
 import { useContest } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CountdownRing } from "@/components/ui/countdown-ring";
@@ -74,9 +74,9 @@ export default function AuctionPage() {
                     <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-green-dark">Now offering</div>
                     <h2 className="mt-1 text-[24px] font-semibold leading-tight tracking-[-0.01em]">{lot.title}</h2>
                     <div className="mt-2.5 flex flex-wrap gap-2">
-                      <Badge tone={lot.difficulty === "hard" ? "red" : lot.difficulty === "medium" ? "amber" : "green"}>{lot.difficulty}</Badge>
-                      <Badge tone="navy">{lot.score} points</Badge>
-                      <Badge tone="grey">base price {lot.base_price}</Badge>
+                      <Badge variant={lot.difficulty === "hard" ? "destructive" : lot.difficulty === "medium" ? "warning" : "success"}>{lot.difficulty}</Badge>
+                      <Badge variant="navy">{lot.score} points</Badge>
+                      <Badge variant="neutral">base price {lot.base_price}</Badge>
                     </div>
                     <p className="mt-3 text-[11.5px] text-faint">The statement is what you are buying. You will read it only if you win.</p>
                   </div>
@@ -91,33 +91,33 @@ export default function AuctionPage() {
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Highest bid</div>
                     <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none">{lot.current_bid ?? "—"}</div>
-                    <div className="mt-1.5 text-[12.5px] text-muted">{lot.current_bidder_name ? <>{lot.current_bidder_name}{mine && <Badge tone="green" className="ml-2">you</Badge>}</> : "no bids yet"}</div>
+                    <div className="mt-1.5 text-[12.5px] text-muted-foreground">{lot.current_bidder_name ? <>{lot.current_bidder_name}{mine && <Badge variant="success" className="ml-2">you</Badge>}</> : "no bids yet"}</div>
                   </div>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Next bid</div>
                     <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none text-green-dark">{lot.next_bid}</div>
-                    <div className="mt-1.5 text-[12.5px] text-muted">+{auction.increment} each time</div>
+                    <div className="mt-1.5 text-[12.5px] text-muted-foreground">+{auction.increment} each time</div>
                   </div>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Your balance</div>
                     <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none">{balance.toLocaleString()}</div>
-                    <div className="mt-1.5 text-[12.5px] text-muted">{affordable ? `${stepsLeft} more step${stepsLeft === 1 ? "" : "s"} after this` : "not enough for the next bid"}</div>
+                    <div className="mt-1.5 text-[12.5px] text-muted-foreground">{affordable ? `${stepsLeft} more step${stepsLeft === 1 ? "" : "s"} after this` : "not enough for the next bid"}</div>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:flex-row sm:items-center">
                   {eligible ? (
                     <>
-                      <Button size="lg" icon={<Icon.Gavel size={16} />} onClick={bid} loading={busy} disabled={mine || !affordable} className="sm:min-w-44">
+                      <Button size="lg" onClick={bid} loading={busy} disabled={mine || !affordable} className="sm:min-w-44"><Icon.Gavel size={16} /> 
                         {mine ? "You're winning" : `Bid ${lot.next_bid}`}
                       </Button>
-                      <span className="text-[13px] text-muted" aria-live="polite">
+                      <span className="text-[13px] text-muted-foreground" aria-live="polite">
                         {mine ? "Nobody has outbid you. If the ring empties, the question is yours." : !affordable ? `You'd need ${lot.next_bid - balance} more.` : hasBids ? "Outbid to restart the countdown." : "Be the first: the countdown starts on the first bid."}
                       </span>
                     </>
                   ) : viewer.role === "participant" ? (
-                    <Alert tone="warning">You are not eligible to bid in this contest.</Alert>
-                  ) : <span className="text-[13px] text-muted">Organisers observe here; controls are on the admin dashboard.</span>}
+                    <Alert variant="warning"><AlertDescription>You are not eligible to bid in this contest.</AlertDescription></Alert>
+                  ) : <span className="text-[13px] text-muted-foreground">Organisers observe here; controls are on the admin dashboard.</span>}
                 </div>
               </>
             )}
@@ -125,7 +125,7 @@ export default function AuctionPage() {
 
           <Section title="Bid feed" description={lot ? "Live, newest first." : undefined} padded={false}>
             {auction.recent_bids.length === 0 ? (
-              <p className="px-5 py-4 text-[13px] text-muted">No bids on this question yet.</p>
+              <p className="px-5 py-4 text-[13px] text-muted-foreground">No bids on this question yet.</p>
             ) : (
               <ul className="divide-y divide-line">
                 {auction.recent_bids.map((b, i) => (
@@ -149,7 +149,7 @@ export default function AuctionPage() {
                   <div className="truncate font-semibold">{o.title}</div>
                   <div className="text-[11.5px] text-faint">{o.difficulty} · {o.score} pts · base {o.base_price}</div>
                 </div>
-                {o.state === "closed" ? <Badge tone="grey">sold {o.current_bid}</Badge> : o.state === "unsold" ? <Badge tone="amber">unsold</Badge> : o.state === "open" ? <Badge tone="green">now</Badge> : null}
+                {o.state === "closed" ? <Badge variant="neutral">sold {o.current_bid}</Badge> : o.state === "unsold" ? <Badge variant="warning">unsold</Badge> : o.state === "open" ? <Badge variant="success">now</Badge> : null}
               </li>
             ))}
           </ol>

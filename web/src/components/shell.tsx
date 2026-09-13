@@ -4,21 +4,37 @@
  * The frame around every participant and evaluator page.
  *   row 1  brand · navigation · phase + countdown · balance · connection · you
  *   row 2  the phase timeline: where we are, what's next
- * Navigation is stable per role -- it never rearranges as phases change.
- * Administrators get components/admin/admin-shell.tsx instead.
+ *
+ * Navigation is stable per role — it never rearranges as phases change, because
+ * a competitor hunting for a moved link is losing contest time. Administrators
+ * get components/admin/admin-shell.tsx instead; their job is a console, not a
+ * linear flow.
  */
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 
 import { useContest } from "./contest-provider";
 import { Countdown } from "./countdown";
 import { Icon } from "./icons";
-import { Logo } from "./logo";
+import { Logo, Mark } from "./logo";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Button } from "./ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Stepper, type Step } from "./ui/stepper";
 import { useToast } from "./ui/toast";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export const PHASE_STEPS: Step[] = [
   { key: "registration", label: "Registration", short: "Reg" },
@@ -52,101 +68,194 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const { state, connected } = useContest();
   const pathname = usePathname();
   const router = useRouter();
-  const [menu, setMenu] = useState(false);
   const [mobile, setMobile] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as Node)) setMenu(false); };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, []);
-  useEffect(() => { setMobile(false); setMenu(false); }, [pathname]);
+  useEffect(() => setMobile(false), [pathname]);
 
   if (!state) return null;
   const { viewer, contest, me } = state;
   const nav = NAV[viewer.role] ?? NAV.participant;
+  const home = viewer.role === "participant" ? "/dashboard" : "/grade";
   const workspace = pathname.startsWith("/question/");
-  const isActive = (href: string) => pathname === href || (href !== "/grade" && href !== "/dashboard" && pathname.startsWith(href + "/")) || (href === "/grade" && pathname === "/grade") || (href === "/dashboard" && workspace);
+  const isActive = (href: string) =>
+    pathname === href ||
+    (href !== "/grade" && href !== "/dashboard" && pathname.startsWith(href + "/")) ||
+    (href === "/dashboard" && workspace);
+
+  const signOut = async () => {
+    await authClient.signOut();
+    router.push("/login");
+    router.refresh();
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
       <LiveToasts />
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-box focus:bg-card focus:px-3 focus:py-2">Skip to content</a>
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:shadow-lg"
+      >
+        Skip to content
+      </a>
 
       <header className="sticky top-0 z-40 bg-navy text-white">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-3 px-4 sm:px-6">
-          <button className="rounded-box p-1.5 text-white/80 hover:bg-white/10 hover:text-white md:hidden" aria-label="Menu" aria-expanded={mobile} onClick={() => setMobile((m) => !m)}><Icon.Menu size={20} /></button>
-          <Link href={viewer.role === "participant" ? "/dashboard" : "/grade"} aria-label="Codolympics home" className="shrink-0"><Logo /></Link>
-          <nav className="ml-6 hidden items-center gap-1 md:flex" aria-label="Primary">
+          <button
+            className="-ml-1.5 rounded-md p-1.5 text-white/75 transition-colors hover:bg-white/10 hover:text-white md:hidden"
+            aria-label="Open navigation"
+            onClick={() => setMobile(true)}
+          >
+            <Icon.Menu size={20} />
+          </button>
+
+          <Link href={home} aria-label="Codolympics home" className="shrink-0 rounded-md">
+            <Logo />
+          </Link>
+
+          <nav className="ml-5 hidden items-center gap-0.5 md:flex" aria-label="Primary">
             {nav.map(({ href, label, icon: I }) => {
               const active = isActive(href);
               return (
-                <Link key={href} href={href} aria-current={active ? "page" : undefined}
-                  className={`flex items-center gap-2 rounded-box px-3 py-1.5 text-[13px] font-semibold transition-colors ${active ? "bg-white/10 text-green-bright" : "text-white/70 hover:bg-white/5 hover:text-white"}`}>
-                  <I size={15} />{label}
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "relative flex h-14 items-center gap-2 px-3 text-[13px] font-semibold transition-colors",
+                    active ? "text-green-bright" : "text-white/70 hover:text-white",
+                  )}
+                >
+                  <I size={15} />
+                  {label}
+                  {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-t bg-green-bright" />}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            <span className="hidden items-center gap-2 rounded-full bg-white/10 py-1 pl-2.5 pr-3 text-[12px] font-semibold sm:inline-flex" title="Current phase">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-bright" />
+          <div className="ml-auto flex items-center gap-2 sm:gap-2.5">
+            <span
+              className="hidden items-center gap-2 rounded-full bg-white/10 py-1 pr-3 pl-2.5 text-[12px] font-semibold sm:inline-flex"
+              title="Current phase"
+            >
+              <span className="size-1.5 rounded-full bg-green-bright" />
               {PHASE_LABEL[contest.phase]}
-              {contest.phase_ends_at && <span className="border-l border-white/20 pl-2 text-white/90"><Countdown until={contest.phase_ends_at} /></span>}
+              {contest.phase_ends_at && (
+                <span className="border-l border-white/20 pl-2 text-white/90">
+                  <Countdown until={contest.phase_ends_at} />
+                </span>
+              )}
             </span>
-            {contest.phase_ends_at && <span className="text-[12px] font-semibold sm:hidden"><Countdown until={contest.phase_ends_at} /></span>}
-            {me && (
-              <span className="flex items-center gap-1.5 rounded-full bg-green-bright/15 py-1 pl-2.5 pr-3 text-[12px] font-semibold text-green-bright" title="Your balance">
-                <Icon.Coins size={14} /> <span className="tabular-nums">{me.balance.toLocaleString()}</span>
+            {contest.phase_ends_at && (
+              <span className="text-[12px] font-semibold sm:hidden">
+                <Countdown until={contest.phase_ends_at} />
               </span>
             )}
-            <span aria-label={connected ? "Connected" : "Reconnecting"} title={connected ? "Connected to the contest server" : "Reconnecting…"}
-              className={`h-2 w-2 rounded-full ${connected ? "bg-green-bright" : "bg-red animate-pulse"}`} />
-            <div ref={menuRef} className="relative">
-              <button onClick={() => setMenu((m) => !m)} aria-haspopup="menu" aria-expanded={menu}
-                className="flex items-center gap-2 rounded-box px-1.5 py-1 text-sm text-white/85 hover:bg-white/10">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-green-bright text-xs font-bold text-navy">{viewer.name.slice(0, 1).toUpperCase()}</span>
-                <span className="hidden max-w-32 truncate text-[13px] font-medium sm:inline">{viewer.name}</span>
-                <Icon.ChevronDown size={14} className="hidden text-white/60 sm:block" />
-              </button>
-              {menu && (
-                <div role="menu" className="absolute right-0 mt-1.5 w-56 overflow-hidden rounded-box border border-line bg-card py-1 text-ink shadow-lg">
-                  <div className="border-b border-line px-3 py-2 text-xs text-muted">Signed in as <span className="font-semibold text-ink">{viewer.name}</span><div className="mt-0.5 capitalize">{viewer.role}</div></div>
-                  {viewer.role === "participant" && <Link role="menuitem" href="/welcome" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-page"><Icon.Info size={15} /> How it works</Link>}
-                  <button role="menuitem" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-page"
-                    onClick={async () => { await authClient.signOut(); router.push("/login"); router.refresh(); }}>
-                    <Icon.Logout size={15} /> Sign out
-                  </button>
-                </div>
-              )}
-            </div>
+
+            {me && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center gap-1.5 rounded-full bg-green-bright/15 py-1 pr-3 pl-2.5 text-[12px] font-semibold text-green-bright">
+                    <Icon.Coins size={14} />
+                    <span className="tabular-nums">{me.balance.toLocaleString()}</span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Your balance</TooltipContent>
+              </Tooltip>
+            )}
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  aria-label={connected ? "Connected" : "Reconnecting"}
+                  className={cn("size-2 rounded-full", connected ? "bg-green-bright" : "animate-pulse bg-red")}
+                />
+              </TooltipTrigger>
+              <TooltipContent>{connected ? "Connected to the contest server" : "Reconnecting…"}</TooltipContent>
+            </Tooltip>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 rounded-md px-1 py-1 text-sm text-white/85 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-green-bright/60 focus-visible:outline-none">
+                  <Avatar className="size-7 rounded-full">
+                    <AvatarFallback className="bg-green-bright text-[11px] font-bold text-navy">
+                      {viewer.name.slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden max-w-32 truncate text-[13px] font-medium sm:inline">{viewer.name}</span>
+                  <Icon.ChevronDown size={14} className="hidden text-white/60 sm:block" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="text-[11px] text-muted-foreground">Signed in as</div>
+                  <div className="truncate text-[13px] font-semibold">{viewer.name}</div>
+                  <div className="text-[11.5px] text-muted-foreground capitalize">{viewer.role}</div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {viewer.role === "participant" && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/welcome">
+                      <Icon.Info size={15} /> How it works
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={signOut}>
+                  <Icon.Logout size={15} /> Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-        {mobile && (
-          <nav className="border-t border-white/10 px-2 py-2 md:hidden" aria-label="Primary">
-            {nav.map(({ href, label, icon: I }) => (
-              <Link key={href} href={href} className={`flex items-center gap-2.5 rounded-box px-3 py-2 text-sm font-semibold ${isActive(href) ? "bg-white/10 text-green-bright" : "text-white/85 hover:bg-white/10"}`}><I size={15} />{label}</Link>
-            ))}
-          </nav>
-        )}
       </header>
 
-      <div className="sticky top-14 z-30 border-b border-line bg-card">
+      <Sheet open={mobile} onOpenChange={setMobile}>
+        <SheetContent side="left" className="w-72 gap-0 border-white/10 bg-navy p-0 text-white">
+          <SheetHeader className="h-14 justify-center border-b border-white/10 px-5">
+            <SheetTitle className="flex items-center gap-2.5 text-[15px] font-bold tracking-tight text-white">
+              <Mark size={24} /> Cod<span className="-ml-2.5 text-green-bright">olympics</span>
+            </SheetTitle>
+          </SheetHeader>
+          <nav className="p-3" aria-label="Primary">
+            {nav.map(({ href, label, icon: I }) => (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-semibold transition-colors",
+                  isActive(href) ? "bg-white/10 text-green-bright" : "text-white/80 hover:bg-white/5 hover:text-white",
+                )}
+              >
+                <I size={16} />
+                {label}
+              </Link>
+            ))}
+          </nav>
+        </SheetContent>
+      </Sheet>
+
+      <div className="sticky top-14 z-30 border-b bg-card">
         <div className="mx-auto flex h-10 max-w-[1600px] items-center px-4 sm:px-6">
           <Stepper steps={PHASE_STEPS} current={contest.phase} />
         </div>
       </div>
 
       {!connected && (
-        <div className="bg-red px-4 py-1.5 text-center text-sm font-semibold text-white" role="alert">
+        <div className="flex items-center justify-center gap-2 bg-red px-4 py-1.5 text-center text-[13px] font-semibold text-white" role="alert">
+          <Icon.WifiOff size={14} />
           Connection to the contest server lost — reconnecting. If this stays, raise your hand.
         </div>
       )}
-      {me?.disqualified && <div className="bg-amber px-4 py-1.5 text-center text-sm font-semibold text-ink" role="alert">Your account has been disqualified. Speak to an organiser.</div>}
+      {me?.disqualified && (
+        <div className="flex items-center justify-center gap-2 bg-amber-bg px-4 py-1.5 text-center text-[13px] font-semibold text-navy" role="alert">
+          <Icon.Alert size={14} />
+          Your account has been disqualified. Speak to an organiser.
+        </div>
+      )}
 
-      <main id="main" className="flex-1">{children}</main>
+      <main id="main" className="flex-1">
+        {children}
+      </main>
     </div>
   );
 }
@@ -156,37 +265,49 @@ function LiveToasts() {
   const { state, lastEvent } = useContest();
   const { toast } = useToast();
   const prevBidder = useRef<string | null | undefined>(undefined);
-  const seen = useRef<number>(0);
+  const seen = useRef(0);
 
   useEffect(() => {
+    // The provider re-renders for reasons other than a new event; `at` is the
+    // event's own timestamp, so each one is announced exactly once.
     if (!lastEvent || lastEvent.at === seen.current) return;
     seen.current = lastEvent.at;
+
     const me = state?.viewer.id;
     const d = lastEvent.data as Record<string, unknown>;
     switch (lastEvent.name) {
       case "auction": {
         const lot = (d.lot as { current_bidder_id: string | null; current_bid: number | null; title: string } | null) ?? null;
         const now = lot?.current_bidder_id ?? null;
-        if (prevBidder.current === me && now && now !== me) toast({ title: "You've been outbid", description: `${lot?.title} is now at ${lot?.current_bid}.`, tone: "warning" });
+        // Only the moment of losing the lead is worth interrupting for.
+        if (prevBidder.current === me && now && now !== me) {
+          toast({ title: "You've been outbid", description: `${lot?.title} is now at ${lot?.current_bid}.`, tone: "warning" });
+        }
         prevBidder.current = lot ? now : undefined;
         break;
       }
       case "verdict":
-        if (d.state === "done") toast({ title: d.verdict === "AC" ? "Accepted!" : `Verdict: ${d.verdict}`, tone: d.verdict === "AC" ? "success" : d.verdict === "IE" ? "info" : "error" });
+        if (d.state === "done") {
+          toast({
+            title: d.verdict === "AC" ? "Accepted" : `Verdict: ${d.verdict}`,
+            tone: d.verdict === "AC" ? "success" : d.verdict === "IE" ? "info" : "error",
+          });
+        }
         break;
       case "hack":
         if (d.state === "done") toast({ title: "Hack attempt judged", description: "See the result on the hacking page.", tone: "info" });
         break;
       case "announce":
-        toast({ title: "Announcement", description: String(d.body_md ?? "").slice(0, 120), tone: "info", duration: 8000 });
+        toast({ title: "Announcement", description: String(d.body_md ?? "").slice(0, 140), tone: "info", duration: 9000 });
         break;
       case "notify":
-        toast({ title: "For you", description: String(d.body ?? "").replace(/\*\*/g, "").slice(0, 120), tone: "info", duration: 8000 });
+        toast({ title: "For you", description: String(d.body ?? "").replace(/\*\*/g, "").slice(0, 140), tone: "info", duration: 9000 });
         break;
       case "phase":
         toast({ title: `Now: ${PHASE_LABEL[String(d.phase)] ?? d.phase}`, tone: "info" });
         break;
     }
   }, [lastEvent, state?.viewer.id, toast]);
+
   return null;
 }

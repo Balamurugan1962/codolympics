@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { SimpleSelect } from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
 import { api, errorMessage } from "@/lib/client";
 
@@ -36,10 +38,10 @@ export default function RegisterPage() {
   return (
     <div className="animate-fade-in">
       <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Create your account</h1>
-      <p className="mt-1 text-[13px] text-muted">One person, one account, one seat.</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">One person, one account, one seat.</p>
 
       <form onSubmit={submit} className="mt-7 space-y-4">
-        {error && <Alert tone="error">{error}</Alert>}
+        {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         <Field label="Display name" help="How you appear on the leaderboard. It cannot be taken by anyone else.">
           <Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required minLength={2} maxLength={32} placeholder="e.g. Bala" />
         </Field>
@@ -47,14 +49,13 @@ export default function RegisterPage() {
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} placeholder="••••••••" />
         </Field>
         <Field label="Preferred language" help="So we know what you expect to code in. You can use any language on the day.">
-          <Select value={language} onChange={(e) => setLanguage(e.target.value)}>
-            {LANGUAGES.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
-          </Select>
+          <SimpleSelect className="w-full" size="default" value={language} onValueChange={setLanguage}
+            options={LANGUAGES.map(([key, name]) => ({ value: key, label: name }))} />
         </Field>
         <Button type="submit" size="lg" className="w-full" loading={busy}>Create account</Button>
       </form>
 
-      <p className="mt-6 text-center text-[13px] text-muted">
+      <p className="mt-6 text-center text-[13px] text-muted-foreground">
         Already registered? <Link href="/login" className="font-semibold text-green-dark hover:underline">Sign in</Link>
       </p>
     </div>

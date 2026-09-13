@@ -47,7 +47,7 @@ export function SplitPane({ left, right, leftLabel = "Problem", rightLabel = "Co
         <div className="flex border-b border-line bg-card" role="tablist">
           {(["left", "right"] as const).map((t) => (
             <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-              className={`flex-1 border-b-2 py-2 text-sm font-semibold ${tab === t ? "border-green text-ink" : "border-transparent text-muted"}`}>
+              className={`flex-1 border-b-2 py-2 text-sm font-semibold ${tab === t ? "border-green text-ink" : "border-transparent text-muted-foreground"}`}>
               {t === "left" ? leftLabel : rightLabel}
             </button>
           ))}

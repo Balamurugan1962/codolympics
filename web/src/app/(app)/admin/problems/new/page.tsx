@@ -13,11 +13,13 @@ import { useEffect, useMemo, useState } from "react";
 import { HintsEditor, QuestionBasicsFields, detailsIssues, EMPTY_DETAILS, hintIssues, type QuestionDetails } from "@/components/admin/question-details-form";
 import { ProblemPreview } from "@/components/admin/problem-preview";
 import { Icon } from "@/components/icons";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileDrop } from "@/components/ui/file-drop";
-import { Field, Input, Textarea } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { Checklist, Summary, SummaryItem } from "@/components/ui/summary";
 import { useToast } from "@/components/ui/toast";
@@ -134,12 +136,12 @@ export default function NewProblemPage() {
         }
         footer={
           <>
-            <Button variant="secondary" disabled={cur === 0 || busy} icon={<Icon.ChevronLeft size={14} />} onClick={() => go(cur - 1)}>Back</Button>
-            <span className="text-[12px] text-muted">Step {cur + 1} of {steps.length}</span>
+            <Button variant="outline" disabled={cur === 0 || busy} onClick={() => go(cur - 1)}><Icon.ChevronLeft size={14} /> Back</Button>
+            <span className="text-[12px] text-muted-foreground">Step {cur + 1} of {steps.length}</span>
             <div className="ml-auto flex items-center gap-2">
               <Link href="/admin/problems"><Button variant="ghost" disabled={busy}>Cancel</Button></Link>
               {last
-                ? <Button onClick={create} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3} icon={<Icon.Upload size={14} />}>{known ? `Upload as ${nextVersion(known)}` : "Create problem"}</Button>
+                ? <Button onClick={create} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3}><Icon.Upload size={14} /> {known ? `Upload as ${nextVersion(known)}` : "Create problem"}</Button>
                 : <Button onClick={next} disabled={inspecting}>Continue <Icon.ChevronRight size={14} /></Button>}
             </div>
           </>
@@ -154,17 +156,17 @@ export default function NewProblemPage() {
               </Field>
               {known && (
                 <div className="mt-3">
-                  <Alert tone="info" title={`${known.problem_id} already exists`}>
+                  <Alert variant="info"><AlertTitle>{`${known.problem_id} already exists`}</AlertTitle><AlertDescription>
                     This upload adds <strong>{nextVersion(known)}</strong> next to {known.versions.join(", ")}. The live version ({known.current ?? "none"}) is untouched until you publish.
                     {knownQ && " Its details are filled in below; edit them if the new version changes the statement."}
-                  </Alert>
+                  </AlertDescription></Alert>
                 </div>
               )}
             </Section>
 
             <Section title="Package" description="A zip with problem.json and tests/ at its root (one enclosing folder is fine). Add checker.py, validator.py or a reference solution when the problem needs them.">
               <FileDrop file={file} onFile={setFile} hint="Up to 200 MB" />
-              {inspecting && <p className="mt-3 flex items-center gap-2 text-[12.5px] text-muted"><Icon.Spinner size={14} /> Reading the package…</p>}
+              {inspecting && <p className="mt-3 flex items-center gap-2 text-[12.5px] text-muted-foreground"><Icon.Spinner size={14} /> Reading the package…</p>}
               {inspection && !inspecting && <Inspection r={inspection} />}
             </Section>
           </>
@@ -186,7 +188,7 @@ export default function NewProblemPage() {
 
         {key === "review" && inspection && (
           <>
-            {allIssues.length > 0 && <Alert tone="error" title="Not ready to create"><ul className="ml-4 list-disc space-y-0.5">{allIssues.map((i) => <li key={i}>{i}</li>)}</ul></Alert>}
+            {allIssues.length > 0 && <Alert variant="destructive"><AlertTitle>"Not ready to create"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{allIssues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
             <Section title="Summary" description={hackOnly ? "A hacking problem: the judge holds the reference solution and validator; the question itself is written under Phase 1." : "Everything below is what will be created."}>
               <Summary cols={4}>
                 <SummaryItem label="Id" mono>{id.trim()}</SummaryItem>
@@ -196,7 +198,7 @@ export default function NewProblemPage() {
                 <SummaryItem label="Comparison">{inspection.problem?.compare ?? "tokens"}{inspection.hasChecker ? " · checker.py" : ""}</SummaryItem>
                 <SummaryItem label="Validator">{inspection.hasValidator ? "validator.py" : "none"}</SummaryItem>
                 <SummaryItem label="Reference">{inspection.reference ? `${inspection.reference.file} (${inspection.reference.language})` : "none"}</SummaryItem>
-                <SummaryItem label="Kind">{hackOnly ? <Badge tone="blue">Hacking</Badge> : <Badge tone="green">Auction problem</Badge>}</SummaryItem>
+                <SummaryItem label="Kind">{hackOnly ? <Badge variant="info">Hacking</Badge> : <Badge variant="success">Auction problem</Badge>}</SummaryItem>
                 {!hackOnly && (
                   <>
                     <SummaryItem label="Title">{details.title}</SummaryItem>
@@ -220,14 +222,14 @@ export default function NewProblemPage() {
                 {details.hints.length > 0 && (
                   <div className="border-t border-line px-5 py-4">
                     <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Hints, in the order they unlock</div>
-                    <ol className="space-y-1.5">{details.hints.map((h, i) => <li key={i} className="flex gap-3 text-[13px]"><span className="w-20 shrink-0 font-semibold tabular-nums text-muted">{h.price} coins</span><span className="min-w-0 truncate">{h.body_md}</span></li>)}</ol>
+                    <ol className="space-y-1.5">{details.hints.map((h, i) => <li key={i} className="flex gap-3 text-[13px]"><span className="w-20 shrink-0 font-semibold tabular-nums text-muted-foreground">{h.price} coins</span><span className="min-w-0 truncate">{h.body_md}</span></li>)}</ol>
                   </div>
                 )}
               </Section>
             )}
 
             <Section title="Create" description="Recorded in the audit log with your reason.">
-              {error && <div className="mb-4"><Alert tone="error">{error}</Alert></div>}
+              {error && <div className="mb-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
               <Field label="Reason" help="e.g. initial upload, or what changed in this version.">
                 <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Initial upload for the contest set" />
               </Field>
@@ -245,15 +247,15 @@ function nextVersion(p: P): string {
 }
 
 function IssueList({ issues }: { issues: string[] }) {
-  return <Alert tone="error" title="Fix these before continuing"><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></Alert>;
+  return <Alert variant="destructive"><AlertTitle>"Fix these before continuing"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>;
 }
 
 function Inspection({ r }: { r: PackageInspection }) {
   const pj = r.problem;
   return (
     <div className="mt-4 space-y-4">
-      {r.issues.length > 0 && <Alert tone="error" title="The judge would reject this package"><ul className="ml-4 list-disc space-y-0.5">{r.issues.map((i) => <li key={i}>{i}</li>)}</ul></Alert>}
-      {r.warnings.length > 0 && <Alert tone="warning" title="Worth a look"><ul className="ml-4 list-disc space-y-0.5">{r.warnings.map((i) => <li key={i}>{i}</li>)}</ul></Alert>}
+      {r.issues.length > 0 && <Alert variant="destructive"><AlertTitle>"The judge would reject this package"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{r.issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
+      {r.warnings.length > 0 && <Alert variant="warning"><AlertTitle>"Worth a look"</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{r.warnings.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="rounded-box border border-line">
           <div className="border-b border-line bg-page/60 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">What is in it</div>
@@ -270,7 +272,7 @@ function Inspection({ r }: { r: PackageInspection }) {
         </div>
         <div className="rounded-box border border-line">
           <div className="border-b border-line bg-page/60 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Files · {r.files.length}{r.strippedFolder ? ` · inside ${r.strippedFolder}/` : ""}</div>
-          <ul className="pane max-h-56 overflow-auto p-2 font-mono text-[11.5px] text-muted">
+          <ul className="pane max-h-56 overflow-auto p-2 font-mono text-[11.5px] text-muted-foreground">
             {r.files.slice(0, 200).map((f) => <li key={f} className="truncate px-1.5 py-0.5">{f}</li>)}
             {r.files.length > 200 && <li className="px-1.5 py-0.5 text-faint">… {r.files.length - 200} more</li>}
           </ul>

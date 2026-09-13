@@ -294,4 +294,23 @@ export async function participantsOverview() {
   }));
 }
 
+/**
+ * Everyone who runs the contest rather than competing in it. Administrators
+ * first, because that is the order a reader cares about, then by name.
+ */
+export async function staffOverview() {
+  const rows = await db
+    .select({ id: user.id, name: user.name, username: user.username, role: user.role, createdAt: user.createdAt })
+    .from(user)
+    .where(inArray(user.role, ["admin", "evaluator"]))
+    .orderBy(user.role, user.name);
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    username: r.username,
+    role: r.role ?? "evaluator",
+    created_at: r.createdAt.toISOString(),
+  }));
+}
+
 export { inArray };
