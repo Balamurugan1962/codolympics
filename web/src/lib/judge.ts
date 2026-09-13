@@ -143,7 +143,7 @@ export const judge = {
 
   submit: (req: { problem_id: string; language: string; source: string; submission_id: string }) =>
     call<{ job_id: string }>("POST", "/submit", req),
-  hack: (req: { problem_id: string; language: string; source: string; input: string; submission_id: string }) =>
+  hack: (req: { problem_id: string; language: string; source: string; input: string; submission_id: string; version?: string }) =>
     call<{ job_id: string }>("POST", "/hack", req),
   validateAnswers: (req: { validator: string; entries: string[]; submission_id: string }) =>
     call<{ job_id: string }>("POST", "/validate-answers", req),

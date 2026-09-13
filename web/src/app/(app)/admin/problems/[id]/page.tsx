@@ -10,6 +10,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { ProblemPreview } from "@/components/admin/problem-preview";
+import { ValidationNote } from "@/components/admin/validate-all";
 import { HintsEditor, QuestionBasicsFields, detailsIssues, EMPTY_DETAILS, hintIssues, type QuestionDetails } from "@/components/admin/question-details-form";
 import { Icon } from "@/components/icons";
 import { ReasonAction } from "@/components/reason-action";
@@ -271,6 +272,11 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
           { ok: Boolean(validated) && !stale, label: validated ? "Validated" : "Not validated", detail: validated ? "the reference passed" : "publishing without validation is allowed but unwise" },
           { ok: blast === 0, label: blast === 0 ? "No submissions affected" : `${blast} submission${blast === 1 ? "" : "s"} would be rejudged`, detail: blast ? "the number you confirm must match this" : undefined },
         ]} />
+        {problem.last_validation && (
+          <div className="mt-3 border-t pt-3">
+            <ValidationNote record={problem.last_validation} validatedHere={Boolean(validated)} />
+          </div>
+        )}
         {blast > 0 && question && question.status !== "void" && (
           <div className="mt-5 border-t border-line pt-4">
             <div className="mb-2 text-[12px] font-semibold text-muted-foreground">After a rejudge</div>

@@ -168,22 +168,23 @@ export async function testHack(id: number, breakingInput: string): Promise<{ rea
   const [q] = await db.select().from(p1HackQuestion).where(eq(p1HackQuestion.id, id));
   if (!q) throw errors.notFound("question");
 
-  // The judge only reads a package's live version, so an uploaded-but-never-
-  // published package is invisible to it. Say that here: "no such problem" from
-  // the judge is true but useless, and the fix is two clicks away under
-  // Problems rather than anything to do with this question.
-  if (!(await currentVersion(q.problemId))) {
-    const uploaded = (await versionsOf(q.problemId)).length > 0;
-    throw errors.conflict(
-      "package_not_published",
-      uploaded
-        ? `the package ${q.problemId} is uploaded but not published — publish it under Problems, then prove the break`
-        : `there is no judge package called ${q.problemId} — upload it under Problems first`,
-    );
+  // Proving a break has to work before the package is published — publishing is
+  // what you do *after* the proof. The judge reads a named version without one
+  // being live, so the newest is used when nothing is published yet.
+  const version = (await currentVersion(q.problemId)) ?? (await versionsOf(q.problemId)).at(-1);
+  if (!version) {
+    throw errors.conflict("package_missing", `there is no judge package called ${q.problemId} — upload it under Problems first`);
   }
 
   const result = await waitForJob<HackResult>(
-    await judge.hack({ problem_id: q.problemId, language: q.givenLanguage, source: q.givenSource, input: breakingInput, submission_id: `p1hacktest_${id}` }),
+    await judge.hack({
+      problem_id: q.problemId,
+      language: q.givenLanguage,
+      source: q.givenSource,
+      input: breakingInput,
+      version,
+      submission_id: `p1hacktest_${id}`,
+    }),
   );
   let detail: string;
   let ready = false;

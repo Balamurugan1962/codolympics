@@ -24,7 +24,7 @@ import { DIFFICULTIES, hint, question } from "@/db/schema";
 
 import { errors } from "./api";
 import { audit } from "./audit";
-import { currentVersion, uploadPackage, versionsOf } from "./problems";
+import { currentVersion, uploadPackage, validationOf, versionsOf } from "./problems";
 
 const FORMAT = 1;
 const ROOT = path.resolve(process.env.PROBLEMS_DIR ?? "../judge/problems");
@@ -103,7 +103,17 @@ export async function exportProblem(id: string): Promise<{ filename: string; zip
           : null,
         // Recorded for the reader, never replayed: auction order and published
         // state belong to the contest that exported this, not to the problem.
-        exported_from: { version, auction_order: q?.auctionOrder ?? null, was_live: Boolean(await currentVersion(id)) },
+        //
+        // The validation result travels the same way. It is provenance, not
+        // permission: the one thing it cannot carry is how fast the importing
+        // machine is, and a reference at 1900ms of a 2000ms limit passes on the
+        // exporter and times out here. Shown, never trusted.
+        exported_from: {
+          version,
+          auction_order: q?.auctionOrder ?? null,
+          was_live: Boolean(await currentVersion(id)),
+          validation: version ? await validationOf(id, version) : null,
+        },
       },
       null,
       2,
