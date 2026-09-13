@@ -26,7 +26,10 @@ import { Summary, SummaryItem } from "@/components/ui/summary";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
-type Summary = { settings: boolean; staff: number; problems: number; puzzles: number; hacks: number; warnings: string[] };
+type Summary = {
+  settings: boolean; staff: number; problems: number; puzzles: number; hacks: number;
+  verified: number; published: number; unverified: string[]; warnings: string[];
+};
 
 const CARRIES = [
   "Every setting on this page",
@@ -34,6 +37,8 @@ const CARRIES = [
   "All Phase 1 puzzles and hacking questions",
   "The auction order and the Phase 1 question order",
   "Administrator and evaluator accounts, with their logins",
+  "The proving: validated packages, self-tested puzzles, proven hacks",
+  "What was live goes back live, if the contest has not started",
 ];
 const LEAVES = [
   "Participants and their accounts",
@@ -55,8 +60,8 @@ export function SetupTransfer() {
             <Icon.Package size={15} /> Setup, out and back in
           </h2>
           <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-            Set the contest up once, export it, and import it on the day. Nothing that happened during a contest travels — only what was
-            configured.
+            Set the contest up once, export it, and import it on the day — settings, problems, questions, the proving and what was live.
+            Nothing that happened during a contest travels: only what was set up.
           </p>
         </div>
 
@@ -130,7 +135,14 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
       form.set("reason", reason.trim());
       const r = await api.post<Summary>("/api/admin/setup", form);
       setResult(r);
-      toast({ title: "Setup imported", description: "Nothing was published — validate before you start.", tone: "success" });
+      toast({
+        title: "Setup imported",
+        description:
+          r.unverified.length === 0
+            ? `Everything arrived proven${r.published ? ` and ${r.published} went back live` : ""}.`
+            : `${r.unverified.length} still need proving here.`,
+        tone: "success",
+      });
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -175,7 +187,31 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
             <SummaryItem label="Problems">{result.problems}</SummaryItem>
             <SummaryItem label="Puzzles">{result.puzzles}</SummaryItem>
             <SummaryItem label="Hacking questions">{result.hacks}</SummaryItem>
+            <SummaryItem label="Arrived proven">{result.verified}</SummaryItem>
+            <SummaryItem label="Back live">{result.published}</SummaryItem>
           </Summary>
+          {result.unverified.length === 0 ? (
+            <Alert variant="success">
+              <Icon.Check />
+              <AlertTitle>Nothing to re-prove</AlertTitle>
+              <AlertDescription>
+                Every package, puzzle and hacking question in this zip was already proven where it was exported, and the results came with
+                them — so none of that has to be done again. Each one says where it was proven, and you can re-run any of them if this
+                machine is slower than the one that did.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert variant="warning">
+              <Icon.Alert />
+              <AlertTitle>
+                {result.unverified.length} still {result.unverified.length === 1 ? "needs" : "need"} proving
+              </AlertTitle>
+              <AlertDescription>
+                {result.unverified.join(", ")} — these were never proven on the install that exported this zip, so there was nothing to
+                carry. Validate or self-test each one before publishing it.
+              </AlertDescription>
+            </Alert>
+          )}
           {result.warnings.length > 0 && (
             <Alert variant="warning">
               <Icon.Alert />

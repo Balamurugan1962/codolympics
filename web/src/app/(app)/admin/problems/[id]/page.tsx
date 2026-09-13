@@ -54,10 +54,13 @@ export default function ProblemPage() {
 
   if (problem === undefined || question === undefined) return <PageBody width="wide"><CardSkeleton lines={10} /></PageBody>;
   const hackOnly = Boolean(problem?.hack_only);
-  const validated = Boolean(problem?.validated || question?.validated);
+  // A passing validation counts wherever it ran; where it ran is said out loud
+  // rather than being the difference between "Validated" and "Not validated".
+  const validated = Boolean(problem?.validated || question?.validated || problem?.last_validation?.ok);
+  const elsewhere = Boolean(problem?.last_validation?.imported) && !problem?.validated && !question?.validated;
   const stages = [
     { key: "package", label: "Package", done: Boolean(problem), detail: problem ? `${problem.versions.length} version${problem.versions.length === 1 ? "" : "s"} · latest ${problem.versions.at(-1)}` : "no package on the judge" },
-    { key: "validate", label: "Validated", done: validated, detail: validated ? "the reference passes every test" : "not yet proven" },
+    { key: "validate", label: "Validated", done: validated, detail: validated ? (elsewhere ? "the reference passed where this was exported" : "the reference passes every test") : "not yet proven" },
     ...(hackOnly ? [] : [{ key: "details", label: "Details", done: Boolean(question), detail: question ? `${question.hints.length} hint${question.hints.length === 1 ? "" : "s"} · ${question.sampleCount} sample${question.sampleCount === 1 ? "" : "s"}` : "nothing for participants yet" }]),
     { key: "publish", label: "Published", done: Boolean(problem?.current), detail: problem?.current ? `${problem.current} is live` : "no live version" },
   ];
@@ -177,7 +180,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
     } catch (err) { toast({ title: "Validation could not run", description: errorMessage(err), tone: "error" }); } finally { setBusy(false); }
   }
 
-  const validated = problem.validated || question?.validated;
+  const validated = problem.validated || question?.validated || problem.last_validation?.ok;
   const stale = problem.current && version !== problem.current;
 
   return (
@@ -269,12 +272,12 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
         }
       >
         <Checklist items={[
-          { ok: Boolean(validated) && !stale, label: validated ? "Validated" : "Not validated", detail: validated ? "the reference passed" : "publishing without validation is allowed but unwise" },
+          { ok: Boolean(validated) && !stale, label: validated ? "Validated" : "Not validated", detail: validated ? (problem.last_validation?.imported ? "the reference passed on the install that exported this" : "the reference passed") : "publishing without validation is allowed but unwise" },
           { ok: blast === 0, label: blast === 0 ? "No submissions affected" : `${blast} submission${blast === 1 ? "" : "s"} would be rejudged`, detail: blast ? "the number you confirm must match this" : undefined },
         ]} />
         {problem.last_validation && (
           <div className="mt-3 border-t pt-3">
-            <ValidationNote record={problem.last_validation} validatedHere={Boolean(validated)} />
+            <ValidationNote record={problem.last_validation} />
           </div>
         )}
         {blast > 0 && question && question.status !== "void" && (

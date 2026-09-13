@@ -271,7 +271,10 @@ function StepIssues({ issues }: { issues: string[] }) {
 
 function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChanged?: () => Promise<void> }) {
   const { toast } = useToast();
-  const [input, setInput] = useState("");
+  // The input that proved it is kept with the question, so the proof can be
+  // repeated after an edit, after an import, or on a different machine —
+  // nobody should have to remember it.
+  const [input, setInput] = useState(hack.breakingInput ?? "");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ready: boolean; detail: string; result: { valid_input: boolean; invalid_reason: string; hacked: boolean | null; verdict: string | null; message: string } } | null>(null);
   const [needsPublish, setNeedsPublish] = useState(false);
@@ -293,7 +296,7 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
       <Section title="Where it stands">
         <Checklist items={[
           { ok: true, label: "Saved", detail: `Question #${hack.id} · judge problem ${hack.problemId}` },
-          { ok: hack.ready, label: hack.ready ? "Breaking input proven" : "No breaking input proven", detail: hack.ready ? "the given code fails where the reference does not" : "prove one below; every save resets this" },
+          { ok: hack.ready, label: hack.ready ? "Breaking input proven" : "No breaking input proven", detail: hack.ready ? (hack.verifiedElsewhere ? "proven on the install this was imported from — the input below is the one that broke it" : "the given code fails where the reference does not") : "prove one below; every save resets this" },
           { ok: hack.published, label: hack.published ? "Published" : "Not published", detail: hack.published ? "participants see it when Section B is open" : hack.ready ? "publish below" : "needs the proof first" },
           ...(hack.voided ? [{ ok: false, label: "Voided", detail: "scores for nobody" }] : []),
         ]} />

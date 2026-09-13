@@ -48,7 +48,7 @@ export async function updatePuzzle(actorId: string, id: number, input: Partial<P
   checkPuzzle(merged);
   // Any change invalidates readiness; the self-test must be run again.
   await db.transaction(async (tx) => {
-    await tx.update(p1Question).set({ ...input, ready: false }).where(eq(p1Question.id, id));
+    await tx.update(p1Question).set({ ...input, ready: false, verifiedElsewhere: false }).where(eq(p1Question.id, id));
     await audit({ actorId, action: "p1.puzzle.update", target: String(id), reason, detail: Object.keys(input) }, tx);
   });
 }
@@ -102,7 +102,8 @@ export async function testPuzzle(
     detail = ready ? "manual grading; a model answer is recorded" : "record a model answer before publishing";
   }
 
-  await db.update(p1Question).set({ ready }).where(eq(p1Question.id, id));
+  // Run here, so whatever a zip said about this question no longer applies.
+  await db.update(p1Question).set({ ready, verifiedElsewhere: false }).where(eq(p1Question.id, id));
   return { ready, detail, score };
 }
 
@@ -158,7 +159,9 @@ export async function createHack(actorId: string, input: HackInput, reason: stri
 
 export async function updateHack(actorId: string, id: number, input: Partial<HackInput>, reason: string): Promise<void> {
   await db.transaction(async (tx) => {
-    await tx.update(p1HackQuestion).set({ ...input, ready: false }).where(eq(p1HackQuestion.id, id));
+    // The breaking input survives an edit on purpose: the proof is void, but
+    // the input is still the right thing to try first.
+    await tx.update(p1HackQuestion).set({ ...input, ready: false, verifiedElsewhere: false }).where(eq(p1HackQuestion.id, id));
     await audit({ actorId, action: "p1.hack.update", target: String(id), reason, detail: Object.keys(input) }, tx);
   });
 }
@@ -192,8 +195,41 @@ export async function testHack(id: number, breakingInput: string): Promise<{ rea
   else if (result.verdict === "IE") detail = `the problem is broken: ${result.message}`;
   else if (result.hacked) { ready = true; detail = `the given solution fails on it (${result.verdict}); the reference handles it`; }
   else detail = "the given solution handles this input correctly — it does not break it";
-  await db.update(p1HackQuestion).set({ ready }).where(eq(p1HackQuestion.id, id));
+  // The input that proved it is kept: it is the only way to prove the question
+  // again -- after an edit, after an import, on another machine -- and asking
+  // whoever set it up to remember it is how a question quietly stops working.
+  // It is an answer key, so it never leaves the administrator's view.
+  await db
+    .update(p1HackQuestion)
+    .set({ ready, verifiedElsewhere: false, ...(ready ? { breakingInput } : {}) })
+    .where(eq(p1HackQuestion.id, id));
   return { ready, detail, result };
+}
+
+/**
+ * Readiness that arrived in a zip rather than being proven here.
+ *
+ * An import is meant to save the setup work, and re-running every self-test
+ * and every hack proof is most of that work. So the result travels, and this
+ * writes it down along with where it came from: `verifiedElsewhere` is what
+ * every screen reads to say "Ready" without claiming this install proved it.
+ *
+ * Only ever called by the importers, never by a form -- readiness is not a
+ * field anyone can set by hand.
+ */
+export async function carryVerification(
+  section: "puzzles" | "hacking",
+  id: number,
+  input: { breakingInput?: string | null } = {},
+): Promise<void> {
+  if (section === "puzzles") {
+    await db.update(p1Question).set({ ready: true, verifiedElsewhere: true }).where(eq(p1Question.id, id));
+    return;
+  }
+  await db
+    .update(p1HackQuestion)
+    .set({ ready: true, verifiedElsewhere: true, breakingInput: input.breakingInput ?? null })
+    .where(eq(p1HackQuestion.id, id));
 }
 
 export async function publishHack(actorId: string, id: number, published: boolean, reason: string): Promise<void> {

@@ -19,6 +19,13 @@
  *
  * The phase is not carried either: an import lands in registration, because a
  * setup is a contest that has not started.
+ *
+ * What *is* carried, and was not at first, is the proving: a validated package
+ * arrives validated, a self-tested puzzle arrives ready, a proven hack arrives
+ * with the input that proves it, and whatever was live goes back live. Proving
+ * the set again is most of a day's setup work, and doing it twice is exactly
+ * what this file exists to prevent. Every carried result is marked as having
+ * been established elsewhere, so no screen claims this install proved it.
  */
 import { asc, eq, inArray } from "drizzle-orm";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
@@ -56,6 +63,12 @@ export type SetupSummary = {
   problems: number;
   puzzles: number;
   hacks: number;
+  /** Arrived already proven — packages validated, questions self-tested, hacks broken. */
+  verified: number;
+  /** Made live here because they were live where the zip was made. */
+  published: number;
+  /** Still waiting on someone here: validation, a self-test, or a proof. */
+  unverified: string[];
   warnings: string[];
 };
 
@@ -160,7 +173,10 @@ export async function importSetup(actorId: string, zip: Uint8Array, reason: stri
   }
 
   const c = await getContest();
-  const summary: SetupSummary = { settings: false, staff: 0, problems: 0, puzzles: 0, hacks: 0, warnings: [] };
+  const summary: SetupSummary = {
+    settings: false, staff: 0, problems: 0, puzzles: 0, hacks: 0,
+    verified: 0, published: 0, unverified: [], warnings: [],
+  };
   if (c.phase !== "registration") {
     summary.warnings.push(`The contest is in ${c.phase}. Imported content is added, but nothing that has already happened is touched.`);
   }
@@ -234,9 +250,17 @@ export async function importSetup(actorId: string, zip: Uint8Array, reason: stri
     const one: Files = {};
     for (const n of names) if (n.startsWith(dir)) one[n.slice(dir.length)] = files[n];
     try {
-      const r = await importProblem(actorId, zipSync(one, { level: 0 }), { reason });
+      // goLive: this is your own setup coming back, so what was live is put
+      // back live -- guarded, inside the importer, to registration only.
+      const r = await importProblem(actorId, zipSync(one, { level: 0 }), { reason, goLive: true });
       imported.add(r.id);
       summary.problems += 1;
+      // A hacking package is proven by its question's breaking input, not by a
+      // validation it can never have; asking for one would be a job with no
+      // way to finish it.
+      if (r.validated) summary.verified += 1;
+      else if (!r.hackOnly) summary.unverified.push(r.id);
+      if (r.live) summary.published += 1;
     } catch (err) {
       summary.warnings.push(`${dir.replace(`${root}problems/`, "").replace(/\/$/, "")}: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -253,9 +277,12 @@ export async function importSetup(actorId: string, zip: Uint8Array, reason: stri
   for (const n of names) if (n.startsWith(`${root}phase1/`)) p1[n.slice(`${root}phase1/`.length)] = files[n];
   if (Object.keys(p1).length > 0) {
     try {
-      const r = await importPhase1(actorId, zipSync(p1, { level: 0 }), reason, imported);
+      const r = await importPhase1(actorId, zipSync(p1, { level: 0 }), reason, imported, { goLive: true });
       summary.puzzles = r.created.filter((q) => q.section === "puzzles").length;
       summary.hacks = r.created.filter((q) => q.section === "hacking").length;
+      summary.verified += r.verified;
+      summary.published += r.published;
+      summary.unverified.push(...r.unverified);
       for (const m of r.missingPackages) summary.warnings.push(`"${m.title}" needs the judge package ${m.problem_id}.`);
       for (const s of r.skipped) summary.warnings.push(`${s.path}: ${s.why}`);
     } catch (err) {
@@ -263,13 +290,27 @@ export async function importSetup(actorId: string, zip: Uint8Array, reason: stri
     }
   }
 
-  summary.warnings.push("Nothing was published. Validate each package, then publish the problems and Phase 1 questions you want live.");
+  // What is actually left to do here, rather than a standing instruction to
+  // redo the work the zip exists to carry.
+  if (summary.unverified.length > 0) {
+    summary.warnings.push(
+      `Never proven anywhere: ${summary.unverified.join(", ")}. Validate or self-test each of these here before publishing it.`,
+    );
+  }
+  if (c.phase !== "registration") {
+    summary.warnings.push("Nothing was published, because the contest is already running — publishing now would change what participants can see.");
+  } else if (summary.published === 0 && summary.problems + summary.puzzles + summary.hacks > 0) {
+    summary.warnings.push("Nothing in the zip was live when it was exported, so nothing was published here.");
+  }
 
   await audit({
     actorId,
     action: "setup.import",
     reason,
-    detail: { settings: summary.settings, staff: summary.staff, problems: summary.problems, puzzles: summary.puzzles, hacks: summary.hacks },
+    detail: {
+      settings: summary.settings, staff: summary.staff, problems: summary.problems,
+      puzzles: summary.puzzles, hacks: summary.hacks, verified: summary.verified, published: summary.published,
+    },
   });
   publish("phase", phaseSnapshot(await getContest()));
   return summary;

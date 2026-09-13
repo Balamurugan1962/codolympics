@@ -24,7 +24,8 @@ import { DIFFICULTIES, hint, question } from "@/db/schema";
 
 import { errors } from "./api";
 import { audit } from "./audit";
-import { currentVersion, uploadPackage, validationOf, versionsOf } from "./problems";
+import { getContest } from "./contest";
+import { currentVersion, publishVersion, stampImportedValidation, uploadPackage, validationOf, versionsOf } from "./problems";
 
 const FORMAT = 1;
 const ROOT = path.resolve(process.env.PROBLEMS_DIR ?? "../judge/problems");
@@ -157,6 +158,12 @@ export type ProblemImport = {
   version: string | null;
   details: boolean;
   hints: number;
+  /** The package arrived with a validation that passed, so it is not re-run. */
+  validated: boolean;
+  /** A hacking package: no testcases, so validation does not apply to it. */
+  hackOnly: boolean;
+  /** It was published here, because it was live where the zip was made. */
+  live: boolean;
   warnings: string[];
 };
 
@@ -170,7 +177,7 @@ const NOISE = /(^|\/)(__MACOSX\/|\.DS_Store$|Thumbs\.db$)/;
 export async function importProblems(
   actorId: string,
   zip: Uint8Array,
-  input: { id?: string; reason: string },
+  input: { id?: string; reason: string; goLive?: boolean },
 ): Promise<ProblemImport[]> {
   let files: Record<string, Uint8Array>;
   try {
@@ -196,7 +203,7 @@ export async function importProblems(
     }
     // The id in the bundle path wins over anything typed in the dialog: a
     // bundle is many problems and one typed id cannot name them all.
-    out.push(await importProblem(actorId, zipSync(one, { level: 0 }), { reason: input.reason }));
+    out.push(await importProblem(actorId, zipSync(one, { level: 0 }), { reason: input.reason, goLive: input.goLive }));
   }
   return out;
 }
@@ -205,14 +212,18 @@ export async function importProblems(
  * Import a problem zip: the package becomes a new unpublished version, and the
  * details are written if the zip carries them.
  *
- * Nothing is published. A package that goes live without someone here
- * validating it is how a contest discovers on the day that its tests were
- * built against a different checker.
+ * A validation that travelled with the package is kept rather than demanded
+ * again: re-doing yesterday's work is exactly what an import exists to avoid.
+ * It is recorded as having run elsewhere, and every screen that shows it says
+ * so, because the one thing a zip cannot carry is how fast this machine is.
+ *
+ * `goLive` restores what was live where the zip was made -- only during
+ * registration, and only for a package whose validation passed.
  */
 export async function importProblem(
   actorId: string,
   zip: Uint8Array,
-  input: { id?: string; reason: string },
+  input: { id?: string; reason: string; goLive?: boolean },
 ): Promise<ProblemImport> {
   let files: Record<string, Uint8Array>;
   try {
@@ -245,9 +256,19 @@ export async function importProblem(
 
   const warnings: string[] = [];
   let version: string | null = null;
+  let hackOnly = false;
+  // validation.json lives inside the version directory, so it travels with the
+  // package for free and needs no field of its own.
+  let validation: Awaited<ReturnType<typeof stampImportedValidation>> = null;
   if (Object.keys(pkg).length > 0) {
     if (!pkg["problem.json"]) throw errors.invalid("the package has no problem.json at its root");
     ({ version } = await uploadPackage(actorId, { id, zip: zipSync(pkg, { level: 0 }), reason: input.reason }));
+    validation = await stampImportedValidation(id, version);
+    try {
+      hackOnly = Boolean((JSON.parse(strFromU8(pkg["problem.json"])) as { hack_only?: boolean }).hack_only);
+    } catch {
+      /* uploadPackage already rejected a package whose problem.json will not parse */
+    }
   } else {
     warnings.push("No judge package in the zip — the details were imported, but nothing can be judged until one is uploaded.");
   }
@@ -274,6 +295,8 @@ export async function importProblem(
         statementMd: String(details.statement_md ?? ""),
         sampleCount: Number(details.sample_count ?? 0),
         auctionOrder: order,
+        // Carried, not assumed: only a record that actually passed counts.
+        validated: Boolean(validation?.ok),
       };
       await tx.insert(question).values({ id, ...row }).onConflictDoUpdate({ target: question.id, set: row });
       await tx.delete(hint).where(eq(hint.questionId, id));
@@ -292,6 +315,35 @@ export async function importProblem(
     await audit({ actorId, action: "problem.import", target: id, reason: input.reason, detail: { version, hints: 0 } });
   }
 
-  if (version) warnings.push(`Uploaded as ${version}. Validate it, then publish — nothing was published by this import.`);
-  return { id, version, details: Boolean(details), hints: hintCount, warnings };
+  // What was live where this was exported is worth restoring; what was never
+  // proven is not. Publishing mid-contest rejudges, so an import never does it.
+  const wasLive = Boolean((meta?.exported_from as { was_live?: boolean } | undefined)?.was_live);
+  let live = false;
+  if (version && input.goLive && wasLive) {
+    const phase = (await getContest()).phase;
+    if (phase !== "registration") {
+      warnings.push(`Left unpublished: the contest is in ${phase}, and publishing then rejudges. Publish it yourself when you are ready.`);
+    } else if (!validation?.ok && !hackOnly) {
+      warnings.push(`Left unpublished: nothing in the zip says this package passed validation. Validate it here, then publish.`);
+    } else {
+      // A hacking package has no testcases for a reference to be right about,
+      // so there is no validation to wait for. What proves it is the hacking
+      // question's own breaking input, which travels with that question. It
+      // still has to go live, or the judge cannot serve it and Section B
+      // fails on the first attempt.
+      await publishVersion(actorId, { id, version, reason: input.reason, confirmedRejudge: 0 });
+      live = true;
+    }
+  }
+
+  if (version && !live) {
+    warnings.push(
+      validation?.ok
+        ? `Uploaded as ${version}, already validated where it was exported. Publish it when you are ready.`
+        : hackOnly
+          ? `Uploaded as ${version}. A hacking package has no testcases to validate; publish it when its question is proven.`
+          : `Uploaded as ${version}. Validate it, then publish — nothing was published by this import.`,
+    );
+  }
+  return { id, version, details: Boolean(details), hints: hintCount, validated: Boolean(validation?.ok), hackOnly, live, warnings };
 }

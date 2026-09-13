@@ -45,6 +45,8 @@ export type ValidationRecord = {
   max_time_ms: number | null;
   time_limit_ms: number | null;
   ok: boolean;
+  /** Set when the record arrived with an imported package instead of being run here. */
+  imported?: string | null;
 };
 export type Q = {
   id: string;
@@ -65,7 +67,13 @@ type Stage = "no-package" | "unvalidated" | "no-details" | "unpublished" | "read
 export function stageOf(p: P | null, q: Q | null): Stage {
   if (!p) return "no-package";
   if (q?.status === "void") return "void";
-  if (!(p.validated || q?.validated)) return "unvalidated";
+  // A passing record on the package counts, including one that came in with an
+  // import: a hacking package has no question row to carry a flag, and asking
+  // for a validation the zip already has is the work an import removes.
+  // A hacking package has no testcases, so there is no reference to validate
+  // and no state it could reach by validating. What proves it is the hacking
+  // question's breaking input, which lives under Phase 1.
+  if (!p.hack_only && !(p.validated || q?.validated || p.last_validation?.ok)) return "unvalidated";
   if (!p.hack_only && !q) return "no-details";
   if (!p.current) return "unpublished";
   return "ready";

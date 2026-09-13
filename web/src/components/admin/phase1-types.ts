@@ -3,7 +3,7 @@ export type Puzzle = {
   id: number; title: string; bodyMd: string; category: "pattern" | "detective" | "constraint";
   kind: "mcq_single" | "mcq_multi" | "fill_blank" | "numeric" | "sequence" | "set" | "long_text";
   grading: "auto" | "validator" | "manual"; points: number; explainPoints: number; orderIndex: number;
-  published: boolean; voided: boolean; ready: boolean;
+  published: boolean; voided: boolean; ready: boolean; verifiedElsewhere: boolean;
   config: { options?: string[]; items?: string[]; partialCredit?: boolean; tolerance?: number; caseSensitive?: boolean };
   answerKey: { option?: number; options?: number[]; accepted?: string[]; value?: number; order?: number[]; members?: string[] } | null;
   modelAnswer: string | null; validatorPy: string | null; pointsPerEntry: number | null; maxEntries: number;
@@ -13,6 +13,10 @@ export type Puzzle = {
 export type Hack = {
   id: number; title: string; statementMd: string; constraintsMd: string; problemId: string; givenSource: string; givenLanguage: string;
   hackPoints: number; failPenalty: number; orderIndex: number; published: boolean; voided: boolean; ready: boolean;
+  /** Readiness that came from a zip rather than from a run on this install. */
+  verifiedElsewhere: boolean;
+  /** The input that proved it breaks — an answer key, administrators only. */
+  breakingInput: string | null;
 };
 
 export type Standing = { participant_id: string; name: string; points: number; provisional: boolean; submitted_at: string | null; disqualified: boolean; advanced: boolean | null; rank: number };

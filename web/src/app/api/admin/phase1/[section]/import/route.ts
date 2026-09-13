@@ -1,6 +1,7 @@
 import { errors, json, route } from "@/lib/api";
 import { importPackage } from "@/lib/phase1-package";
 import { judge } from "@/lib/judge";
+import { packagesOnDisk } from "@/lib/problems";
 import { requireApiViewer } from "@/lib/session";
 
 type Ctx = { params: Promise<{ section: string }> };
@@ -26,11 +27,17 @@ export const POST = route<Ctx>(async (req, { params }) => {
 
   // A hacking question names a judge package; the import says which are missing
   // rather than refusing, because the question is still worth keeping.
+  //
+  // The volume is asked as well as the judge: the judge only serves a package's
+  // live version, and a hacking package is usually still unpublished. Asking it
+  // alone reports packages as missing that are sitting right there — and a
+  // question whose package is "missing" cannot carry its proof.
   const known = new Set<string>();
+  for (const p of await packagesOnDisk()) known.add(p.problem_id);
   try {
     for (const p of await judge.problems()) known.add(p.problem_id);
   } catch {
-    /* judge down: every package reads as missing, which is the safe way round */
+    /* judge down: the volume already answered */
   }
 
   const zip = new Uint8Array(await file.arrayBuffer());

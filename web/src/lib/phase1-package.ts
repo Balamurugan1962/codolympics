@@ -28,7 +28,8 @@ import { p1HackQuestion, p1Question, P1_CATEGORIES, P1_GRADING, P1_KINDS } from 
 import { asc, eq, inArray } from "drizzle-orm";
 
 import { errors } from "./api";
-import { createHack, createPuzzle } from "./phase1-admin";
+import { getContest } from "./contest";
+import { carryVerification, createHack, createPuzzle, publishHack, publishPuzzle } from "./phase1-admin";
 
 /** Bumped only for a change that an older importer could not read. */
 const FORMAT = 1;
@@ -58,10 +59,14 @@ const json = (v: unknown) => strToU8(JSON.stringify(v, null, 2) + "\n");
 type Files = Record<string, Uint8Array>;
 
 /**
- * One puzzle as files. `published`, `voided`, `ready` and `orderIndex` are
- * deliberately left out: they describe this question's place in this contest,
- * not the question, and carrying them would import someone else's draft as
- * live.
+ * One puzzle as files.
+ *
+ * `voided` and `orderIndex` are left out: they describe this question's place
+ * in this contest rather than the question. Two things that look like state do
+ * travel, because they are work rather than circumstance — whether the
+ * self-test passed, and whether it was live — and an import that threw them
+ * away would mean proving and publishing the whole set again the next morning.
+ * Both are labelled as second-hand where they land; see `carryVerification`.
  */
 function puzzleFiles(q: typeof p1Question.$inferSelect): Files {
   const files: Files = {};
@@ -82,6 +87,8 @@ function puzzleFiles(q: typeof p1Question.$inferSelect): Files {
     max_entries: q.maxEntries,
     format_regex: q.formatRegex,
     format_hint: q.formatHint,
+    verified: q.ready,
+    was_published: q.published,
   };
   if (q.validatorPy) {
     doc.validator_file = "validator.py";
@@ -105,6 +112,12 @@ function hackFiles(q: typeof p1HackQuestion.$inferSelect): Files {
       given_file: name,
       hack_points: q.hackPoints,
       fail_penalty: q.failPenalty,
+      verified: q.ready,
+      was_published: q.published,
+      // The input that proves the given solution breaks. It is an answer, so a
+      // zip carrying it is a zip to keep as carefully as the answer keys that
+      // are already in here.
+      breaking_input: q.breakingInput,
     }),
     [name]: strToU8(q.givenSource),
   };
@@ -160,7 +173,13 @@ export async function exportMany(sections: Section[]): Promise<{ filename: strin
 // ---------------------------------------------------------------------------
 
 export type ImportResult = {
-  created: { section: Section; id: number; title: string }[];
+  created: { section: Section; id: number; title: string; verified: boolean; published: boolean }[];
+  /** Arrived proven, so the self-test and the hack proof are not asked for again. */
+  verified: number;
+  /** The ones that did not, by title — someone here still has to prove these. */
+  unverified: string[];
+  /** Published here, because they were live where the zip was made. */
+  published: number;
   /** Hacking questions whose judge package is not on this install. */
   missingPackages: { title: string; problem_id: string }[];
   skipped: { path: string; why: string }[];
@@ -183,15 +202,20 @@ function questionDirs(files: Record<string, Uint8Array>): string[] {
 }
 
 /**
- * Import every question in a zip. Each lands as a draft: nothing an author
- * imports should appear in front of participants until someone here has looked
- * at it and published it.
+ * Import every question in a zip.
+ *
+ * A question that was proven where it was exported arrives proven, marked as
+ * having been proven elsewhere. Without `goLive` each still lands as a draft:
+ * a set someone hands you is not a set to put in front of participants
+ * unlooked-at. `goLive` is for the other case — your own setup, coming back —
+ * and even then it only restores what was live and only during registration.
  */
 export async function importPackage(
   actorId: string,
   zip: Uint8Array,
   reason: string,
   knownProblemIds: Set<string>,
+  opts: { goLive?: boolean } = {},
 ): Promise<ImportResult> {
   let files: Record<string, Uint8Array>;
   try {
@@ -203,7 +227,10 @@ export async function importPackage(
   const dirs = questionDirs(files);
   if (dirs.length === 0) throw errors.invalid("no question.json in the zip — export one from this page to see the shape");
 
-  const out: ImportResult = { created: [], missingPackages: [], skipped: [] };
+  const out: ImportResult = { created: [], verified: 0, unverified: [], published: 0, missingPackages: [], skipped: [] };
+  // Restoring what was live is only safe before anyone is looking: publishing
+  // into a running section changes what participants see mid-round.
+  const goLive = Boolean(opts.goLive) && (await getContest()).phase === "registration";
 
   for (const dir of dirs) {
     const raw = read(files, `${dir}question.json`);
@@ -240,9 +267,24 @@ export async function importPackage(
           },
           reason,
         );
-        out.created.push({ section: "hacking", id, title: String(doc.title ?? "Untitled") });
-        if (problemId && !knownProblemIds.has(problemId)) {
-          out.missingPackages.push({ title: String(doc.title ?? "Untitled"), problem_id: problemId });
+        const title = String(doc.title ?? "Untitled");
+        const entry = { section: "hacking" as const, id, title, verified: false, published: false };
+        out.created.push(entry);
+        if (!problemId || !knownProblemIds.has(problemId)) {
+          // A proof is about a package. With none on this install there is
+          // nothing here that could break, so readiness cannot carry either.
+          out.missingPackages.push({ title, problem_id: problemId });
+        } else if (doc.verified === true) {
+          await carryVerification("hacking", id, { breakingInput: doc.breaking_input == null ? null : String(doc.breaking_input) });
+          entry.verified = true;
+          out.verified += 1;
+          if (goLive && doc.was_published === true) {
+            await publishHack(actorId, id, true, reason);
+            entry.published = true;
+            out.published += 1;
+          }
+        } else {
+          out.unverified.push(title);
         }
       } else {
         const validatorName = doc.validator_file ? String(doc.validator_file) : null;
@@ -278,7 +320,20 @@ export async function importPackage(
           },
           reason,
         );
-        out.created.push({ section: "puzzles", id, title: String(doc.title ?? "Untitled") });
+        const entry = { section: "puzzles" as const, id, title: String(doc.title ?? "Untitled"), verified: false, published: false };
+        out.created.push(entry);
+        if (doc.verified === true) {
+          await carryVerification("puzzles", id);
+          entry.verified = true;
+          out.verified += 1;
+          if (goLive && doc.was_published === true) {
+            await publishPuzzle(actorId, id, true, reason);
+            entry.published = true;
+            out.published += 1;
+          }
+        } else {
+          out.unverified.push(entry.title);
+        }
       }
     } catch (err) {
       out.skipped.push({ path: dir || "question.json", why: err instanceof Error ? err.message : String(err) });

@@ -29,7 +29,11 @@ import { api, errorMessage } from "@/lib/client";
 type Section = "puzzles" | "hacking";
 
 type ImportResult = {
-  created: { section: Section; id: number; title: string }[];
+  created: { section: Section; id: number; title: string; verified: boolean; published: boolean }[];
+  /** Arrived with the self-test or the hack proof already passed. */
+  verified: number;
+  unverified: string[];
+  published: number;
   missingPackages: { title: string; problem_id: string }[];
   skipped: { path: string; why: string }[];
 };
@@ -108,7 +112,9 @@ function ImportDialog({ section, onClose, onImported }: { section: Section; onCl
       setResult(r);
       toast({
         title: `Imported ${r.created.length} question${r.created.length === 1 ? "" : "s"}`,
-        description: "They are drafts until you publish them.",
+        description: r.verified
+          ? `${r.verified} arrived already proven. They are drafts until you publish them.`
+          : "They are drafts until you publish them.",
         tone: "success",
       });
       await onImported();
@@ -153,7 +159,7 @@ function ImportDialog({ section, onClose, onImported }: { section: Section; onCl
                 <Icon.Check size={14} className="shrink-0 text-green" />
                 <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{q.title}</span>
                 <Badge variant="outline">{q.section === "puzzles" ? "Section A" : "Section B"}</Badge>
-                <Badge variant="warning">draft</Badge>
+                {q.published ? <Badge variant="success">live</Badge> : q.verified ? <Badge variant="info">ready</Badge> : <Badge variant="warning">draft</Badge>}
               </li>
             ))}
           </ul>

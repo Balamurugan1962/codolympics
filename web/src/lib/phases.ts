@@ -4,10 +4,10 @@
  * and submitting elsewhere. Nothing auto-advances -- a passed deadline closes
  * the round but leaves the organiser in control of what happens next.
  */
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { contest, p1Advancement, participant, question, type Phase } from "@/db/schema";
+import { contest, p1Advancement, p1HackQuestion, p1Question, participant, question, type Phase } from "@/db/schema";
 
 import { errors } from "./api";
 import { audit } from "./audit";
@@ -16,6 +16,7 @@ import { getContest, nextPhase, phaseDurationMinutes, phaseSnapshot } from "./co
 import { publish } from "./events";
 import { judge } from "./judge";
 import { scoreValidatorQuestions } from "./phase1-puzzles";
+import { currentVersion } from "./problems";
 
 /** What would stop or warn about advancing. Shown before confirmation. */
 export async function advanceChecks(): Promise<{ next: Phase | null; blockers: string[]; warnings: string[] }> {
@@ -29,6 +30,24 @@ export async function advanceChecks(): Promise<{ next: Phase | null; blockers: s
     if (c.registrationOpen) blockers.push("close registration first — the roster must be final because balances are equal");
     const [{ n }] = await db.select({ n: count() }).from(participant);
     if (n === 0) blockers.push("nobody has registered");
+  }
+  if (next === "p1_puzzles") {
+    const [{ n }] = await db.select({ n: count() }).from(p1Question).where(and(eq(p1Question.published, true), eq(p1Question.voided, false)));
+    if (n === 0) blockers.push("no puzzle is published — Section A would open empty");
+  }
+  if (next === "p1_hacking") {
+    const hacks = await db.select().from(p1HackQuestion).where(and(eq(p1HackQuestion.published, true), eq(p1HackQuestion.voided, false)));
+    if (hacks.length === 0) blockers.push("no hacking question is published — Section B would open empty");
+    // An attempt is judged against the *live* version of the package, so a
+    // question whose package was never published fails every attempt as an
+    // internal error and scores nobody — silently, and only once the round is
+    // open in front of everyone. Nothing later would say why, so it blocks.
+    for (const h of hacks) {
+      if (!(await currentVersion(h.problemId))) {
+        blockers.push(`"${h.title}" needs its judge package ${h.problemId} published — until it is, the judge cannot serve it and every attempt fails`);
+      }
+      if (!h.ready) warnings.push(`"${h.title}" has no proven breaking input`);
+    }
   }
   if (next === "auction1") {
     const [{ n }] = await db.select({ n: count() }).from(p1Advancement).where(eq(p1Advancement.advanced, true));

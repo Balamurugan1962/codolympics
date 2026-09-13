@@ -359,6 +359,9 @@ export const p1Question = pgTable("p1_question", {
   formatRegex: text("format_regex"),                     // client-side shape check; safe to send
   formatHint: text("format_hint"),
   ready: boolean("ready").notNull().default(false),
+  // The self-test that set `ready` ran on whichever install exported this, not
+  // on this one. Shown beside the state so "Ready" never over-claims.
+  verifiedElsewhere: boolean("verified_elsewhere").notNull().default(false),
 });
 
 /** A participant's answer to one Section A question. */
@@ -407,6 +410,8 @@ export const p1HackQuestion = pgTable("p1_hack_question", {
   published: boolean("published").notNull().default(false),
   voided: boolean("voided").notNull().default(false),
   ready: boolean("ready").notNull().default(false),   // a known breaking input was proven
+  breakingInput: text("breaking_input"),             // the input that proved it -- an answer key, never sent
+  verifiedElsewhere: boolean("verified_elsewhere").notNull().default(false), // proven where this was exported
 });
 
 export const p1HackAttempt = pgTable(
