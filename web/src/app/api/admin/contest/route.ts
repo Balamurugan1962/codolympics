@@ -23,7 +23,7 @@ const Patch = z.object({
 });
 
 export const GET = route(async () => {
-  await requireApiViewer("admin");
+  await requireApiViewer("admin", "evaluator");
   return json(await getContest());
 });
 

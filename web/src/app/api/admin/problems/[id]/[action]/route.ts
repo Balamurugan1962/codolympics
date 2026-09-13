@@ -7,9 +7,14 @@ import { submissionCount } from "@/lib/submissions";
 
 type Ctx = { params: Promise<{ id: string; action: string }> };
 
+/**
+ * Evaluators may prove a package and preview it; only an administrator makes
+ * one live, because publishing mid-contest rejudges submissions that have
+ * already been made and can change a verdict someone is relying on.
+ */
 export const POST = route<Ctx>(async (req, { params }) => {
-  const viewer = await requireApiViewer("admin");
   const { id, action } = await params;
+  const viewer = await requireApiViewer(...(action === "publish" ? (["admin"] as const) : (["admin", "evaluator"] as const)));
   switch (action) {
     case "validate": {
       const b = await body(req, z.object({ version: z.string().regex(/^v\d+$/), reference_source: z.string().optional(), wrong_source: z.string().optional(), language: z.string().optional() }));

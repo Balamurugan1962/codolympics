@@ -5,7 +5,7 @@ import { requireApiViewer } from "@/lib/session";
 
 /** The problem list as the judge sees it, plus which versions exist on disk (US-F9-01). */
 export const GET = route(async () => {
-  await requireApiViewer("admin");
+  await requireApiViewer("admin", "evaluator");
   const problems = await judge.problems().catch(() => []);
   const withVersions = await Promise.all(problems.map(async (p) => ({ ...p, versions: await versionsOf(p.problem_id), current: await currentVersion(p.problem_id) })));
   return json({ problems: withVersions });
@@ -13,7 +13,7 @@ export const GET = route(async () => {
 
 /** Upload a package zip as a new version. multipart: id, package, reason. */
 export const POST = route(async (req) => {
-  const viewer = await requireApiViewer("admin");
+  const viewer = await requireApiViewer("admin", "evaluator");
   const form = await req.formData();
   const id = String(form.get("id") ?? "").trim();
   const reason = String(form.get("reason") ?? "").trim();

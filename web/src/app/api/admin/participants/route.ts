@@ -14,7 +14,7 @@ const Body = z.object({
 
 /** Balances, ownership counts and the "owns nothing" flag (US-B4-03). */
 export const GET = route(async () => {
-  await requireApiViewer("admin");
+  await requireApiViewer("admin", "evaluator");
   return json({ participants: await participantsOverview() });
 });
 

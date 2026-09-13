@@ -6,7 +6,7 @@ import { requireApiViewer } from "@/lib/session";
 
 /** The Phase 1 leaderboard with full detail, for selection. */
 export const GET = route(async () => {
-  await requireApiViewer("admin");
+  await requireApiViewer("admin", "evaluator");
   return json({ standings: await phase1Standings() });
 });
 

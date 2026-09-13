@@ -1,12 +1,19 @@
 "use client";
 
 /**
- * The console. Three questions, answered top to bottom: is anything broken,
- * where are we and what happens next, and is the contest actually ready.
+ * The console, and it follows the contest.
+ *
+ * The dashboard answers one question — what is happening right now, and what
+ * do I do next — so what sits below the controls changes with the phase: who
+ * has registered while you are waiting for people, the Section A board while
+ * Section A runs, grading progress during review, the auction and the Phase 2
+ * board once bidding starts. Everything else (the judge, the checklist, the
+ * full boards) has its own page and is one line away.
  */
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { StandingsCard, useStandings, type P1Row } from "@/components/admin/standings";
 import { useContest } from "@/components/contest-provider";
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
@@ -16,28 +23,28 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Stat, StatRow, StatSkeleton } from "@/components/ui/stat";
+import { Stat, StatRow } from "@/components/ui/stat";
 import { Stepper } from "@/components/ui/stepper";
 import { Summary, SummaryItem } from "@/components/ui/summary";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/client";
 
-type Health = {
-  judge: { status: string; go_judge: string; problems: number; busy: number; capacity: number } | null;
-  backlog: { pending: number; inFlight: number; retrying: number; internalErrors: number };
-};
+type Health = { judge: { status: string } | null; backlog: { pending: number; inFlight: number; retrying: number; internalErrors: number } };
 type Checks = { next: string | null; blockers: string[]; warnings: string[] };
-type Readiness = { items: { key: string; label: string; ok: boolean; detail: string; href: string }[]; done: number; total: number };
+type Readiness = { done: number; total: number };
+type Participant = { id: string; name: string; username: string | null; balance: number; owned: number; disqualified: boolean };
+type Queue = { ungraded: number; total: number };
 
 export default function AdminDashboard() {
   const { state, refresh, lastEvent } = useContest();
   const { toast } = useToast();
+  const { data: boards } = useStandings();
   const [health, setHealth] = useState<Health | null>(null);
   const [checks, setChecks] = useState<Checks | null>(null);
   const [ready, setReady] = useState<Readiness | null>(null);
-
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
@@ -60,15 +67,18 @@ export default function AdminDashboard() {
 
   if (!state) return null;
   const c = state.contest;
-  const judgeDown = !health?.judge || health.judge.status !== "ok";
-  const idx = PHASE_STEPS.findIndex((s) => s.key === c.phase);
+  const canControl = state.viewer.role === "admin";
+  const phase = c.phase;
+  const idx = PHASE_STEPS.findIndex((s) => s.key === phase);
   const blocked = (checks?.blockers.length ?? 0) > 0;
+  const judgeDown = Boolean(health) && (!health!.judge || health!.judge.status !== "ok");
+  const errors = health?.backlog.internalErrors ?? 0;
 
   return (
     <PageBody width="wide">
       <PageHeader
         title="Dashboard"
-        description="Health, the phase you are in, and whether the contest is ready to run."
+        description={`Now: ${PHASE_LABEL[phase] ?? phase}. Everything below follows the phase you are in.`}
         actions={
           <Button variant="outline" size="sm" onClick={load}>
             <Icon.Refresh size={14} /> Refresh
@@ -79,215 +89,309 @@ export default function AdminDashboard() {
       {!loaded ? (
         <DashboardSkeleton />
       ) : (
-      <div className="space-y-5">
-        {judgeDown && health && (
-          <Alert variant="destructive">
-            <Icon.Alert />
-            <AlertTitle>The judge is unreachable</AlertTitle>
-            <AlertDescription>
-              Nothing can be judged until it is back. Submissions queue and retry on their own — none are lost.
-            </AlertDescription>
-          </Alert>
-        )}
+        <div className="space-y-5">
+          {(judgeDown || errors > 0) && (
+            <Alert variant={judgeDown ? "destructive" : "warning"}>
+              <Icon.Alert />
+              <AlertTitle>
+                {judgeDown ? "The judge is unreachable" : `${errors} submission${errors === 1 ? "" : "s"} ended in an internal error`}
+              </AlertTitle>
+              <AlertDescription>
+                {judgeDown
+                  ? "Nothing can be judged until it is back. Submissions queue and retry on their own — none are lost."
+                  : "An internal error is the judge's fault, not the competitor's."}{" "}
+                <Link href="/admin/judge" className="font-semibold text-brand-dark hover:underline">
+                  Open the judge
+                </Link>
+              </AlertDescription>
+            </Alert>
+          )}
 
-        <StatRow cols={4}>
-          <Stat
-            label="Judge"
-            value={health?.judge ? "Healthy" : "Down"}
-            tone={judgeDown ? "destructive" : "success"}
-            icon={<Icon.Server size={13} />}
-            hint={health?.judge ? `${health.judge.busy} of ${health.judge.capacity} slots busy` : "check the sandbox container"}
-          />
-          <Stat
-            label="In flight"
-            value={health ? health.backlog.inFlight : "—"}
-            icon={<Icon.Play size={13} />}
-            hint={health ? `${health.backlog.pending} waiting to be sent` : undefined}
-          />
-          <Stat
-            label="Retrying"
-            value={health?.backlog.retrying ?? "—"}
-            tone={health?.backlog.retrying ? "warning" : "default"}
-            icon={<Icon.Refresh size={13} />}
-            hint={health?.backlog.retrying ? "the judge has not accepted these yet" : "nothing stuck"}
-          />
-          <Stat
-            label="Internal errors"
-            value={health?.backlog.internalErrors ?? "—"}
-            tone={health?.backlog.internalErrors ? "destructive" : "default"}
-            icon={<Icon.Alert size={13} />}
-            hint={health?.backlog.internalErrors ? "investigate in Submissions" : "none"}
-          />
-        </StatRow>
+          <Section
+            title="Contest control"
+            description={`Step ${idx + 1} of ${PHASE_STEPS.length}. Only you advance the contest; nothing moves on its own.`}
+            actions={
+              c.phase_ends_at ? (
+                <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                  <Icon.Clock size={14} />
+                  <Countdown until={c.phase_ends_at} className="font-semibold text-foreground" /> left
+                </span>
+              ) : undefined
+            }
+            padded={false}
+          >
+            <div className="border-b bg-muted/30 px-5 py-3">
+              <Stepper steps={PHASE_STEPS} current={phase} />
+            </div>
 
-        <Section
-          title="Contest control"
-          description={`Step ${idx + 1} of ${PHASE_STEPS.length}. Only you advance the contest; nothing moves on its own.`}
-          actions={
-            c.phase_ends_at ? (
-              <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                <Icon.Clock size={14} />
-                <Countdown until={c.phase_ends_at} className="font-semibold text-foreground" /> left
-              </span>
-            ) : undefined
-          }
-          padded={false}
-        >
-          <div className="border-b bg-muted/30 px-5 py-3">
-            <Stepper steps={PHASE_STEPS} current={c.phase} />
-          </div>
-
-          <div className="space-y-3 px-5 py-4">
-            {!checks?.next ? (
-              <p className="text-[13px] text-muted-foreground">The contest has ended. Export the results from the audit log.</p>
-            ) : (
-              <>
-                {blocked && (
-                  <Alert variant="destructive">
-                    <Icon.Alert />
-                    <AlertTitle>Cannot advance yet</AlertTitle>
-                    <AlertDescription>
-                      <ul className="ml-4 list-disc space-y-0.5">
-                        {checks.blockers.map((b) => (
-                          <li key={b}>{b}</li>
-                        ))}
-                      </ul>
-                    </AlertDescription>
-                  </Alert>
-                )}
-                {checks.warnings.length > 0 && (
-                  <Alert variant="warning">
-                    <Icon.Alert />
-                    <AlertTitle>Advancing will acknowledge these</AlertTitle>
-                    <AlertDescription>
-                      <ul className="ml-4 list-disc space-y-0.5">
-                        {checks.warnings.map((w) => (
-                          <li key={w}>{w}</li>
-                        ))}
-                      </ul>
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <div className="flex flex-wrap items-center gap-2">
-                  <ReasonAction
-                    label={`Advance to ${PHASE_LABEL[checks.next]}`}
-                    title={`Advance to ${PHASE_LABEL[checks.next]}?`}
-                    defaultReason={`${PHASE_LABEL[c.phase]} is finished; moving the contest on to ${PHASE_LABEL[checks.next]}.`}
-                    variant="default"
-                    size="default"
-                    icon={<Icon.ArrowRight size={15} />}
-                    disabled={blocked}
-                    description={
-                      checks.next === "auction1"
-                        ? "Lots are created in auction order and the first opens immediately."
-                        : ["p1_puzzles", "p1_hacking", "coding1", "final"].includes(checks.next)
-                          ? "The timer for this round starts the moment you confirm."
-                          : undefined
-                    }
-                    onConfirm={async (reason) => {
-                      await api.post("/api/admin/contest/phase", { reason, acknowledge_warnings: true });
-                      toast({ title: `Now: ${PHASE_LABEL[checks.next!]}`, tone: "success" });
-                      await refresh();
-                      await load();
-                    }}
-                  />
-                  {c.phase_ends_at && (
-                    <ReasonAction
-                      label="Extend round"
-                      title="Extend the current round"
-                      defaultReason={`Giving everyone more time in ${PHASE_LABEL[c.phase]}.`}
-                      icon={<Icon.Timer size={14} />}
-                      fields={[{ name: "minutes", label: "Minutes to add", type: "number", defaultValue: "10" }]}
-                      onConfirm={async (reason, v) => {
-                        await api.post("/api/admin/contest/extend", { reason, minutes: Number(v.minutes) });
-                        toast({ title: `Extended by ${v.minutes} minutes`, tone: "success" });
-                        await refresh();
-                      }}
-                    />
+            <div className="space-y-3 px-5 py-4">
+              {!canControl ? (
+                <p className="text-[13px] text-muted-foreground">
+                  {checks?.next
+                    ? `Next is ${PHASE_LABEL[checks.next] ?? checks.next}. Only an administrator moves the contest on.`
+                    : "The contest has ended."}
+                </p>
+              ) : !checks?.next ? (
+                <p className="text-[13px] text-muted-foreground">The contest has ended. Export the results from the audit log.</p>
+              ) : (
+                <>
+                  {blocked && (
+                    <Alert variant="destructive">
+                      <Icon.Alert />
+                      <AlertTitle>Cannot advance yet</AlertTitle>
+                      <AlertDescription>
+                        <ul className="ml-4 list-disc space-y-0.5">
+                          {checks.blockers.map((x) => (
+                            <li key={x}>{x}</li>
+                          ))}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
                   )}
-                  {c.phase === "registration" && (
+                  {checks.warnings.length > 0 && (
+                    <Alert variant="warning">
+                      <Icon.Alert />
+                      <AlertTitle>Advancing will acknowledge these</AlertTitle>
+                      <AlertDescription>
+                        <ul className="ml-4 list-disc space-y-0.5">
+                          {checks.warnings.map((x) => (
+                            <li key={x}>{x}</li>
+                          ))}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
                     <ReasonAction
-                      label={c.registration_open ? "Close registration" : "Reopen registration"}
-                      title={c.registration_open ? "Close registration?" : "Reopen registration?"}
-                      defaultReason={c.registration_open ? "The roster is final; closing registration before Phase 1." : "Someone still needs to register; reopening."}
-                      icon={c.registration_open ? <Icon.Lock size={14} /> : <Icon.Unlock size={14} />}
-                      description="The roster must be final before Phase 1, because everyone starts with the same money."
+                      label={`Advance to ${PHASE_LABEL[checks.next]}`}
+                      title={`Advance to ${PHASE_LABEL[checks.next]}?`}
+                      variant="default"
+                      size="default"
+                      icon={<Icon.ArrowRight size={15} />}
+                      disabled={blocked}
+                      defaultReason={`${PHASE_LABEL[phase]} is finished; moving the contest on to ${PHASE_LABEL[checks.next]}.`}
+                      description={
+                        checks.next === "auction1"
+                          ? "Lots are created in auction order and the first opens immediately."
+                          : ["p1_puzzles", "p1_hacking", "coding1", "final"].includes(checks.next)
+                            ? "The timer for this round starts the moment you confirm."
+                            : undefined
+                      }
                       onConfirm={async (reason) => {
-                        await api.post("/api/admin/contest/registration", { reason, open: !c.registration_open });
+                        await api.post("/api/admin/contest/phase", { reason, acknowledge_warnings: true });
+                        toast({ title: `Now: ${PHASE_LABEL[checks.next!]}`, tone: "success" });
                         await refresh();
                         await load();
                       }}
                     />
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </Section>
+                    {c.phase_ends_at && (
+                      <ReasonAction
+                        label="Extend round"
+                        title="Extend the current round"
+                        icon={<Icon.Timer size={14} />}
+                        defaultReason={`Giving everyone more time in ${PHASE_LABEL[phase]}.`}
+                        fields={[{ name: "minutes", label: "Minutes to add", type: "number", defaultValue: "10" }]}
+                        onConfirm={async (reason, v) => {
+                          await api.post("/api/admin/contest/extend", { reason, minutes: Number(v.minutes) });
+                          toast({ title: `Extended by ${v.minutes} minutes`, tone: "success" });
+                          await refresh();
+                        }}
+                      />
+                    )}
+                    {phase === "registration" && (
+                      <ReasonAction
+                        label={c.registration_open ? "Close registration" : "Reopen registration"}
+                        title={c.registration_open ? "Close registration?" : "Reopen registration?"}
+                        icon={c.registration_open ? <Icon.Lock size={14} /> : <Icon.Unlock size={14} />}
+                        defaultReason={
+                          c.registration_open
+                            ? "The roster is final; closing registration before Phase 1."
+                            : "Someone still needs to register; reopening."
+                        }
+                        description="The roster must be final before Phase 1, because everyone starts with the same money."
+                        onConfirm={async (reason) => {
+                          await api.post("/api/admin/contest/registration", { reason, open: !c.registration_open });
+                          await refresh();
+                          await load();
+                        }}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </Section>
 
-        <LiveAuction />
-
-        <ReadinessLink ready={ready} />
-      </div>
+          {phase === "registration" && <RegistrationPanel ready={ready} />}
+          {(phase === "p1_puzzles" || phase === "p1_hacking") && <Phase1Panel phase={phase} rows={boards?.phase1 ?? null} />}
+          {phase === "review" && <ReviewPanel rows={boards?.phase1 ?? null} />}
+          {["auction1", "auction2"].includes(phase) && <LiveAuction />}
+          {["auction1", "coding1", "auction2", "final", "ended"].includes(phase) && (
+            <StandingsCard phase="phase2" rows1={boards?.phase1 ?? null} rows2={boards?.phase2 ?? null} />
+          )}
+        </div>
       )}
     </PageBody>
   );
 }
 
-/** The dashboard's own shape, greyed out. Nothing claims a value it does not have yet. */
-function DashboardSkeleton() {
+// ---------------------------------------------------------------------------
+
+/** Waiting for people: who has signed up, and whether the contest is ready for them. */
+function RegistrationPanel({ ready }: { ready: Readiness | null }) {
+  const [rows, setRows] = useState<Participant[] | null>(null);
+  useEffect(() => {
+    const load = async () => setRows((await api.get<{ participants: Participant[] }>("/api/admin/participants")).participants);
+    void load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, []);
+
+  const left = ready ? ready.total - ready.done : 0;
+
   return (
-    <div className="space-y-5" aria-busy>
-      <StatRow cols={4}>
-        {Array.from({ length: 4 }).map((_, i) => (
-          <StatSkeleton key={i} />
-        ))}
-      </StatRow>
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <Skeleton className="h-4 w-36" />
-          <Skeleton className="mt-1 h-3 w-72" />
-        </CardHeader>
-        <div className="border-b bg-muted/30 px-5 py-3.5">
-          <Skeleton className="h-4 w-full max-w-2xl" />
-        </div>
-        <div className="flex gap-2 px-5 py-4">
-          <Skeleton className="h-9 w-44" />
-          <Skeleton className="h-9 w-32" />
-        </div>
-      </Card>
-      <Skeleton className="h-16 w-full rounded-lg" />
+    <div className="grid gap-5 lg:grid-cols-5">
+      <Section
+        className="lg:col-span-3"
+        title="Registering"
+        description="Updates as people sign up at their machines."
+        actions={
+          <Link href="/admin/participants" className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-dark hover:underline">
+            Everyone <Icon.ChevronRight size={13} />
+          </Link>
+        }
+        padded={false}
+      >
+        {!rows ? (
+          <div className="space-y-2.5 p-5">
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-2/5" />
+          </div>
+        ) : rows.length === 0 ? (
+          <EmptyState compact icon={<Icon.Users />} title="Nobody yet" body="Send people to the registration page and they will appear here." />
+        ) : (
+          <ul className="divide-y">
+            {rows
+              .slice(-8)
+              .reverse()
+              .map((p) => (
+                <li key={p.id} className="flex items-center gap-3 px-5 py-2.5">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">
+                    {p.name.slice(0, 1).toUpperCase()}
+                  </span>
+                  <Link
+                    href={`/admin/participants/${p.id}`}
+                    className="min-w-0 flex-1 truncate text-[13px] font-medium hover:text-brand-dark hover:underline"
+                  >
+                    {p.name}
+                  </Link>
+                  <span className="font-mono text-[11.5px] text-faint">{p.username}</span>
+                </li>
+              ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section className="lg:col-span-2" title="Before you start">
+        <StatRow cols={2} className="mb-4">
+          <Stat label="Registered" value={rows?.length ?? "—"} icon={<Icon.Users size={13} />} />
+          <Stat
+            label="Checks passing"
+            value={ready ? `${ready.done}/${ready.total}` : "—"}
+            tone={left ? "warning" : "success"}
+            icon={<Icon.ListChecks size={13} />}
+          />
+        </StatRow>
+        <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+          {left ? (
+            <>
+              {left} thing{left === 1 ? "" : "s"} still to fix before this is fair to run.{" "}
+              <Link href="/admin/readiness" className="font-semibold text-brand-dark hover:underline">
+                Open the checklist
+              </Link>
+            </>
+          ) : (
+            <>Every check passes. Close registration when the roster is final, then start Section A.</>
+          )}
+        </p>
+      </Section>
     </div>
   );
 }
 
-/** The checklist lives on its own page; the dashboard only says whether it passes. */
-function ReadinessLink({ ready }: { ready: Readiness | null }) {
-  const left = ready ? ready.total - ready.done : 0;
-  const ok = Boolean(ready) && left === 0;
+/** A section is running: the board it feeds, and how far through people are. */
+function Phase1Panel({ phase, rows }: { phase: string; rows: P1Row[] | null }) {
+  const section = phase === "p1_puzzles" ? "Section A is open" : "Section B is open";
+  const finished = rows?.filter((r) => r.submitted_at).length ?? 0;
+  const scoring = rows?.filter((r) => r.points > 0).length ?? 0;
+
   return (
-    <Link
-      href="/admin/readiness"
-      className="flex items-center gap-3.5 rounded-lg border bg-card px-5 py-3.5 shadow-xs transition-colors hover:bg-muted/40"
-    >
-      <span
-        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
-          !ready ? "bg-muted text-faint" : ok ? "bg-green-tint text-green-dark" : "bg-amber-tint text-amber"
-        }`}
-      >
-        {!ready ? <Icon.Spinner size={15} /> : ok ? <Icon.Check size={15} strokeWidth={3} /> : <Icon.Alert size={14} />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[13.5px] font-semibold">
-          {!ready ? "Checking readiness…" : ok ? "Ready to run" : `${left} thing${left === 1 ? "" : "s"} to fix before the contest`}
-        </span>
-        <span className="block text-[11.5px] text-faint">
-          {ready ? `${ready.done} of ${ready.total} checks passing` : "judge, problems, Phase 1 and people"}
-        </span>
-      </span>
-      {ready && <Badge variant={ok ? "success" : "warning"}>{ready.done}/{ready.total}</Badge>}
-      <Icon.ChevronRight size={15} className="shrink-0 text-faint" />
-    </Link>
+    <div className="space-y-5">
+      <StatRow cols={3}>
+        <Stat label="Taking part" value={rows?.length ?? "—"} icon={<Icon.Users size={13} />} hint={section} />
+        <Stat label="Pressed finish" value={finished} icon={<Icon.Flag size={13} />} hint="their time is recorded" />
+        <Stat
+          label="On the board"
+          value={scoring}
+          icon={<Icon.Trophy size={13} />}
+          hint={rows ? `${rows.length - scoring} still on zero` : undefined}
+        />
+      </StatRow>
+      <StandingsCard phase="phase1" rows1={rows} rows2={null} />
+    </div>
+  );
+}
+
+/** Between the sections and the auction: what is left to grade, and the selection. */
+function ReviewPanel({ rows }: { rows: P1Row[] | null }) {
+  const [queue, setQueue] = useState<Queue | null>(null);
+  useEffect(() => {
+    const load = async () => setQueue(await api.get<Queue>("/api/grade/queue"));
+    void load();
+    const t = setInterval(load, 10_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const provisional = rows?.filter((r) => r.provisional).length ?? 0;
+  const chosen = rows?.filter((r) => r.advanced === true).length ?? 0;
+  const graded = queue ? queue.total - queue.ungraded : 0;
+
+  return (
+    <div className="space-y-5">
+      <Section title="Where review stands" description="Grading finishes first, then the selection. Both can be revised until Phase 2 opens.">
+        <Summary cols={4}>
+          <SummaryItem label="Items graded">
+            <span className="text-[15px] font-semibold tabular-nums">
+              {graded}
+              <span className="text-[12px] font-normal text-faint">/{queue?.total ?? "—"}</span>
+            </span>
+          </SummaryItem>
+          <SummaryItem label="Still with an evaluator">
+            {queue?.ungraded ? <Badge variant="review">{queue.ungraded}</Badge> : <span className="text-green-dark">none</span>}
+          </SummaryItem>
+          <SummaryItem label="Provisional totals">
+            {provisional ? <Badge variant="warning">{provisional}</Badge> : <span className="text-green-dark">none</span>}
+          </SummaryItem>
+          <SummaryItem label="Selected so far">
+            <span className="text-[15px] font-semibold tabular-nums">{chosen}</span>
+          </SummaryItem>
+        </Summary>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/grade">
+              <Icon.Scale size={14} /> Grading queue
+            </Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/admin/phase1/review">
+              <Icon.Flag size={14} /> Choose who advances
+            </Link>
+          </Button>
+        </div>
+      </Section>
+      <StandingsCard phase="phase1" rows1={rows} rows2={null} />
+    </div>
   );
 }
 
@@ -308,9 +412,9 @@ function LiveAuction() {
           <ReasonAction
             label="Close bidding"
             title="Close bidding on the open lot"
-            defaultReason={lot ? `Closing bidding on ${lot.title} by hand.` : "Closing bidding by hand."}
             disabled={!lot}
             icon={<Icon.Gavel size={14} />}
+            defaultReason={lot ? `Closing bidding on ${lot.title} by hand.` : "Closing bidding by hand."}
             description="The highest bidder wins it immediately. If there are no bids it goes unsold."
             onConfirm={async (reason) => {
               await api.post("/api/admin/lots/close", { reason });
@@ -320,9 +424,9 @@ function LiveAuction() {
           <ReasonAction
             label="Disable timer"
             title="Disable the countdown on this lot"
-            defaultReason={lot ? `Running ${lot.title} to a manual close.` : "Running this lot to a manual close."}
             disabled={!lot}
             icon={<Icon.Pause size={14} />}
+            defaultReason={lot ? `Running ${lot.title} to a manual close.` : "Running this lot to a manual close."}
             description="Bidding then stays open until you close it by hand."
             onConfirm={async (reason) => {
               await api.post("/api/admin/lots/disable-timer", { reason });
@@ -351,5 +455,27 @@ function LiveAuction() {
         <p className="text-[13px] text-muted-foreground">All lots are settled. Advance the phase when you are ready.</p>
       )}
     </Section>
+  );
+}
+
+/** The dashboard's own shape, greyed out. Nothing claims a value it does not have yet. */
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-5" aria-busy>
+      <Card className="overflow-hidden">
+        <CardHeader>
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="mt-1 h-3 w-72" />
+        </CardHeader>
+        <div className="border-b bg-muted/30 px-5 py-3.5">
+          <Skeleton className="h-4 w-full max-w-2xl" />
+        </div>
+        <div className="flex gap-2 px-5 py-4">
+          <Skeleton className="h-9 w-44" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+      </Card>
+      <Skeleton className="h-56 w-full rounded-lg" />
+    </div>
   );
 }

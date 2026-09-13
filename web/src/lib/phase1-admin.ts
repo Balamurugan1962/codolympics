@@ -210,4 +210,32 @@ async function waitForJob<R>({ job_id }: { job_id: string }, timeoutMs = 60_000)
   throw errors.conflict("judge_timeout", "the judge did not finish in time");
 }
 
+/**
+ * Set the order questions are shown in, from a complete list of ids.
+ *
+ * The whole list is sent rather than a pair of "moved from / moved to"
+ * indices: a drag-and-drop list is already holding the final order, and
+ * replaying moves against a list someone else has edited is how two organisers
+ * reordering at once produce an order neither of them chose.
+ */
+export async function reorderPhase1(
+  actorId: string,
+  section: "puzzles" | "hacking",
+  ids: number[],
+  reason: string,
+): Promise<void> {
+  const table = section === "puzzles" ? p1Question : p1HackQuestion;
+  await db.transaction(async (tx) => {
+    const existing = await tx.select({ id: table.id }).from(table);
+    const known = new Set(existing.map((r) => r.id));
+    if (ids.length !== known.size || ids.some((id) => !known.has(id))) {
+      throw errors.invalid("the order must list every question exactly once");
+    }
+    for (const [i, id] of ids.entries()) {
+      await tx.update(table).set({ orderIndex: i }).where(eq(table.id, id));
+    }
+    await audit({ actorId, action: `phase1.${section}.reorder`, reason, detail: { ids } }, tx);
+  });
+}
+
 export { participant };

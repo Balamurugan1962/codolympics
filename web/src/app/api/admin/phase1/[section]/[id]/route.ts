@@ -9,7 +9,7 @@ import { Hack, Puzzle, toHackInput, toPuzzleInput } from "../schemas";
 type Ctx = { params: Promise<{ section: string; id: string }> };
 
 export const PATCH = route<Ctx>(async (req, { params }) => {
-  const viewer = await requireApiViewer("admin");
+  const viewer = await requireApiViewer("admin", "evaluator");
   const { section, id } = await params;
   if (section === "puzzles") {
     const b = await body(req, Puzzle);

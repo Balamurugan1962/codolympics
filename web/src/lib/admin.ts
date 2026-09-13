@@ -295,6 +295,31 @@ export async function participantsOverview() {
 }
 
 /**
+ * The order lots are offered in. The whole list is sent rather than a pair of
+ * moved-from/moved-to indices, so two organisers reordering at once cannot
+ * produce an order neither of them chose.
+ *
+ * Refused once bidding has started on any lot: the order is published in
+ * advance and people plan their money around it.
+ */
+export async function reorderQuestions(actorId: string, ids: string[], reason: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    const existing = await tx.select({ id: question.id }).from(question);
+    const known = new Set(existing.map((r) => r.id));
+    if (ids.length !== known.size || ids.some((id) => !known.has(id))) {
+      throw errors.invalid("the order must list every question exactly once");
+    }
+    const [{ lots }] = await tx.select({ lots: count() }).from(lot);
+    if (lots > 0) throw errors.conflict("auction_started", "lots have been created; the auction order is fixed for this contest");
+
+    for (const [i, id] of ids.entries()) {
+      await tx.update(question).set({ auctionOrder: i + 1 }).where(eq(question.id, id));
+    }
+    await audit({ actorId, action: "questions.reorder", reason, detail: { ids } }, tx);
+  });
+}
+
+/**
  * Everyone who runs the contest rather than competing in it. Administrators
  * first, because that is the order a reader cares about, then by name.
  */

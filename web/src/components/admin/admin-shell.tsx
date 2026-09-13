@@ -34,9 +34,20 @@ import {
 } from "../ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 
-type Item = { href: string; label: string; icon: (p: { size?: number }) => React.ReactElement };
+type Role = "admin" | "evaluator";
+type Item = { href: string; label: string; icon: (p: { size?: number }) => React.ReactElement; roles?: Role[] };
+type Group = { section: string | null; items: Item[] };
 
-const NAV: { section: string | null; items: Item[] }[] = [
+/**
+ * The console's whole information architecture, grouped by what you are doing:
+ * running the day, preparing each phase, watching the boards, managing people,
+ * checking the machinery.
+ *
+ * `roles` narrows an item to administrators. It is presentation only — every
+ * route enforces its own permissions server-side, because hiding a link has
+ * never been a control.
+ */
+const NAV: Group[] = [
   {
     section: null,
     items: [
@@ -45,29 +56,66 @@ const NAV: { section: string | null; items: Item[] }[] = [
     ],
   },
   {
-    section: "Content",
+    section: "Phase 1",
+    items: [
+      { href: "/admin/phase1/puzzles", label: "Section A · Puzzles", icon: Icon.Puzzle },
+      { href: "/admin/phase1/hacking", label: "Section B · Hacking", icon: Icon.Bug },
+      { href: "/admin/phase1/order", label: "Order", icon: Icon.Sort },
+      { href: "/admin/phase1/review", label: "Review & advance", icon: Icon.Flag },
+    ],
+  },
+  {
+    section: "Phase 2",
     items: [
       { href: "/admin/problems", label: "Problems", icon: Icon.Code },
-      { href: "/admin/phase1", label: "Phase 1", icon: Icon.Puzzle },
+      { href: "/admin/problems/order", label: "Auction order", icon: Icon.Sort },
+    ],
+  },
+  {
+    section: "Leaderboard",
+    items: [
+      { href: "/admin/leaderboard/phase1", label: "Phase 1", icon: Icon.Trophy },
+      { href: "/admin/leaderboard/phase2", label: "Phase 2", icon: Icon.Trophy },
+    ],
+  },
+  {
+    section: "Grading",
+    items: [
+      { href: "/grade", label: "Answers", icon: Icon.Scale },
+      { href: "/grade/hacks", label: "Hack attempts", icon: Icon.Bug },
     ],
   },
   {
     section: "People",
     items: [
       { href: "/admin/participants", label: "Participants", icon: Icon.Users },
-      { href: "/admin/staff", label: "Staff", icon: Icon.ShieldCheck },
+      { href: "/admin/staff", label: "Staff", icon: Icon.ShieldCheck, roles: ["admin"] },
       { href: "/admin/announcements", label: "Announcements", icon: Icon.Megaphone },
     ],
   },
   {
     section: "Monitor",
     items: [
+      { href: "/admin/judge", label: "Judge", icon: Icon.Server },
       { href: "/admin/submissions", label: "Submissions", icon: Icon.List },
       { href: "/admin/audit", label: "Audit log", icon: Icon.Shield },
     ],
   },
-  { section: "Configure", items: [{ href: "/admin/contest", label: "Settings", icon: Icon.Settings }] },
+  { section: "Configure", items: [{ href: "/admin/contest", label: "Settings", icon: Icon.Settings, roles: ["admin"] }] },
 ];
+
+/**
+ * Phase 2's board only makes sense once Phase 1 is behind you, so it is hidden
+ * until then rather than shown empty.
+ */
+const BEFORE_PHASE2 = ["registration", "p1_puzzles", "p1_hacking", "review"];
+
+/**
+ * Pages an evaluator has no business on. The server refuses the requests
+ * anyway; this exists so a typed URL says why instead of rendering a screen
+ * whose every request fails.
+ */
+const ADMIN_ONLY = ["/admin/contest", "/admin/staff"];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { state, connection } = useContest();
@@ -93,6 +141,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (!state) return null;
   const { viewer, contest } = state;
+  const role = viewer.role === "admin" ? "admin" : "evaluator";
+  const nav = NAV.map((g) => ({
+    ...g,
+    items: g.items.filter(
+      (it) =>
+        (!it.roles || it.roles.includes(role)) &&
+        !(it.href === "/admin/leaderboard/phase2" && BEFORE_PHASE2.includes(contest.phase)),
+    ),
+  })).filter((g) => g.items.length > 0);
 
   const sidebar = (
     <div className="flex h-full w-60 flex-col bg-sidebar text-sidebar-foreground">
@@ -106,28 +163,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </span>
       </div>
 
-      <nav className="pane flex-1 overflow-y-auto px-3 py-4" aria-label="Administration">
-        {NAV.map((group, gi) => (
-          <div key={group.section ?? gi} className={gi ? "mt-6" : ""}>
+      <nav className="pane min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="Administration">
+        {nav.map((group, gi) => (
+          <div key={group.section ?? gi} className={gi ? "mt-4" : ""}>
             {group.section && (
-              <div className="mb-1.5 px-2.5 text-[10px] font-semibold tracking-[0.1em] text-white/35 uppercase">{group.section}</div>
+              <div className="mb-1 px-2.5 text-[10px] font-semibold tracking-[0.1em] text-white/35 uppercase">{group.section}</div>
             )}
             <ul className="space-y-0.5">
               {group.items.map(({ href, label, icon: I }) => {
-                const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+                const active = isActive(pathname, href);
                 return (
                   <li key={href}>
                     <Link
                       href={href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors",
+                        "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
                         active ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white/90",
                       )}
                     >
                       <I size={16} />
                       <span>{label}</span>
-                      {active && <span className="ml-auto size-1.5 rounded-full bg-brand-bright" />}
                     </Link>
                   </li>
                 );
@@ -137,9 +193,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-sidebar-border p-3">
-        <HealthRow label="Judge" ok={judgeOk} okText="healthy" badText="unreachable" />
-        <HealthRow label="Live updates" ok={connection === "connecting" ? null : connection === "open"} okText="on" badText="reconnecting" />
+      <div className="flex shrink-0 items-center gap-4 border-t border-sidebar-border px-4 py-2.5">
+        <Health label="Judge" ok={judgeOk} bad="unreachable" />
+        <Health label="Live" ok={connection === "connecting" ? null : connection === "open"} bad="reconnecting" />
       </div>
     </div>
   );
@@ -218,20 +274,51 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <main className="flex-1">{children}</main>
+        <main className="flex-1">
+          {role === "evaluator" && ADMIN_ONLY.some((p) => pathname.startsWith(p)) ? <NotForYou /> : children}
+        </main>
       </div>
     </div>
   );
 }
 
-function HealthRow({ label, ok, okText, badText }: { label: string; ok: boolean | null; okText: string; badText: string }) {
+/**
+ * Exact match, or a match on a path segment boundary. Without the boundary
+ * /admin/problems would light up while you are on /admin/problems/order.
+ */
+function isActive(pathname: string, href: string): boolean {
+  if (href === "/admin") return pathname === "/admin";
+  if (pathname === href) return true;
+  if (!pathname.startsWith(href + "/")) return false;
+  // /admin/problems must not claim /admin/problems/order, which is its own item.
+  const rest = pathname.slice(href.length + 1);
+  return !NAV.some((g) => g.items.some((it) => it.href === `${href}/${rest.split("/")[0]}`));
+}
+
+/** An honest dead end rather than a screen of failed requests. */
+function NotForYou() {
   return (
-    <div className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px]">
-      <span className={cn("size-1.5 shrink-0 rounded-full", ok === null ? "bg-white/30" : ok ? "bg-green-bright" : "animate-pulse bg-red")} />
-      <span className="text-white/55">{label}</span>
-      <span className={cn("ml-auto font-semibold", ok === false ? "text-red" : "text-white/80")}>
-        {ok === null ? "…" : ok ? okText : badText}
-      </span>
+    <div className="mx-auto max-w-md px-6 py-20 text-center">
+      <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full border bg-muted text-faint">
+        <Icon.Lock size={18} />
+      </div>
+      <h1 className="text-[15px] font-semibold">This one is the administrator's</h1>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+        Evaluators grade, author questions and read every board. Contest settings and staff accounts belong to whoever is running the day.
+      </p>
+      <Link href="/grade" className="mt-4 inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand-dark hover:underline">
+        Back to grading <Icon.ChevronRight size={13} />
+      </Link>
     </div>
+  );
+}
+
+/** A dot and a word. The detail lives on the Judge page; this only says whether to go there. */
+function Health({ label, ok, bad }: { label: string; ok: boolean | null; bad: string }) {
+  return (
+    <span className="flex items-center gap-1.5 text-[11.5px]" title={ok === false ? bad : undefined}>
+      <span className={cn("size-1.5 shrink-0 rounded-full", ok === null ? "bg-white/30" : ok ? "bg-green-bright" : "animate-pulse bg-red")} />
+      <span className={ok === false ? "font-semibold text-red" : "text-white/50"}>{ok === false ? bad : label}</span>
+    </span>
   );
 }

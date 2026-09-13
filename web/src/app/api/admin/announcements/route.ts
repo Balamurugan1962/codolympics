@@ -9,7 +9,7 @@ import { requireApiViewer } from "@/lib/session";
 
 /** Everything announced so far, newest first. */
 export const GET = route(async () => {
-  await requireApiViewer("admin");
+  await requireApiViewer("admin", "evaluator");
   return json({ announcements: await db.select().from(announcement).orderBy(desc(announcement.id)).limit(200) });
 });
 

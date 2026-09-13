@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /** One submission: source, every judgement (history kept), and the failing testcase at the judged version. */
 export const GET = route<Ctx>(async (_req, { params }) => {
-  await requireApiViewer("admin");
+  await requireApiViewer("admin", "evaluator");
   const { id } = await params;
   const [s] = await db.select().from(submission).where(eq(submission.id, Number(id)));
   if (!s) throw errors.notFound("submission");
