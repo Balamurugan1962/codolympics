@@ -11,10 +11,11 @@ import { useEffect, useState } from "react";
 import { useContest } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { PHASE_LABEL } from "@/components/shell";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, SettingRow } from "@/components/ui/field";
+import { Hint } from "@/components/ui/hint";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
@@ -109,18 +110,20 @@ export default function SettingsPage() {
 
   return (
     <PageBody className={dirty ? "pb-24" : ""}>
-      <PageHeader title="Settings" description="The structure of the contest is fixed; these are its numbers. Every change is audit-logged." />
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            Settings
+            <Hint>
+              Set the prices last. Every price depends on how many people advance from Phase 1 — twenty-five questions among twenty is a
+              different auction from twenty-five among eight.
+            </Hint>
+          </span>
+        }
+        description="The structure of the contest is fixed; these are its numbers. Every change is audit-logged."
+      />
 
-      <Alert variant="info">
-        <Icon.Info />
-        <AlertTitle>Set the prices last</AlertTitle>
-        <AlertDescription>
-          Every price depends on how many people advance from Phase 1 — twenty-five questions among twenty is a different auction from
-          twenty-five among eight.
-        </AlertDescription>
-      </Alert>
-
-      <div className="mt-5 space-y-5">
+      <div className="space-y-5">
         <Section title="Phase 1" description="The qualifying round." padded={false}>
           <SettingRow label="Section A duration" description="Logical puzzles. Participants may revise answers until it closes.">
             {numberField("p1PuzzlesMinutes", "minutes")}

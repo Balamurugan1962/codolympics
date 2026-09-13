@@ -8,8 +8,10 @@ type Ctx = { params: Promise<{ section: string; id: string; action: string }> };
 
 /** test | publish | unpublish | void, for either section. */
 export const POST = route<Ctx>(async (req, { params }) => {
-  const viewer = await requireApiViewer("admin");
   const { section, id: raw, action } = await params;
+  // Evaluators author and self-test; putting a question in front of
+  // participants, or taking it away again, is the administrator's call.
+  const viewer = await requireApiViewer(...(action === "test" ? (["admin", "evaluator"] as const) : (["admin"] as const)));
   const id = Number(raw);
   const puzzles = section === "puzzles";
   if (!puzzles && section !== "hacking") throw errors.notFound("section");

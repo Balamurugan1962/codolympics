@@ -8,7 +8,7 @@ import { requireApiViewer } from "@/lib/session";
 
 /** Submissions with full jury detail, for dispute resolution (US-F9-06). Filter by ?question= or ?participant=. */
 export const GET = route(async (req) => {
-  await requireApiViewer("admin");
+  await requireApiViewer("admin", "evaluator");
   const url = new URL(req.url);
   const q = url.searchParams.get("question");
   const p = url.searchParams.get("participant");

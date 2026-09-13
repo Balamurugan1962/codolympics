@@ -13,7 +13,7 @@ import { requireApiViewer } from "@/lib/session";
  * is done, and where to go to fix it. Computed fresh every time.
  */
 export const GET = route(async () => {
-  await requireApiViewer("admin");
+  await requireApiViewer("admin", "evaluator");
   const c = await getContest();
   const [problems, qs, puzzles, hacks, people, staff] = await Promise.all([
     judge.problems().catch(() => null),

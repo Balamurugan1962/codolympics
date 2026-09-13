@@ -7,13 +7,16 @@ import { stateFor } from "@/lib/state";
 
 /**
  * Signed-in pages. State loads once on the server, then stays live over SSE.
- * Administrators get a console with a sidebar; everyone else gets the linear
- * contest frame.
+ *
+ * Staff — administrators and evaluators — get the console with its sidebar,
+ * because both author content and both need the boards; the sidebar simply
+ * shows an evaluator fewer items. Participants get the linear contest frame,
+ * where the job is a flow, not a console.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const viewer = await requireViewer();
   const initial = (await stateFor(viewer)) as unknown as ContestState;
-  const Frame = viewer.role === "admin" ? AdminShell : Shell;
+  const Frame = viewer.role === "participant" ? Shell : AdminShell;
   return (
     <ContestProvider initial={initial}>
       <Frame>{children}</Frame>

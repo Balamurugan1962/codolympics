@@ -8,7 +8,7 @@ import { audit } from "@/lib/audit";
 import { requireApiViewer } from "@/lib/session";
 
 export const GET = route(async () => {
-  await requireApiViewer("admin");
+  await requireApiViewer("admin", "evaluator");
   const qs = await db.select().from(question).orderBy(asc(question.auctionOrder), asc(question.id));
   const hs = await db.select().from(hint).orderBy(asc(hint.questionId), asc(hint.idx));
   return json({ questions: qs.map((q) => ({ ...q, hints: hs.filter((h) => h.questionId === q.id) })) });
@@ -29,7 +29,7 @@ const Upsert = z.object({
 
 /** Create or update the contest-facing side of a question: form fields, not the judge package. */
 export const POST = route(async (req) => {
-  const viewer = await requireApiViewer("admin");
+  const viewer = await requireApiViewer("admin", "evaluator");
   const b = await body(req, Upsert);
   await db.transaction(async (tx) => {
     await tx

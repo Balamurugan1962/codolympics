@@ -12,7 +12,7 @@ type Ctx = { params: Promise<{ section: string }> };
 
 /** All questions in a section, with secrets -- administrators only. */
 export const GET = route<Ctx>(async (_req, { params }) => {
-  await requireApiViewer("admin");
+  await requireApiViewer("admin", "evaluator");
   const { section } = await params;
   if (section === "puzzles") return json({ questions: await db.select().from(p1Question).orderBy(asc(p1Question.orderIndex), asc(p1Question.id)) });
   if (section === "hacking") return json({ questions: await db.select().from(p1HackQuestion).orderBy(asc(p1HackQuestion.orderIndex), asc(p1HackQuestion.id)) });
@@ -20,7 +20,7 @@ export const GET = route<Ctx>(async (_req, { params }) => {
 });
 
 export const POST = route<Ctx>(async (req, { params }) => {
-  const viewer = await requireApiViewer("admin");
+  const viewer = await requireApiViewer("admin", "evaluator");
   const { section } = await params;
   if (section === "puzzles") {
     const b = await body(req, Puzzle);
