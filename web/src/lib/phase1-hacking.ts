@@ -104,7 +104,7 @@ export async function sendPendingHacks(): Promise<void> {
       });
       await db.update(p1HackAttempt).set({ state: "queued", jobId: job_id }).where(eq(p1HackAttempt.id, a.id));
     } catch (err) {
-      if (err instanceof JudgeError && (err.status === 400 || err.status === 404)) {
+      if (err instanceof JudgeError && (err.judgeStatus === 400 || err.judgeStatus === 404)) {
         // The problem is broken: neither a hack nor a failure, nothing scored.
         await db.update(p1HackAttempt).set({ state: "done", validInput: true, hacked: null, verdict: "IE", invalidReason: null, endedAt: new Date() }).where(eq(p1HackAttempt.id, a.id));
       } else {
@@ -130,7 +130,7 @@ export async function pollHacks(): Promise<void> {
       }
       await settle(a, q, job.result);
     } catch (err) {
-      if (err instanceof JudgeError && err.status === 404) {
+      if (err instanceof JudgeError && err.judgeStatus === 404) {
         await db.update(p1HackAttempt).set({ state: "pending", jobId: null }).where(eq(p1HackAttempt.id, a.id));
       }
     }

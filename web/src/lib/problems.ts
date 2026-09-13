@@ -102,7 +102,7 @@ export async function validateVersion(
   try {
     return await judge.validate(id, body, version);
   } catch (err) {
-    if (err instanceof JudgeError && err.status === 404) throw errors.notFound(`${id} ${version} on the judge`);
+    if (err instanceof JudgeError && err.judgeStatus === 404) throw errors.notFound(`${id} ${version} on the judge`);
     throw err;
   }
 }

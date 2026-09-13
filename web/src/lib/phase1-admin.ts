@@ -12,6 +12,7 @@ import { audit } from "./audit";
 import { publish } from "./events";
 import { judge, type AnswersResult, type HackResult } from "./judge";
 import { normaliseAnswer, scoreAuto, type Q } from "./phase1-puzzles";
+import { currentVersion, versionsOf } from "./problems";
 
 // ---------------------------------------------------------------------------
 // Section A
@@ -166,6 +167,21 @@ export async function updateHack(actorId: string, id: number, input: Partial<Hac
 export async function testHack(id: number, breakingInput: string): Promise<{ ready: boolean; detail: string; result: HackResult }> {
   const [q] = await db.select().from(p1HackQuestion).where(eq(p1HackQuestion.id, id));
   if (!q) throw errors.notFound("question");
+
+  // The judge only reads a package's live version, so an uploaded-but-never-
+  // published package is invisible to it. Say that here: "no such problem" from
+  // the judge is true but useless, and the fix is two clicks away under
+  // Problems rather than anything to do with this question.
+  if (!(await currentVersion(q.problemId))) {
+    const uploaded = (await versionsOf(q.problemId)).length > 0;
+    throw errors.conflict(
+      "package_not_published",
+      uploaded
+        ? `the package ${q.problemId} is uploaded but not published — publish it under Problems, then prove the break`
+        : `there is no judge package called ${q.problemId} — upload it under Problems first`,
+    );
+  }
+
   const result = await waitForJob<HackResult>(
     await judge.hack({ problem_id: q.problemId, language: q.givenLanguage, source: q.givenSource, input: breakingInput, submission_id: `p1hacktest_${id}` }),
   );

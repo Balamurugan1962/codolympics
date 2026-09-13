@@ -11,9 +11,21 @@ import * as monaco from "monaco-editor";
 
 loader.config({ monaco });
 
-// No web workers are configured: Monaco then tokenises on the main thread,
-// which is fine for contest-sized files (NFR-F-02 asks for 1,000 lines) and
-// avoids a worker bundle path that differs between bundlers.
+/*
+ * Monaco is deliberately run without language workers: tokenising on the main
+ * thread is fine for contest-sized files (NFR-F-02 asks for 1,000 lines) and
+ * avoids a worker bundle path that differs between bundlers.
+ *
+ * It still *asks* for a worker, though, and with none configured that throws an
+ * ErrorEvent which Next surfaces as a full-screen runtime error — alarming for
+ * a competitor mid-round, over a feature they are not using. Handing it an
+ * empty worker answers the question without shipping anything.
+ */
+if (typeof window !== "undefined") {
+  (window as unknown as { MonacoEnvironment?: unknown }).MonacoEnvironment = {
+    getWorker: () => new Worker(URL.createObjectURL(new Blob([""], { type: "text/javascript" }))),
+  };
+}
 
 const MONACO_LANGUAGE: Record<string, string> = { c: "c", cpp: "cpp", python: "python", pypy: "python", java: "java", javascript: "javascript" };
 

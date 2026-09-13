@@ -269,7 +269,7 @@ export async function pollValidatorJobs(): Promise<void> {
         await db.update(p1Answer).set({ scoreState: "done", autoScore: valid * (q.pointsPerEntry ?? 0), scoreError: null }).where(where);
       }
     } catch (err) {
-      if (err instanceof JudgeError && err.status === 404) {
+      if (err instanceof JudgeError && err.judgeStatus === 404) {
         await db.update(p1Answer).set({ scoreState: "pending", scoreJobId: null }).where(and(eq(p1Answer.participantId, a.participantId), eq(p1Answer.questionId, q.id)));
       }
     }

@@ -44,10 +44,11 @@ async function main() {
     if (p.grading === "validator") {
       const entries = distinctEntries(q, ["1", "2", "3", "4", "6", "9", "12", "18", "36", "5", "36", "banana", "12 18"]);
       const { job_id } = await judge.validateAnswers({ validator: p.validatorPy!, entries, submission_id: "demo-verify" });
-      let result: { status: string; results: { valid: boolean; error: string | null }[] } | null = null;
+      type Answers = { status: string; results: { valid: boolean; error: string | null }[] };
+      let result: Answers | null = null;
       for (let i = 0; i < 60 && !result; i++) {
-        const job = await judge.job<typeof result>(job_id);
-        if (job.state === "done") result = job.result as never;
+        const job = await judge.job<Answers>(job_id);
+        if (job.state === "done" && job.result) result = job.result;
         else await new Promise((r) => setTimeout(r, 500));
       }
       if (!result || result.status === "IE") {
@@ -60,8 +61,9 @@ async function main() {
       const ok = valid === 9 && score === p.points;
       if (!ok) bad++;
       console.log(`${ok ? "ok  " : "FAIL"} ${p.title.padEnd(34)} ${valid}/9 factors accepted, score ${score}/${p.points}`);
+      const finished: Answers = result;
       entries.forEach((e, i) => {
-        const r = result!.results[i];
+        const r = finished.results[i];
         if (!r.valid) console.log(`       rejected ${JSON.stringify(e).padEnd(10)} ${r.error}`);
       });
       continue;
