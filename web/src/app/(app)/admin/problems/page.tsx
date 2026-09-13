@@ -4,11 +4,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { ImportProblemButton, problemExportMenuItem } from "@/components/admin/problem-transfer";
 import { DifficultyBadge } from "@/components/admin/question-details-form";
 import { Icon } from "@/components/icons";
 import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Menu } from "@/components/ui/menu";
 import { SearchInput } from "@/components/ui/field";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
 import { SimpleSelect } from "@/components/ui/select";
@@ -117,11 +119,14 @@ export default function ProblemsPage() {
         title="Problems"
         description="Every judge package and what participants see of it. A problem is auctionable once it is validated, described and published."
         actions={
-          <Button asChild>
-            <Link href="/admin/problems/new">
-              <Icon.Plus size={14} /> New problem
-            </Link>
-          </Button>
+          <>
+            <ImportProblemButton onImported={load} />
+            <Button asChild>
+              <Link href="/admin/problems/new">
+                <Icon.Plus size={14} /> New problem
+              </Link>
+            </Button>
+          </>
         }
       />
 
@@ -190,8 +195,8 @@ export default function ProblemsPage() {
                   <TableHead className="hidden text-right sm:table-cell">Tests</TableHead>
                   <TableHead className="hidden md:table-cell">Live</TableHead>
                   <TableHead>Stage</TableHead>
-                  <TableHead className="w-16">
-                    <span className="sr-only">Open</span>
+                  <TableHead className="w-28">
+                    <span className="sr-only">Actions</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -222,11 +227,14 @@ export default function ProblemsPage() {
                       <StatusDot tone={STAGE[stage].tone}>{STAGE[stage].label}</StatusDot>
                     </TableCell>
                     <TableCell>
-                      <Button size="sm" variant="ghost" asChild>
-                        <Link href={`/admin/problems/${encodeURIComponent(id)}`}>
-                          Open <Icon.ChevronRight size={14} />
-                        </Link>
-                      </Button>
+                      <div className="flex items-center justify-end gap-0.5">
+                        <Button size="sm" variant="ghost" asChild>
+                          <Link href={`/admin/problems/${encodeURIComponent(id)}`}>
+                            Open <Icon.ChevronRight size={14} />
+                          </Link>
+                        </Button>
+                        <Menu label={`Actions for ${id}`} items={[problemExportMenuItem(id)]} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
