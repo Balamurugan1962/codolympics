@@ -25,6 +25,8 @@ import { SplitPane } from "@/components/ui/split-pane";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
+import { cn } from "@/lib/utils";
+import { useJudgement, type Judgement as LiveJudgement, type Stage } from "@/lib/use-judgement";
 
 const CodeEditor = dynamic(() => import("@/components/editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-full bg-[#1e1e1e]" /> });
 
@@ -84,7 +86,34 @@ export default function WorkspacePage() {
   }, [id]);
 
   useEffect(() => { void load(); void api.get<{ languages: { key: string; name: string }[] }>("/api/languages").then((r) => setLanguages(r.languages)); }, [load]);
-  useEffect(() => { if (lastEvent?.name === "verdict" || lastEvent?.name === "balance") void load(); }, [lastEvent, load]);
+
+  /*
+   * The newest submission is followed until it reaches a verdict. The SSE
+   * stream is a nudge to look now rather than the thing being relied on: it is
+   * the part that goes missing when a laptop sleeps or the hall's wifi hands a
+   * machine to another access point, and "Judging…" that never resolves is the
+   * worst thing this screen can do to someone.
+   */
+  const newest = q?.history[0] ?? null;
+  const following = newest && newest.judgement.state !== "done" ? newest.id : null;
+  const { judgement: live, stage, stalled, unreachable, poke } = useJudgement(following, newest?.judgement as LiveJudgement | null);
+
+  useEffect(() => {
+    if (lastEvent?.name === "balance") { void load(); return; }
+    if (lastEvent?.name !== "verdict") return;
+    const d = lastEvent.data as { submission_id?: number; rejudge?: boolean };
+    // A verdict for something this page is not watching — another tab, or an
+    // administrator rejudging the question — means the history is stale.
+    if (d.rejudge || (d.submission_id !== undefined && d.submission_id !== following)) void load();
+    else poke();
+  }, [lastEvent, poke, load, following]);
+
+  // One reload when it lands, for the things the narrow poll does not carry:
+  // the history row, the question's status, the cooldown.
+  const settled = useRef<number | null>(null);
+  useEffect(() => {
+    if (live?.state === "done" && settled.current !== live.id) { settled.current = live.id; void load(); }
+  }, [live, load]);
   useEffect(() => {
     if (!q) return;
     const end = serverNow() + q.submit.cooldown_ms;
@@ -128,9 +157,10 @@ export default function WorkspacePage() {
   if (error) return <div className="p-6"><EmptyState icon={<Icon.Lock size={22} />} title="You don't own this question" body={error} action={<Link href="/dashboard"><Button variant="outline" size="sm">Back to home</Button></Link>} /></div>;
   if (!q) return <div className="workspace grid grid-cols-2 gap-1 p-1"><Skeleton className="h-full" /><Skeleton className="h-full" /></div>;
 
-  const latest = q.history[0]?.judgement ?? null;
-  const solved = q.history.some((h) => h.judgement.verdict === "AC");
-  const inFlight = q.submit.in_flight;
+  // The polled copy is fresher than the page load it came with.
+  const latest = (live ?? q.history[0]?.judgement ?? null) as LiveJudgement | null;
+  const solved = q.history.some((h) => h.judgement.verdict === "AC") || latest?.verdict === "AC";
+  const inFlight = following !== null && stage !== "done";
   const canSubmit = !inFlight && cooldown === 0 && !busy && state?.contest.phase !== "ended" && q.status !== "void";
 
   const problemPane = (
@@ -198,13 +228,8 @@ export default function WorkspacePage() {
       </div>
       <div className="min-h-0 flex-1"><CodeEditor value={source} language={language} onChange={onChange} height="100%" fontSize={fontSize} /></div>
       {latest && (
-        <div className="border-t border-white/10 bg-[#252526] text-white/90">
-          <button className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-white/5" onClick={() => setPanel((p) => !p)} aria-expanded={panel}>
-            <Icon.ChevronDown size={14} className={panel ? "" : "-rotate-90"} /> Latest verdict
-            <span className="ml-auto"><VerdictBadge verdict={latest.state === "done" ? latest.verdict : null} /></span>
-          </button>
-          {panel && <VerdictPanel j={latest} sampleCount={q.sample_count} />}
-        </div>
+        <ResultPanel j={latest} stage={following === null ? "done" : stage} stalled={stalled} unreachable={unreachable}
+          sampleCount={q.sample_count} open={panel} onToggle={() => setPanel((p) => !p)} />
       )}
       <div className="flex items-center gap-3 border-t border-white/10 px-3 py-2">
         <span className="hidden text-xs text-white/50 sm:inline"><Kbd>Ctrl</Kbd> + <Kbd>Enter</Kbd> to submit</span>
@@ -229,28 +254,119 @@ export default function WorkspacePage() {
   );
 }
 
-function explain(j: Judgement, sampleCount: number): string {
-  if (j.cancelled) return "Cancelled.";
+/**
+ * What a verdict means, in words a competitor can act on.
+ *
+ * Never the abbreviation on its own: "TLE" teaches nothing to someone seeing
+ * it for the first time, and a contest is not the place to learn the judge's
+ * vocabulary. Where the failure is on a sample it says so, because that means
+ * the output format is wrong rather than the algorithm.
+ */
+function explain(j: { verdict: string | null; state: string; first_fail: number | null; total: number | null; cancelled: boolean; progress: { done: number; total: number } }, sampleCount: number): string {
+  if (j.cancelled) return "You cancelled this submission. It was not judged and does not count.";
+  const at = j.first_fail !== null ? `test ${j.first_fail + 1}${j.total ? ` of ${j.total}` : ""}` : "a hidden test";
+  const onSample = j.first_fail !== null && j.first_fail < sampleCount;
   switch (j.verdict) {
-    case "AC": return "Every testcase passed. This question is solved and stays solved.";
-    case "WA": return `Wrong answer on test ${j.first_fail}.${j.first_fail !== null && j.first_fail < sampleCount ? " That is a sample — check your output format." : ""}`;
-    case "TLE": return `Time limit exceeded on test ${j.first_fail}. Too slow for that input size.`;
-    case "MLE": return `Memory limit exceeded on test ${j.first_fail}.`;
-    case "OLE": return `Output limit exceeded on test ${j.first_fail} — far too much output.`;
-    case "RE": return `Runtime error on test ${j.first_fail} — a crash or a non-zero exit code.`;
-    case "CE": return "Compilation failed. See the compiler output.";
-    case "IE": return "The judge failed on our side. Not counted against you — tell an organiser if it repeats.";
-    default: return j.state === "queued" ? "Queued…" : `Running test ${j.progress.done}/${j.progress.total}…`;
+    case "AC": return "Every testcase passed. This question is solved, and it stays solved.";
+    case "WA": return `Wrong answer on ${at}.${onSample ? " That is one of the samples — check your output format before your logic." : ""}`;
+    case "TLE": return `Too slow on ${at}. The logic may be right; the complexity is not.`;
+    case "MLE": return `Used too much memory on ${at}.`;
+    case "OLE": return `Printed far too much on ${at} — check for a stray debug print or a loop that never ends.`;
+    case "RE": return `Crashed on ${at} — an exception, a bad index, or a non-zero exit code.`;
+    case "CE": return "It did not compile. The compiler's own output is below.";
+    case "IE": return "The judge failed on our side. This is not counted against you — tell an organiser if it happens again.";
+    default: return "";
   }
 }
 
-function VerdictPanel({ j, sampleCount }: { j: Judgement; sampleCount: number }) {
+/** The five things that can be true, and how each one should look. */
+const TONE: Record<string, { text: string; bar: string; label: string }> = {
+  AC: { text: "text-green-bright", bar: "bg-green-bright", label: "Accepted" },
+  WA: { text: "text-[#ff8a80]", bar: "bg-[#ff8a80]", label: "Wrong answer" },
+  TLE: { text: "text-[#ff8a80]", bar: "bg-[#ff8a80]", label: "Time limit exceeded" },
+  MLE: { text: "text-[#ff8a80]", bar: "bg-[#ff8a80]", label: "Memory limit exceeded" },
+  OLE: { text: "text-[#ff8a80]", bar: "bg-[#ff8a80]", label: "Output limit exceeded" },
+  RE: { text: "text-[#ff8a80]", bar: "bg-[#ff8a80]", label: "Runtime error" },
+  CE: { text: "text-[#ffcc66]", bar: "bg-[#ffcc66]", label: "Compile error" },
+  IE: { text: "text-white/70", bar: "bg-white/40", label: "Judge error" },
+};
+
+const STAGE_LABEL: Record<Stage, string> = {
+  sending: "Sending to the judge",
+  queued: "Queued — waiting for a free slot",
+  running: "Running",
+  done: "",
+  gone: "",
+};
+
+/**
+ * The live state of the newest submission, in the code pane's footer.
+ *
+ * While it runs this is the only thing on screen that changes, so it says
+ * which stage it is at and how far through — a bar that fills is the
+ * difference between "it is working" and "it has hung". When it lands it
+ * becomes the verdict and stops moving.
+ */
+function ResultPanel({ j, stage, stalled, unreachable, sampleCount, open, onToggle }: {
+  j: LiveJudgement; stage: Stage; stalled: boolean; unreachable: boolean; sampleCount: number; open: boolean; onToggle: () => void;
+}) {
+  const running = stage !== "done";
+  const tone = j.verdict ? TONE[j.verdict] : null;
+  const pct = j.progress.total ? Math.round((100 * j.progress.done) / j.progress.total) : 0;
+
   return (
-    <div className="max-h-48 overflow-auto px-3 pb-3 text-sm">
-      <p>{explain(j, sampleCount)}</p>
-      {j.state === "running" && <div className="mt-2 h-1.5 w-full rounded bg-white/10"><div className="h-1.5 rounded bg-brand transition-[width]" style={{ width: `${j.progress.total ? (100 * j.progress.done) / j.progress.total : 0}%` }} /></div>}
-      {j.state === "done" && j.verdict !== "CE" && <p className="mt-1 text-xs text-white/50">{j.passed}/{j.total} tests · {j.max_time_ms?.toFixed(0)} ms</p>}
-      {j.verdict === "CE" && j.compile_output && <pre className="mt-2 max-h-32 overflow-auto rounded bg-black/40 p-2 text-xs text-red-300">{j.compile_output}</pre>}
+    <div className="shrink-0 border-t border-white/10 bg-[#252526] text-white/90">
+      <button className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-white/5" onClick={onToggle} aria-expanded={open}>
+        <Icon.ChevronDown size={14} className={open ? "" : "-rotate-90"} />
+        {running ? (
+          <>
+            <Icon.Spinner size={13} className="text-brand-bright" />
+            <span className="font-semibold">
+              {stage === "running" && j.progress.total ? `Running test ${Math.min(j.progress.done + 1, j.progress.total)} of ${j.progress.total}` : STAGE_LABEL[stage]}
+            </span>
+          </>
+        ) : (
+          <>
+            <span className={cn("size-1.5 rounded-full", tone?.bar ?? "bg-white/40")} />
+            <span className={cn("font-semibold", tone?.text ?? "text-white/80")}>{j.cancelled ? "Cancelled" : (tone?.label ?? j.verdict ?? "Pending")}</span>
+          </>
+        )}
+        <span className="ml-auto text-[11.5px] tabular-nums text-white/45">
+          {!running && j.verdict !== "CE" && j.total ? `${j.passed}/${j.total} tests` : ""}
+          {!running && j.max_time_ms ? ` · ${j.max_time_ms.toFixed(0)} ms` : ""}
+        </span>
+      </button>
+
+      {/* The bar lives outside the collapsible part: someone who has folded the
+          panel away still needs to know whether anything is happening. */}
+      {running && (
+        <div className="h-0.5 w-full bg-white/10">
+          <div className="h-0.5 bg-brand-bright transition-[width] duration-300" style={{ width: `${stage === "running" ? Math.max(4, pct) : 2}%` }} />
+        </div>
+      )}
+
+      {open && (
+        <div className="max-h-48 overflow-auto px-3 pb-3 text-[12.5px]">
+          {running ? (
+            <p className="text-white/60">
+              {stalled
+                ? "Still waiting on the judge. Nothing is lost — it is queued and will be judged."
+                : unreachable
+                  ? "Lost contact with the server for a moment. Still trying; your submission is safe."
+                  : "Your submission is with the judge. You can keep editing while it runs."}
+            </p>
+          ) : (
+            <>
+              <p className="text-white/80">{explain(j, sampleCount)}</p>
+              {j.verdict === "CE" && j.compile_output && (
+                <pre className="mt-2 max-h-32 overflow-auto rounded bg-black/40 p-2 text-[11.5px] leading-relaxed whitespace-pre-wrap text-[#ffcc66]">
+                  {j.compile_output}
+                </pre>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

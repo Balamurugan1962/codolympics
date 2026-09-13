@@ -25,6 +25,7 @@ import { Icon } from "./icons";
 import { plainText } from "./local-time";
 import { Logo, Mark } from "./logo";
 import { Avatar, AvatarFallback } from "./ui/avatar";
+import { verdictLabel } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -299,8 +300,10 @@ function LiveToasts() {
       }
       case "verdict":
         if (d.state === "done") {
+          // Never the abbreviation on its own: a competitor should not have to
+          // learn that "OLE" is a thing in order to read their own result.
           toast({
-            title: d.verdict === "AC" ? "Accepted" : `Verdict: ${d.verdict}`,
+            title: verdictLabel(d.verdict as string | null),
             tone: d.verdict === "AC" ? "success" : d.verdict === "IE" ? "info" : "error",
           });
         }
