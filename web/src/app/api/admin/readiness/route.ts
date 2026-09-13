@@ -34,12 +34,12 @@ export const GET = route(async () => {
     { key: "judge", label: "Judge reachable", ok: problems !== null, detail: problems === null ? "the judge is not answering" : `${problems.length} package(s) on disk`, href: "/admin" },
     { key: "problems", label: "Every question has a judge package", ok: missing.length === 0 && qs.length > 0, detail: missing.length ? `missing: ${missing.join(", ")}` : `${qs.length} question(s)`, href: "/admin/problems" },
     { key: "details", label: "Every package has contest details", ok: orphans.length === 0, detail: orphans.length ? `no title/statement yet: ${orphans.join(", ")}` : "titles, statements and prices set", href: "/admin/problems" },
-    { key: "validated", label: "Every question validated", ok: unvalidated.length === 0 && contestQuestions.length > 0, detail: unvalidated.length ? `not validated: ${unvalidated.join(", ")}` : "all passed", href: "/admin/problems" },
+    { key: "validated", label: "Every question validated", ok: unvalidated.length === 0 && contestQuestions.length > 0, detail: unvalidated.length ? `not validated: ${unvalidated.join(", ")}` : contestQuestions.length ? "all passed" : "no questions to validate yet", href: "/admin/problems" },
     { key: "phase1", label: "Phase 1 questions published", ok: puzzles[0].live > 0 && hacks[0].live > 0, detail: `${puzzles[0].live}/${puzzles[0].n} puzzles, ${hacks[0].live}/${hacks[0].n} hacking`, href: "/admin/phase1" },
     { key: "basis", label: "Selection basis announced", ok: c.p1SelectionBasis.trim().length > 0, detail: c.p1SelectionBasis ? "set" : "participants must know how they will be selected before Phase 1", href: "/admin/contest" },
-    { key: "evaluators", label: "At least one evaluator", ok: staff[0].n > 0, detail: `${staff[0].n} evaluator(s)`, href: "/admin/participants" },
+    { key: "evaluators", label: "At least one evaluator", ok: staff[0].n > 0, detail: `${staff[0].n} evaluator(s)`, href: "/admin/staff" },
     { key: "participants", label: "Participants registered", ok: people[0].n > 0, detail: `${people[0].n} registered`, href: "/admin/participants" },
-    { key: "registration", label: "Registration closed before Phase 1", ok: !c.registrationOpen || c.phase !== "registration", detail: c.registrationOpen ? "still open" : "closed", href: "/admin" },
+    { key: "registration", label: "Registration closed before Phase 1", ok: !c.registrationOpen || c.phase !== "registration", detail: c.registrationOpen ? (c.phase === "registration" ? "still open — close it before Phase 1" : "still open") : "closed", href: "/admin" },
   ];
   return json({ items, done: items.filter((i) => i.ok).length, total: items.length });
 });

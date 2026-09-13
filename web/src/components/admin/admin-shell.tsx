@@ -17,6 +17,7 @@ import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/client";
 import { cn } from "@/lib/utils";
 
+import { AnnouncementOverlay } from "../announcement-overlay";
 import { useContest } from "../contest-provider";
 import { Countdown } from "../countdown";
 import { Icon } from "../icons";
@@ -36,7 +37,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 type Item = { href: string; label: string; icon: (p: { size?: number }) => React.ReactElement };
 
 const NAV: { section: string | null; items: Item[] }[] = [
-  { section: null, items: [{ href: "/admin", label: "Dashboard", icon: Icon.Grid }] },
+  {
+    section: null,
+    items: [
+      { href: "/admin", label: "Dashboard", icon: Icon.Grid },
+      { href: "/admin/readiness", label: "Readiness", icon: Icon.ListChecks },
+    ],
+  },
   {
     section: "Content",
     items: [
@@ -48,6 +55,7 @@ const NAV: { section: string | null; items: Item[] }[] = [
     section: "People",
     items: [
       { href: "/admin/participants", label: "Participants", icon: Icon.Users },
+      { href: "/admin/staff", label: "Staff", icon: Icon.ShieldCheck },
       { href: "/admin/announcements", label: "Announcements", icon: Icon.Megaphone },
     ],
   },
@@ -62,7 +70,7 @@ const NAV: { section: string | null; items: Item[] }[] = [
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
-  const { state, connected } = useContest();
+  const { state, connection } = useContest();
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false); // the mobile drawer
@@ -131,7 +139,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       <div className="shrink-0 border-t border-sidebar-border p-3">
         <HealthRow label="Judge" ok={judgeOk} okText="healthy" badText="unreachable" />
-        <HealthRow label="Live updates" ok={connected} okText="on" badText="reconnecting" />
+        <HealthRow label="Live updates" ok={connection === "connecting" ? null : connection === "open"} okText="on" badText="reconnecting" />
       </div>
     </div>
   );
@@ -204,7 +212,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </DropdownMenu>
         </header>
 
-        {!connected && (
+        {connection === "lost" && (
           <div className="flex items-center justify-center gap-2 bg-red px-4 py-1.5 text-center text-[13px] font-semibold text-white" role="alert">
             <Icon.WifiOff size={14} /> Live connection lost — reconnecting.
           </div>

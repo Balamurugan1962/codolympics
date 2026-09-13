@@ -40,6 +40,8 @@ export async function stateFor(viewer: Viewer) {
           advanced: await hasAdvanced(viewer.id),
           p1_puzzles_finished: Boolean(p.p1PuzzlesFinishedAt),
           p1_hacking_finished: Boolean(p.p1HackingFinishedAt),
+          // The language the editor opens in. A preference, never a restriction.
+          preferred_language: p.preferredLanguage,
         }
       : null,
     questions: await ownedQuestions(viewer.id),

@@ -17,9 +17,11 @@ import { useEffect, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
+import { AnnouncementOverlay } from "./announcement-overlay";
 import { useContest } from "./contest-provider";
 import { Countdown } from "./countdown";
 import { Icon } from "./icons";
+import { plainText } from "./local-time";
 import { Logo, Mark } from "./logo";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -35,6 +37,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Stepper, type Step } from "./ui/stepper";
 import { useToast } from "./ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+
+/** How the live connection is reported. Connecting is not a failure. */
+const CONNECTION = {
+  connecting: { dot: "bg-white/40 animate-pulse", label: "Connecting", hint: "Connecting to the contest server…" },
+  open: { dot: "bg-green-bright", label: "Connected", hint: "Connected to the contest server" },
+  lost: { dot: "bg-red animate-pulse", label: "Reconnecting", hint: "Connection lost — reconnecting…" },
+} as const;
 
 export const PHASE_STEPS: Step[] = [
   { key: "registration", label: "Registration", short: "Reg" },
@@ -65,7 +74,7 @@ const NAV: Record<string, NavItem[]> = {
 };
 
 export function Shell({ children }: { children: React.ReactNode }) {
-  const { state, connected } = useContest();
+  const { state, connection } = useContest();
   const pathname = usePathname();
   const router = useRouter();
   const [mobile, setMobile] = useState(false);
@@ -91,6 +100,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <LiveToasts />
+      <AnnouncementOverlay />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:shadow-lg"
@@ -167,11 +177,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
-                  aria-label={connected ? "Connected" : "Reconnecting"}
-                  className={cn("size-2 rounded-full", connected ? "bg-green-bright" : "animate-pulse bg-red")}
+                  aria-label={CONNECTION[connection].label}
+                  className={cn("size-2 rounded-full", CONNECTION[connection].dot)}
                 />
               </TooltipTrigger>
-              <TooltipContent>{connected ? "Connected to the contest server" : "Reconnecting…"}</TooltipContent>
+              <TooltipContent>{CONNECTION[connection].hint}</TooltipContent>
             </Tooltip>
 
             <DropdownMenu>
@@ -240,7 +250,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {!connected && (
+      {connection === "lost" && (
         <div className="flex items-center justify-center gap-2 bg-red px-4 py-1.5 text-center text-[13px] font-semibold text-white" role="alert">
           <Icon.WifiOff size={14} />
           Connection to the contest server lost — reconnecting. If this stays, raise your hand.
@@ -297,11 +307,9 @@ function LiveToasts() {
       case "hack":
         if (d.state === "done") toast({ title: "Hack attempt judged", description: "See the result on the hacking page.", tone: "info" });
         break;
-      case "announce":
-        toast({ title: "Announcement", description: String(d.body_md ?? "").slice(0, 140), tone: "info", duration: 9000 });
-        break;
       case "notify":
-        toast({ title: "For you", description: String(d.body ?? "").replace(/\*\*/g, "").slice(0, 140), tone: "info", duration: 9000 });
+        // Markdown in a toast shows its asterisks, so it is flattened first.
+        toast({ title: "For you", description: plainText(String(d.body ?? "")).slice(0, 140), tone: "info", duration: 9000 });
         break;
       case "phase":
         toast({ title: `Now: ${PHASE_LABEL[String(d.phase)] ?? d.phase}`, tone: "info" });

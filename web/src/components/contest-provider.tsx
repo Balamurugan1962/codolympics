@@ -16,7 +16,7 @@ export type ContestState = {
   viewer: { id: string; name: string; username: string; role: "participant" | "evaluator" | "admin" };
   contest: { phase: string; phase_ends_at: string | null; registration_open: boolean; leaderboard_mode: string; server_now: number };
   announcements: { id: number; bodyMd: string; createdAt: string }[];
-  me?: { balance: number; disqualified: boolean; advanced: boolean; p1_puzzles_finished: boolean; p1_hacking_finished: boolean } | null;
+  me?: { balance: number; disqualified: boolean; advanced: boolean; p1_puzzles_finished: boolean; p1_hacking_finished: boolean; preferred_language: string | null } | null;
   questions?: { id: string; title: string; difficulty: string; score: number; status: string; price_paid: number; awarded_at: string; attempts: number; progress: "solved" | "judging" | "attempted" | "unattempted" }[];
   rank?: { rank: number; score: number; solved: number; total_time_ms: number } | null;
   auction?: AuctionSnapshot | null;
@@ -39,8 +39,17 @@ export type AuctionSnapshot = {
   server_now: number;
 };
 
+/**
+ * "connecting" is the first few hundred milliseconds, before the stream has
+ * ever opened. It is not an error and must never be reported as one — the
+ * chrome shows a quiet loading state until the stream has opened once, and
+ * only a genuine drop after that raises the alarm.
+ */
+export type Connection = "connecting" | "open" | "lost";
+
 type Ctx = {
   state: ContestState | null;
+  connection: Connection;
   connected: boolean;
   serverNow: () => number;
   refresh: () => Promise<void>;
@@ -51,7 +60,7 @@ const ContestContext = createContext<Ctx | null>(null);
 
 export function ContestProvider({ initial, children }: { initial: ContestState; children: React.ReactNode }) {
   const [state, setState] = useState<ContestState | null>(initial);
-  const [connected, setConnected] = useState(false);
+  const [connection, setConnection] = useState<Connection>("connecting");
   const [lastEvent, setLastEvent] = useState<Ctx["lastEvent"]>(null);
   const offset = useRef(initial.contest.server_now - Date.now());
 
@@ -69,11 +78,16 @@ export function ContestProvider({ initial, children }: { initial: ContestState; 
     const es = new EventSource("/api/events");
     let wasDown = false;
     es.onopen = () => {
-      setConnected(true);
+      setConnection("open");
       if (wasDown) void refresh(); // reconciled from the server, never from cache
       wasDown = false;
     };
-    es.onerror = () => { setConnected(false); wasDown = true; };
+    es.onerror = () => {
+      // Before the first open this is still the connection being made; after
+      // it, the stream really has gone away.
+      setConnection((c) => (c === "connecting" ? "connecting" : "lost"));
+      wasDown = true;
+    };
 
     const on = (name: string) => (e: MessageEvent) => {
       const data = JSON.parse(e.data);
@@ -91,9 +105,9 @@ export function ContestProvider({ initial, children }: { initial: ContestState; 
   }, [refresh]);
 
   const value = useMemo<Ctx>(() => ({
-    state, connected, refresh, lastEvent,
+    state, connection, connected: connection === "open", refresh, lastEvent,
     serverNow: () => Date.now() + offset.current,
-  }), [state, connected, refresh, lastEvent]);
+  }), [state, connection, refresh, lastEvent]);
 
   return <ContestContext.Provider value={value}>{children}</ContestContext.Provider>;
 }

@@ -10,13 +10,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useContest } from "@/components/contest-provider";
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
-import { LocalTime, plainText } from "@/components/local-time";
 import { ReasonAction } from "@/components/reason-action";
 import { PHASE_LABEL, PHASE_STEPS } from "@/components/shell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { Stepper } from "@/components/ui/stepper";
@@ -218,50 +216,39 @@ export default function AdminDashboard() {
 
         <LiveAuction />
 
-        <div className="grid gap-5 lg:grid-cols-5">
-          <Section
-            className="lg:col-span-3"
-            title="Readiness"
-            description={
-              ready
-                ? ready.done === ready.total
-                  ? "Everything checks out."
-                  : `${ready.total - ready.done} thing${ready.total - ready.done === 1 ? "" : "s"} to fix before the contest.`
-                : "Checking…"
-            }
-            actions={ready && <Badge variant={ready.done === ready.total ? "success" : "warning"}>{ready.done}/{ready.total}</Badge>}
-            padded={false}
-          >
-            {!ready ? (
-              <EmptyState compact title="Checking…" />
-            ) : (
-              <ul className="divide-y">
-                {ready.items.map((it) => (
-                  <li key={it.key}>
-                    <Link href={it.href} className="flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-muted/50">
-                      <span
-                        className={`flex size-5 shrink-0 items-center justify-center rounded-full ${
-                          it.ok ? "bg-green-tint text-green-dark" : "bg-amber-tint text-amber"
-                        }`}
-                      >
-                        {it.ok ? <Icon.Check size={12} strokeWidth={3} /> : <Icon.Alert size={11} />}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className={`block text-[13px] ${it.ok ? "text-muted-foreground" : "font-semibold"}`}>{it.label}</span>
-                        <span className="block truncate text-[11.5px] text-faint">{it.detail}</span>
-                      </span>
-                      <Icon.ChevronRight size={15} className="shrink-0 text-faint" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
-          <Announce className="lg:col-span-2" />
-        </div>
+        <ReadinessLink ready={ready} />
       </div>
     </PageBody>
+  );
+}
+
+/** The checklist lives on its own page; the dashboard only says whether it passes. */
+function ReadinessLink({ ready }: { ready: Readiness | null }) {
+  const left = ready ? ready.total - ready.done : 0;
+  const ok = Boolean(ready) && left === 0;
+  return (
+    <Link
+      href="/admin/readiness"
+      className="flex items-center gap-3.5 rounded-lg border bg-card px-5 py-3.5 shadow-xs transition-colors hover:bg-muted/40"
+    >
+      <span
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
+          !ready ? "bg-muted text-faint" : ok ? "bg-green-tint text-green-dark" : "bg-amber-tint text-amber"
+        }`}
+      >
+        {!ready ? <Icon.Spinner size={15} /> : ok ? <Icon.Check size={15} strokeWidth={3} /> : <Icon.Alert size={14} />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13.5px] font-semibold">
+          {!ready ? "Checking readiness…" : ok ? "Ready to run" : `${left} thing${left === 1 ? "" : "s"} to fix before the contest`}
+        </span>
+        <span className="block text-[11.5px] text-faint">
+          {ready ? `${ready.done} of ${ready.total} checks passing` : "judge, problems, Phase 1 and people"}
+        </span>
+      </span>
+      {ready && <Badge variant={ok ? "success" : "warning"}>{ready.done}/{ready.total}</Badge>}
+      <Icon.ChevronRight size={15} className="shrink-0 text-faint" />
+    </Link>
   );
 }
 
@@ -321,51 +308,6 @@ function LiveAuction() {
         </Summary>
       ) : (
         <p className="text-[13px] text-muted-foreground">All lots are settled. Advance the phase when you are ready.</p>
-      )}
-    </Section>
-  );
-}
-
-function Announce({ className }: { className?: string }) {
-  const { state } = useContest();
-  const recent = state?.announcements ?? [];
-  return (
-    <Section
-      className={className}
-      title="Announcements"
-      description="Appear on every screen at once and stay readable for the rest of the contest."
-      padded={false}
-      actions={
-        <Button size="sm" asChild>
-          <Link href="/admin/announcements">
-            <Icon.Send size={14} /> New
-          </Link>
-        </Button>
-      }
-    >
-      {recent.length === 0 ? (
-        <EmptyState
-          compact
-          icon={<Icon.Megaphone />}
-          title="Nothing announced yet"
-          body="Announce the selection basis before Phase 1 and the leaderboard mode before the first auction."
-        />
-      ) : (
-        <ul className="divide-y">
-          {recent.slice(0, 5).map((a) => (
-            <li key={a.id} className="px-5 py-2.5">
-              <div className="text-[11px] text-faint">
-                <LocalTime iso={a.createdAt} />
-              </div>
-              <div className="mt-0.5 line-clamp-2 text-[12.5px] leading-relaxed">{plainText(a.bodyMd)}</div>
-            </li>
-          ))}
-          <li className="px-5 py-2 text-right">
-            <Link href="/admin/announcements" className="text-[12px] font-semibold text-green-dark hover:underline">
-              All announcements
-            </Link>
-          </li>
-        </ul>
       )}
     </Section>
   );

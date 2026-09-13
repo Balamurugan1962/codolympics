@@ -13,7 +13,8 @@ import { authClient } from "@/lib/auth-client";
 import { api, errorMessage } from "@/lib/client";
 
 // Not signed in yet, so /api/languages is unreachable; this list is what the
-// worker image ships and is only used to record a preference.
+// worker image ships. It only sets which language the editor opens in — every
+// language stays available on every question, changeable per submission.
 const LANGUAGES = [["cpp", "C++"], ["c", "C"], ["python", "Python 3"], ["pypy", "PyPy 3"], ["java", "Java 21"], ["javascript", "JavaScript"]];
 
 export default function RegisterPage() {
@@ -48,7 +49,7 @@ export default function RegisterPage() {
         <Field label="Password" hint="8+ characters" help="An organiser can reset this for you if you forget it.">
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} placeholder="••••••••" />
         </Field>
-        <Field label="Preferred language" help="So we know what you expect to code in. You can use any language on the day.">
+        <Field label="Language to start in" help="Only the editor's default. You can switch language on any question, at any time, as often as you like.">
           <SimpleSelect className="w-full" size="default" value={language} onValueChange={setLanguage}
             options={LANGUAGES.map(([key, name]) => ({ value: key, label: name }))} />
         </Field>
