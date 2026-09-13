@@ -120,7 +120,7 @@ export async function sendPending(): Promise<void> {
       publish("verdict", { submission_id: s.id, state: "queued" }, s.participantId);
     } catch (err) {
       // 404/400 from the judge means the problem is broken: IE, surfaced to admins.
-      if (err instanceof JudgeError && (err.status === 404 || err.status === 400)) {
+      if (err instanceof JudgeError && (err.judgeStatus === 404 || err.judgeStatus === 400)) {
         await finish(j.id, s.participantId, { verdict: "IE", message: `judge rejected the submission: ${err.message}`, jury_detail: err.message });
       } else {
         // Unreachable or busy: stay pending, retry next tick (NFR-B-09).
@@ -152,7 +152,7 @@ export async function pollInFlight(): Promise<void> {
         publish("verdict", { submission_id: s.id, state: job.state, progress: job.progress }, s.participantId);
       }
     } catch (err) {
-      if (err instanceof JudgeError && err.status === 404) {
+      if (err instanceof JudgeError && err.judgeStatus === 404) {
         // Job expired or the judge restarted: resubmit from stored source (US-B5-04).
         await db.update(judgement).set({ state: "pending", jobId: null, retries: sql`${judgement.retries} + 1` }).where(eq(judgement.id, j.id));
       }

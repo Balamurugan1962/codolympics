@@ -83,13 +83,28 @@ export type Health = { status: "ok" | "degraded"; go_judge: "ok" | "unreachable"
 export type Language = { key: string; name: string; compiled: boolean };
 
 /** Thrown when the judge answered with an error body. `code` is its `error`. */
-export class JudgeError extends Error {
+/**
+ * A failure that came from the judge rather than from us.
+ *
+ * It extends ApiError so a route returns the judge's own reason instead of
+ * "something went wrong on the server". An operator reading "no such problem:
+ * two-sum" can act on it; a 500 tells them only that we are not saying.
+ *
+ * The status is remapped for the caller of *our* API: the judge being
+ * unreachable is a 503 on our side, and a 4xx from the judge is our 502 unless
+ * it is genuinely the caller's fault.
+ */
+export class JudgeError extends ApiError {
   constructor(
-    public status: number,
-    public code: string,
+    public judgeStatus: number,
+    code: string,
     message: string,
   ) {
-    super(message);
+    super(
+      judgeStatus === 0 ? 503 : judgeStatus === 404 ? 409 : judgeStatus >= 400 && judgeStatus < 500 ? 400 : 502,
+      judgeStatus === 0 ? "judge_unavailable" : `judge_${code}`,
+      message,
+    );
   }
 }
 

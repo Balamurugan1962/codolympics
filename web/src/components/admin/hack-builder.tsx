@@ -25,7 +25,7 @@ import { Section } from "../ui/page";
 import { Checklist, Summary, SummaryItem } from "../ui/summary";
 import { useToast } from "../ui/toast";
 import { WizardLayout, WizardNote, type WizardStep } from "../ui/wizard";
-import { api, errorMessage } from "@/lib/client";
+import { ApiClientError, api, errorMessage } from "@/lib/client";
 
 import { stateOf, type Hack } from "./phase1-types";
 
@@ -274,12 +274,17 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ready: boolean; detail: string; result: { valid_input: boolean; invalid_reason: string; hacked: boolean | null; verdict: string | null; message: string } } | null>(null);
+  const [needsPublish, setNeedsPublish] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function test() {
-    setBusy(true); setError(null); setResult(null);
+    setBusy(true); setError(null); setResult(null); setNeedsPublish(false);
     try { setResult(await api.post(`/api/admin/phase1/hacking/${hack.id}/test`, { breaking_input: input })); await onChanged?.(); }
-    catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
+    catch (err) {
+      setError(errorMessage(err));
+      // The one failure with a fix somewhere else entirely.
+      setNeedsPublish(err instanceof ApiClientError && err.code === "package_not_published");
+    } finally { setBusy(false); }
   }
 
   return (
@@ -301,7 +306,24 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
         <Field label="Breaking input" help="Never shown to participants.">
           <Textarea rows={6} className="font-mono text-[12px]" value={input} onChange={(e) => setInput(e.target.value)} placeholder={"e.g.\n1000000007"} />
         </Field>
-        {error && <div className="mt-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
+        {error && (
+          <div className="mt-4">
+            <Alert variant={needsPublish ? "warning" : "destructive"}>
+              <Icon.Alert />
+              {needsPublish && <AlertTitle>The judge cannot see this package yet</AlertTitle>}
+              <AlertDescription>
+                <p>{error}</p>
+                {needsPublish && (
+                  <Button size="sm" variant="outline" className="mt-2" asChild>
+                    <Link href={`/admin/problems/${encodeURIComponent(hack.problemId)}`}>
+                      <Icon.External size={14} /> Open {hack.problemId}
+                    </Link>
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
         {result && (
           <div className="mt-4">
             <Alert variant={result.ready ? "success" : "warning"}><AlertTitle>{result.ready ? "It breaks — ready to publish" : "Not proven"}</AlertTitle><AlertDescription>
