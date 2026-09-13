@@ -19,13 +19,13 @@ import { Button } from "@/components/ui/button";
 import { ChoiceCards } from "@/components/ui/choice";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
+import { Hint } from "@/components/ui/hint";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { api, errorMessage } from "@/lib/client";
 import { cn } from "@/lib/utils";
 
@@ -138,20 +138,6 @@ function StaffPanel() {
 
 const SINGLE_ADMIN =
   "There is only one administrator. If that account is locked out mid-contest nobody can advance the phase — create a second one and keep the password off the machine.";
-
-/** A quiet info icon that says more on hover. For advice worth having and not worth shouting. */
-function Hint({ children }: { children: React.ReactNode }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button type="button" aria-label="More information" className="text-faint transition-colors hover:text-muted-foreground">
-          <Icon.Info size={14} />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-72 text-[12px] leading-relaxed">{children}</TooltipContent>
-    </Tooltip>
-  );
-}
 
 /** 2–32 of letters, digits, spaces, _ . - — the same rule the server enforces. */
 const NAME_RULE = /^[A-Za-z0-9 _.-]{2,32}$/;

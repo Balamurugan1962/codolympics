@@ -4,6 +4,11 @@
  * An administrator action that requires a reason before it is applied
  * (US-F9-00). The reason goes into the audit log in the same transaction as
  * the change, so the log can never disagree with what happened.
+ *
+ * `defaultReason` prefills the box with the reason that is true nine times out
+ * of ten, selected so the first keystroke replaces it. Typing "advancing the
+ * phase" forty times is how a required field turns into "asdf", which is worse
+ * for the log than a sensible default the author can overwrite.
  */
 import { useState } from "react";
 
@@ -23,6 +28,7 @@ export function ReasonAction({
   title,
   description,
   confirmLabel,
+  defaultReason = "",
   variant = "outline",
   size = "sm",
   icon,
@@ -34,6 +40,7 @@ export function ReasonAction({
   title: string;
   description?: React.ReactNode;
   confirmLabel?: string;
+  defaultReason?: string;
   variant?: Variant;
   size?: "xs" | "sm" | "default";
   icon?: React.ReactNode;
@@ -42,7 +49,7 @@ export function ReasonAction({
   onConfirm: (reason: string, values: Record<string, string>) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState(defaultReason);
   const [values, setValues] = useState<Record<string, string>>(Object.fromEntries(fields.map((f) => [f.name, f.defaultValue ?? ""])));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,7 +60,7 @@ export function ReasonAction({
     try {
       await onConfirm(reason.trim(), values);
       setOpen(false);
-      setReason("");
+      setReason(defaultReason);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -63,7 +70,16 @@ export function ReasonAction({
 
   return (
     <>
-      <Button variant={variant} size={size} disabled={disabled} onClick={() => setOpen(true)}>
+      <Button
+        variant={variant}
+        size={size}
+        disabled={disabled}
+        onClick={() => {
+          setReason(defaultReason);
+          setError(null);
+          setOpen(true);
+        }}
+      >
         {icon}
         {label}
       </Button>
@@ -98,8 +114,18 @@ export function ReasonAction({
               )}
             </Field>
           ))}
-          <Field label="Reason" hint="recorded in the audit log" help="At least three characters. Write what a colleague would need to understand this later.">
-            <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
+          <Field
+            label="Reason"
+            hint="recorded in the audit log"
+            help={defaultReason ? "Edit it if something else happened. It is selected, so typing replaces it." : "At least three characters. Write what a colleague would need to understand this later."}
+          >
+            <Textarea
+              rows={2}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              autoFocus
+              onFocus={(e) => defaultReason && e.currentTarget.select()}
+            />
           </Field>
           {error && (
             <Alert variant="destructive">

@@ -27,7 +27,7 @@ export default function Phase1LeaderboardPage() {
         <EmptyState icon={<Icon.Eye size={20} />} title="Standings are hidden" body="The organisers will reveal them when Phase 1 closes." />
       ) : (
         <div className="space-y-3">
-          {board.selection_basis && <Alert variant="info"><AlertTitle>"How selection works"</AlertTitle><AlertDescription>{board.selection_basis}</AlertDescription></Alert>}
+          {board.selection_basis && <Alert variant="info"><AlertTitle>How selection works</AlertTitle><AlertDescription>{board.selection_basis}</AlertDescription></Alert>}
           <Section padded={false}>
             <Table>
               <TableHeader><TableRow><TableHead className="w-16 text-right tabular-nums">Rank</TableHead><TableHead>Participant</TableHead><TableHead className="text-right tabular-nums">Points</TableHead><TableHead className="hidden sm:table-cell">Submitted</TableHead><TableHead className="w-32"><span className="sr-only">Decision</span></TableHead></TableRow></TableHeader>

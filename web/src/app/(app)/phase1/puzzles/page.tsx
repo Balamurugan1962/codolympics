@@ -79,8 +79,8 @@ export default function PuzzlesPage() {
         </aside>
 
         <div className="min-w-0 space-y-3">
-          {!data.open && !finished && <Alert variant="warning"><AlertTitle>"Section A is closed"</AlertTitle><AlertDescription>Your answers are recorded as they were when it closed.</AlertDescription></Alert>}
-          {finished && <Alert variant="success"><AlertTitle>"You finished Section A"</AlertTitle><AlertDescription>Your answers are locked and your submission time is recorded.</AlertDescription></Alert>}
+          {!data.open && !finished && <Alert variant="warning"><AlertTitle>Section A is closed</AlertTitle><AlertDescription>Your answers are recorded as they were when it closed.</AlertDescription></Alert>}
+          {finished && <Alert variant="success"><AlertTitle>You finished Section A</AlertTitle><AlertDescription>Your answers are locked and your submission time is recorded.</AlertDescription></Alert>}
           {q ? <LiveQuestion key={q.id} index={current} total={total} q={q} saved={data.answers[q.id]} locked={locked} onSaved={load} />
             : <EmptyState icon={<Icon.Puzzle size={20} />} title="No puzzles published" body="The organisers have not published any questions yet." />}
         </div>

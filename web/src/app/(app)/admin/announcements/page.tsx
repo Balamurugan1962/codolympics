@@ -13,10 +13,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useContest } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { Markdown } from "@/components/markdown";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Hint } from "@/components/ui/hint";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { CardSkeleton } from "@/components/ui/skeleton";
@@ -79,7 +79,15 @@ export default function AnnouncementsPage() {
 
       <div className="space-y-5">
         <Section
-          title="New announcement"
+          title={
+            <span className="flex items-center gap-1.5">
+              New announcement
+              <Hint>
+                Two of these every contest needs: the selection basis for Phase 2, before Phase 1 starts, and the leaderboard mode, before
+                the first auction. Both change how people play.
+              </Hint>
+            </span>
+          }
           description="Markdown renders: bold, lists, code. Keep it to what people need to act on."
           footer={
             <>
@@ -118,17 +126,6 @@ export default function AnnouncementsPage() {
             ))}
           </div>
         </Section>
-
-        {rows && rows.length === 0 && (
-          <Alert variant="info">
-            <Icon.Info />
-            <AlertTitle>Two announcements every contest needs</AlertTitle>
-            <AlertDescription>
-              The selection basis for Phase 2, before Phase 1 starts. The leaderboard mode, before the first auction. Both change how people
-              play.
-            </AlertDescription>
-          </Alert>
-        )}
 
         <Section
           title="Sent"
