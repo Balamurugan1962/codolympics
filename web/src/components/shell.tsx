@@ -34,7 +34,6 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
-import { Stepper, type Step } from "./ui/stepper";
 import { useToast } from "./ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
@@ -45,6 +44,9 @@ const CONNECTION = {
   lost: { dot: "bg-red animate-pulse", label: "Reconnecting", hint: "Connection lost — reconnecting…" },
 } as const;
 
+export type Step = { key: string; label: string; short?: string };
+
+/** The contest, in order. Administrators see all nine; a competitor only ever sees the one they are in. */
 export const PHASE_STEPS: Step[] = [
   { key: "registration", label: "Registration", short: "Reg" },
   { key: "p1_puzzles", label: "Puzzles", short: "A" },
@@ -59,19 +61,15 @@ export const PHASE_STEPS: Step[] = [
 export const PHASE_LABEL = Object.fromEntries(PHASE_STEPS.map((s) => [s.key, s.label])) as Record<string, string>;
 
 type NavItem = { href: string; label: string; icon: (p: { size?: number }) => React.ReactElement };
-const NAV: Record<string, NavItem[]> = {
-  participant: [
-    { href: "/dashboard", label: "Home", icon: Icon.Grid },
-    { href: "/phase1", label: "Phase 1", icon: Icon.Puzzle },
-    { href: "/auction", label: "Auction", icon: Icon.Gavel },
-    { href: "/leaderboard", label: "Leaderboard", icon: Icon.Trophy },
-  ],
-  evaluator: [
-    { href: "/grade", label: "Grading", icon: Icon.Edit },
-    { href: "/grade/hacks", label: "Hack attempts", icon: Icon.Bug },
-    { href: "/phase1/leaderboard", label: "Phase 1 standings", icon: Icon.Trophy },
-  ],
-};
+/**
+ * Two items, and that is the point. The contest screen is whatever phase is
+ * open, so there is nothing to navigate between during a round — every link
+ * that is not the task is time a competitor can lose.
+ */
+const NAV: NavItem[] = [
+  { href: "/dashboard", label: "Contest", icon: Icon.Grid },
+  { href: "/leaderboard", label: "Leaderboard", icon: Icon.Trophy },
+];
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { state, connection } = useContest();
@@ -83,13 +81,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   if (!state) return null;
   const { viewer, contest, me } = state;
-  const nav = NAV[viewer.role] ?? NAV.participant;
-  const home = viewer.role === "participant" ? "/dashboard" : "/grade";
+  const nav = NAV;
+  const home = "/dashboard";
   const workspace = pathname.startsWith("/question/");
-  const isActive = (href: string) =>
-    pathname === href ||
-    (href !== "/grade" && href !== "/dashboard" && pathname.startsWith(href + "/")) ||
-    (href === "/dashboard" && workspace);
+  // The workspace is opened from the contest screen, so it keeps that item lit.
+  const isActive = (href: string) => pathname === href || (href === "/dashboard" && workspace) || (href !== "/dashboard" && pathname.startsWith(href + "/"));
 
   const signOut = async () => {
     await authClient.signOut();
@@ -145,7 +141,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
           <div className="ml-auto flex items-center gap-2 sm:gap-2.5">
             <span
-              className="hidden items-center gap-2 rounded-full bg-white/10 py-1 pr-3 pl-2.5 text-[12px] font-semibold sm:inline-flex"
+              className="hidden items-center gap-2 rounded-none bg-white/10 px-2.5 py-1 text-[12px] font-semibold sm:inline-flex"
               title="Current phase"
             >
               <span className="size-1.5 rounded-full bg-brand-bright" />
@@ -165,7 +161,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {me && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="flex items-center gap-1.5 rounded-full bg-brand-bright/15 py-1 pr-3 pl-2.5 text-[12px] font-semibold text-brand-bright">
+                  <span className="flex items-center gap-1.5 rounded-none bg-brand-bright/15 px-2.5 py-1 text-[12px] font-semibold text-brand-bright">
                     <Icon.Coins size={14} />
                     <span className="tabular-nums">{me.balance.toLocaleString()}</span>
                   </span>
@@ -243,12 +239,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
         </SheetContent>
       </Sheet>
-
-      <div className="sticky top-14 z-30 border-b bg-card">
-        <div className="mx-auto flex h-10 max-w-[1600px] items-center px-4 sm:px-6">
-          <Stepper steps={PHASE_STEPS} current={contest.phase} />
-        </div>
-      </div>
 
       {connection === "lost" && (
         <div className="flex items-center justify-center gap-2 bg-red px-4 py-1.5 text-center text-[13px] font-semibold text-white" role="alert">
