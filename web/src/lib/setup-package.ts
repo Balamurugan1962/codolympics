@@ -226,11 +226,16 @@ export async function importSetup(actorId: string, zip: Uint8Array, reason: stri
       names.filter((n) => n.startsWith(`${root}problems/`) && n.endsWith("/question.json")).map((n) => n.slice(0, n.lastIndexOf("/") + 1)),
     ),
   ].sort();
+  // Collected so Phase 1 knows which judge packages this zip actually brought;
+  // the auction order lists only auctioned problems, and a hacking package is
+  // never one of those.
+  const imported = new Set<string>();
   for (const dir of problemDirs) {
     const one: Files = {};
     for (const n of names) if (n.startsWith(dir)) one[n.slice(dir.length)] = files[n];
     try {
-      await importProblem(actorId, zipSync(one, { level: 0 }), { reason });
+      const r = await importProblem(actorId, zipSync(one, { level: 0 }), { reason });
+      imported.add(r.id);
       summary.problems += 1;
     } catch (err) {
       summary.warnings.push(`${dir.replace(`${root}problems/`, "").replace(/\/$/, "")}: ${err instanceof Error ? err.message : String(err)}`);
@@ -248,7 +253,7 @@ export async function importSetup(actorId: string, zip: Uint8Array, reason: stri
   for (const n of names) if (n.startsWith(`${root}phase1/`)) p1[n.slice(`${root}phase1/`.length)] = files[n];
   if (Object.keys(p1).length > 0) {
     try {
-      const r = await importPhase1(actorId, zipSync(p1, { level: 0 }), reason, new Set(order));
+      const r = await importPhase1(actorId, zipSync(p1, { level: 0 }), reason, imported);
       summary.puzzles = r.created.filter((q) => q.section === "puzzles").length;
       summary.hacks = r.created.filter((q) => q.section === "hacking").length;
       for (const m of r.missingPackages) summary.warnings.push(`"${m.title}" needs the judge package ${m.problem_id}.`);
