@@ -1,6 +1,6 @@
 import { errors, json, route } from "@/lib/api";
 import { judge } from "@/lib/judge";
-import { currentVersion, packagesOnDisk, uploadPackage, versionsOf } from "@/lib/problems";
+import { currentVersion, packagesOnDisk, uploadPackage, validationOf, versionsOf } from "@/lib/problems";
 import { requireApiViewer } from "@/lib/session";
 
 /**
@@ -21,7 +21,18 @@ export const GET = route(async () => {
   const problems = await Promise.all(
     [...byId.values()]
       .sort((a, b) => a.problem_id.localeCompare(b.problem_id))
-      .map(async (p) => ({ ...p, versions: await versionsOf(p.problem_id), current: await currentVersion(p.problem_id) })),
+      .map(async (p) => {
+        const versions = await versionsOf(p.problem_id);
+        const current = await currentVersion(p.problem_id);
+        return {
+          ...p,
+          versions,
+          current,
+          // What the last validation of the newest version found — here or on
+          // whichever install exported it.
+          last_validation: await validationOf(p.problem_id, current ?? versions.at(-1) ?? p.version),
+        };
+      }),
   );
   return json({ problems });
 });

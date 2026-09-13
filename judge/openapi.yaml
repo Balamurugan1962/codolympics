@@ -816,6 +816,13 @@ components:
           type: string
           maxLength: 262144
           description: The participant's test input, max 256 KB.
+        version:
+          type: string
+          pattern: "^v\\d+$"
+          description: >
+            Which package version to hack against. Defaults to the published
+            one. An author has to be able to prove a breaking input before the
+            package is published -- publishing is what happens after the proof.
         submission_id:
           type: string
           maxLength: 64

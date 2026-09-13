@@ -318,7 +318,7 @@ def hack(body: HackRequest) -> JobHandle:
     if language is None:
         raise errors.unknown_language(body.language, languages.keys())
 
-    problem = _load_problem(body.problem_id)
+    problem = _load_problem(body.problem_id, body.version)
     if not problem.has_reference:
         raise errors.invalid_request(
             f"{body.problem_id} has no reference solution, so it cannot be hacked"

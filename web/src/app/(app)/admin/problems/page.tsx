@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { ProblemTransferActions, problemExportMenuItem } from "@/components/admin/problem-transfer";
+import { ValidateAllButton } from "@/components/admin/validate-all";
 import { DifficultyBadge } from "@/components/admin/question-details-form";
 import { Icon } from "@/components/icons";
 import { Badge, StatusDot } from "@/components/ui/badge";
@@ -33,6 +34,17 @@ export type P = {
   modified_at: string | null;
   versions: string[];
   current: string | null;
+  /** What the last validation of the live (or newest) version found, here or elsewhere. */
+  last_validation: ValidationRecord | null;
+};
+export type ValidationRecord = {
+  at: string;
+  verdict: string | null;
+  passed: number | null;
+  testcases: number;
+  max_time_ms: number | null;
+  time_limit_ms: number | null;
+  ok: boolean;
 };
 export type Q = {
   id: string;
@@ -120,6 +132,7 @@ export default function ProblemsPage() {
         description="Every judge package and what participants see of it. A problem is auctionable once it is validated, described and published."
         actions={
           <>
+            <ValidateAllButton onDone={load} />
             <ProblemTransferActions onImported={load} />
             <Button asChild>
               <Link href="/admin/problems/new">

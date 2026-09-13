@@ -166,11 +166,67 @@ export async function validateVersion(
   body: { reference_source?: string; wrong_source?: string; language?: string } = {},
 ): Promise<ValidationReport> {
   if (!ID.test(id) || !/^v\d+$/.test(version)) throw errors.invalid("bad id or version");
+  let report: ValidationReport;
   try {
-    return await judge.validate(id, body, version);
+    report = await judge.validate(id, body, version);
   } catch (err) {
     if (err instanceof JudgeError && err.judgeStatus === 404) throw errors.notFound(`${id} ${version} on the judge`);
     throw err;
+  }
+  await recordValidation(id, version, report);
+  return report;
+}
+
+/**
+ * What the last validation of this version found, written beside the package.
+ *
+ * It lives in the version directory rather than the database for two reasons:
+ * it belongs to the package rather than to the contest, so it travels with an
+ * export for free; and a hacking package has no question row to put it on.
+ *
+ * This is provenance, never permission. A result from another machine says
+ * nothing about whether the reference fits *this* judge's limits, because the
+ * one thing it cannot carry is how fast this machine is.
+ */
+export type ValidationRecord = {
+  at: string;
+  verdict: string | null;
+  passed: number | null;
+  testcases: number;
+  max_time_ms: number | null;
+  time_limit_ms: number | null;
+  ok: boolean;
+};
+
+async function recordValidation(id: string, version: string, report: ValidationReport): Promise<void> {
+  let limit: number | null = null;
+  try {
+    const meta = JSON.parse(await fs.readFile(path.join(dirFor(id, version), "problem.json"), "utf8"));
+    limit = Number(meta.time_limit_ms) || null;
+  } catch {
+    /* the limit is only context */
+  }
+  const record: ValidationRecord = {
+    at: new Date().toISOString(),
+    verdict: report.reference?.verdict ?? null,
+    passed: report.reference?.passed ?? null,
+    testcases: report.testcases,
+    max_time_ms: report.reference?.max_time_ms ?? null,
+    time_limit_ms: limit,
+    ok: report.ok,
+  };
+  try {
+    await fs.writeFile(path.join(dirFor(id, version), "validation.json"), JSON.stringify(record, null, 2) + "\n");
+  } catch {
+    /* a package we cannot write to still validated; the record is a convenience */
+  }
+}
+
+export async function validationOf(id: string, version: string): Promise<ValidationRecord | null> {
+  try {
+    return JSON.parse(await fs.readFile(path.join(dirFor(id, version), "validation.json"), "utf8")) as ValidationRecord;
+  } catch {
+    return null;
   }
 }
 

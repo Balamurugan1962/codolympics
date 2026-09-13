@@ -40,11 +40,18 @@ class Judgement(BaseModel):
 
 
 class HackRequest(BaseModel):
-    """A test input against a given solution (US-J7-01)."""
+    """A test input against a given solution (US-J7-01).
+
+    `version` exists for the same reason it does on /validate: an author has to
+    be able to prove a breaking input against a package that is not published
+    yet. Without it, proving a hack would require publishing first, which is the
+    wrong way round -- publishing is what you do *after* the proof.
+    """
     problem_id: str = Field(pattern=r"^[A-Za-z0-9._-]+$")
     language: str
     source: str
     input: str
+    version: str | None = Field(default=None, pattern=r"^v\d+$")
     submission_id: str | None = Field(default=None, max_length=64)
 
 

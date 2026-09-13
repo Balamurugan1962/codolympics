@@ -1,0 +1,9 @@
+{
+  "at": "2026-09-13T17:39:08.200Z",
+  "verdict": "AC",
+  "passed": 7,
+  "testcases": 7,
+  "max_time_ms": 14.2,
+  "time_limit_ms": 2000,
+  "ok": true
+}
