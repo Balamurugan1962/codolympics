@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { CATEGORY_LABEL, GRADING_LABEL, KIND_LABEL, stateOf, type Hack, type Puzzle, type QuestionState, type Standing } from "@/components/admin/phase1-types";
+import { exportMenuItem } from "@/components/admin/phase1-transfer";
 import { Icon } from "@/components/icons";
 import { ReasonAction } from "@/components/reason-action";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -147,7 +148,9 @@ export function PuzzleList() {
                     <TableCell><StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot></TableCell>
                     <TableCell>
                       <Menu items={[
-                        { label: "Edit", onSelect: () => router.push(`/admin/phase1/puzzles/${r.id}`) },
+                        { label: "Edit", icon: <Icon.Edit size={15} />, onSelect: () => router.push(`/admin/phase1/puzzles/${r.id}`) },
+                        exportMenuItem("puzzles", r.id),
+                        { separator: true as const },
                         ...(s === "live" ? [{ label: "Unpublish", onSelect: () => setPending({ kind: "unpublish", id: r.id, title: r.title }) }] : []),
                         ...(s === "ready" ? [{ label: "Publish", onSelect: () => setPending({ kind: "publish", id: r.id, title: r.title }) }] : []),
                         ...(s === "draft" ? [{ label: "Publish (run the self-test first)", disabled: true, onSelect: () => undefined }] : []),
@@ -235,7 +238,9 @@ export function HackList() {
                     <TableCell><StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot></TableCell>
                     <TableCell>
                       <Menu items={[
-                        { label: "Edit", onSelect: () => router.push(`/admin/phase1/hacking/${r.id}`) },
+                        { label: "Edit", icon: <Icon.Edit size={15} />, onSelect: () => router.push(`/admin/phase1/hacking/${r.id}`) },
+                        exportMenuItem("hacking", r.id),
+                        { separator: true as const },
                         ...(s === "live" ? [{ label: "Unpublish", onSelect: () => setPending({ kind: "unpublish", id: r.id, title: r.title }) }] : []),
                         ...(s === "ready" ? [{ label: "Publish", onSelect: () => setPending({ kind: "publish", id: r.id, title: r.title }) }] : []),
                         ...(s === "draft" ? [{ label: "Publish (prove a breaking input first)", disabled: true, onSelect: () => undefined }] : []),
