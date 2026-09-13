@@ -32,6 +32,7 @@ const NAV: { section: string | null; items: Item[] }[] = [
   ] },
   { section: "People", items: [
     { href: "/admin/participants", label: "Participants", icon: Icon.Users },
+    { href: "/admin/announcements", label: "Announcements", icon: Icon.Bell },
   ] },
   { section: "Monitor", items: [
     { href: "/admin/submissions", label: "Submissions", icon: Icon.List },

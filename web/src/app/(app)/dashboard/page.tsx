@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { useContest } from "@/components/contest-provider";
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
+import { LocalTime } from "@/components/local-time";
 import { Markdown } from "@/components/markdown";
 import { PHASE_LABEL } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
@@ -97,7 +98,7 @@ export default function HomePage() {
         {announcements.length > 0 && (
           <Section title="Announcements" padded={false}>
             <ul className="divide-y divide-line">{announcements.map((a) => (
-              <li key={a.id} className="px-5 py-3 text-[13px]"><div className="mb-1 text-[11px] text-faint">{new Date(a.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div><Markdown>{a.bodyMd}</Markdown></li>
+              <li key={a.id} className="px-5 py-3 text-[13px]"><div className="mb-1 text-[11px] text-faint"><LocalTime iso={a.createdAt} /></div><Markdown>{a.bodyMd}</Markdown></li>
             ))}</ul>
           </Section>
         )}

@@ -31,6 +31,14 @@ function dirFor(id: string, ...rest: string[]): string {
   return path.join(ROOT, id, ...rest);
 }
 
+/** Remove every package from the problems volume. Only the contest reset calls this. */
+export async function deleteAllPackages(): Promise<number> {
+  let entries: string[] = [];
+  try { entries = await fs.readdir(ROOT); } catch { return 0; }
+  for (const name of entries) await fs.rm(path.join(ROOT, name), { recursive: true, force: true });
+  return entries.length;
+}
+
 export async function versionsOf(id: string): Promise<string[]> {
   try {
     const entries = await fs.readdir(dirFor(id), { withFileTypes: true });

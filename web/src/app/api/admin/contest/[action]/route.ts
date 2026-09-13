@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { resetContest } from "@/lib/admin";
 import { body, errors, json, route } from "@/lib/api";
 import { advanceChecks, advancePhase, extendPhase, setRegistration } from "@/lib/phases";
 import { requireApiViewer } from "@/lib/session";
@@ -31,6 +32,13 @@ export const POST = route<Ctx>(async (req, { params }) => {
       const b = await body(req, z.object({ reason: z.string().min(3), open: z.boolean() }));
       await setRegistration(viewer.id, b.open, b.reason);
       return json({ ok: true });
+    }
+    case "reset": {
+      // The confirmation phrase is checked here too, not only in the dialog.
+      const b = await body(req, z.object({ reason: z.string().min(3), scope: z.enum(["run", "everything"]), confirm: z.string() }));
+      const phrase = b.scope === "everything" ? "wipe everything" : "reset the contest";
+      if (b.confirm.trim().toLowerCase() !== phrase) throw errors.invalid(`type "${phrase}" to confirm`);
+      return json(await resetContest(viewer.id, { scope: b.scope, reason: b.reason }));
     }
     default:
       throw errors.notFound("action");
