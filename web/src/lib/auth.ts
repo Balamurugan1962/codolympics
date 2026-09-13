@@ -18,9 +18,22 @@ import * as authSchema from "@/db/auth-schema";
 export const ROLES = ["participant", "evaluator", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
+/**
+ * Every machine in the hall reaches this server by LAN address, not by the one
+ * name BETTER_AUTH_URL can hold, so each of them signs in from an origin that
+ * is not the configured one. Better Auth checks the Origin header on sign-in;
+ * without these, whether it accepts depends on which address a competitor
+ * happened to type, which is not something to discover on contest morning.
+ *
+ * Scoped to private ranges: this server is never reachable from outside the
+ * hall, and nothing here should trust an origin that could be.
+ */
+const LAN_ORIGINS = ["http://192.168.*.*:*", "http://10.*.*.*:*", "http://172.*.*.*:*", "http://localhost:*", "http://127.0.0.1:*"];
+
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
+  trustedOrigins: [...LAN_ORIGINS, ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : [])],
   database: drizzleAdapter(db, { provider: "pg", schema: authSchema }),
 
   // Participants sign in by display name. There is no mail server in the
