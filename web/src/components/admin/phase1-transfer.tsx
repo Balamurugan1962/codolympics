@@ -60,6 +60,12 @@ export function TransferActions({ section, onImported }: { section: Section; onI
       </Button>
       <Menu
         label="Export"
+        trigger={
+          <Button variant="outline">
+            <Icon.Download size={14} /> Export
+            <Icon.ChevronDown size={14} className="-mr-0.5 text-faint" />
+          </Button>
+        }
         items={[
           {
             label: section === "puzzles" ? "Export every puzzle" : "Export every hacking question",
