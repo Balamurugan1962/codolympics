@@ -14,7 +14,7 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Kbd } from "@/components/ui/kbd";
 import { PageBody } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { ContestLoading } from "@/components/contest/waiting";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
@@ -42,7 +42,7 @@ export function SectionA() {
   }, [go]);
 
   if (error) return <PageBody><EmptyState icon={<Icon.Puzzle size={20} />} title="Section A is not open" body={error} /></PageBody>;
-  if (!data) return <PageBody><div className="grid gap-4 lg:grid-cols-[260px_1fr]"><CardSkeleton lines={8} /><CardSkeleton lines={12} /></div></PageBody>;
+  if (!data) return <ContestLoading />;
   const finished = Boolean(state?.me?.p1_puzzles_finished);
   const locked = !data.open || finished;
   const q = data.questions[current];

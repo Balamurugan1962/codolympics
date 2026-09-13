@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Textarea } from "@/components/ui/textarea";
 import { PageBody, Section } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { ContestLoading } from "@/components/contest/waiting";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
@@ -34,7 +34,7 @@ export function SectionB() {
   useEffect(() => { if (lastEvent?.name === "hack") void load(); }, [lastEvent, load]);
 
   if (error) return <PageBody><EmptyState icon={<Icon.Bug size={20} />} title="Section B is not open" body={error} /></PageBody>;
-  if (!data) return <PageBody><div className="grid gap-4 lg:grid-cols-[260px_1fr]"><CardSkeleton lines={6} /><CardSkeleton lines={12} /></div></PageBody>;
+  if (!data) return <ContestLoading />;
   const finished = Boolean(state?.me?.p1_hacking_finished);
   const locked = !data.open || finished;
   const q = data.questions[current];

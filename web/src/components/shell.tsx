@@ -18,6 +18,7 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 import { AnnouncementOverlay } from "./announcement-overlay";
+import { ContestLoading } from "./contest/waiting";
 import { useContest } from "./contest-provider";
 import { Countdown } from "./countdown";
 import { Icon } from "./icons";
@@ -79,7 +80,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => setMobile(false), [pathname]);
 
-  if (!state) return null;
+  // State is seeded from the server, so this is the rare reconnect case —
+  // still better than a blank page with no explanation.
+  if (!state) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <header className="h-14 bg-navy" />
+        <ContestLoading />
+      </div>
+    );
+  }
   const { viewer, contest, me } = state;
   const nav = NAV;
   const home = "/dashboard";

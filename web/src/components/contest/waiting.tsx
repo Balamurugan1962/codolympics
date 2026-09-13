@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/icons";
-import { Mark } from "@/components/logo";
+import { Logo } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -52,11 +52,11 @@ function Hold({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-[calc(100vh-56px)] flex-col items-center justify-center px-6 py-12 text-center">
-      <Mark size={44} />
-      <div className="mt-5 text-[11px] font-semibold tracking-[0.12em] text-faint uppercase">{eyebrow}</div>
-      <h1 className="mt-2 text-[24px] font-semibold tracking-[-0.02em] sm:text-[28px]">{title}</h1>
-      <p className="mt-3 max-w-lg text-[14px] leading-relaxed text-muted-foreground">{body}</p>
+    <div className="flex min-h-[calc(100vh-56px)] flex-col items-center justify-center px-6 py-10 text-center">
+      <Logo inverse={false} size={40} />
+      <div className="mt-5 text-[12px] font-semibold tracking-[0.12em] text-faint uppercase">{eyebrow}</div>
+      <h1 className="mt-2 text-[27px] font-semibold tracking-[-0.02em] sm:text-[31px]">{title}</h1>
+      <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground">{body}</p>
       {children && <div className="mt-8 w-full max-w-lg">{children}</div>}
     </div>
   );
@@ -74,15 +74,15 @@ export const RULES: [string, string][] = [
 
 export function RulesGrid({ className }: { className?: string }) {
   return (
-    <ul className={cn("grid gap-x-6 gap-y-2.5 text-left sm:grid-cols-2", className)}>
+    <ul className={cn("grid gap-x-8 gap-y-3.5 text-left sm:grid-cols-2", className)}>
       {RULES.map(([t, b]) => (
         <li key={t} className="flex gap-2.5">
-          <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-green-tint text-green-dark">
-            <Icon.Check size={10} strokeWidth={3.5} />
+          <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-green-tint text-green-dark">
+            <Icon.Check size={12} strokeWidth={3.5} />
           </span>
           <div className="min-w-0">
-            <div className="text-[12.5px] leading-snug font-semibold">{t}</div>
-            <div className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">{b}</div>
+            <div className="text-[14px] leading-snug font-semibold">{t}</div>
+            <div className="mt-1 text-[12.5px] leading-snug text-muted-foreground">{b}</div>
           </div>
         </li>
       ))}
@@ -101,23 +101,23 @@ export function Waiting() {
 
   return (
     <div className="flex h-[calc(100vh-56px)] flex-col items-center justify-center overflow-hidden px-6 py-6 text-center animate-fade-in">
-      <Mark size={36} />
-      <div className="mt-3.5 text-[11px] font-semibold tracking-[0.12em] text-faint uppercase">You are registered</div>
-      <h1 className="mt-1.5 text-[22px] font-semibold tracking-[-0.02em] sm:text-[26px]">{name ? `You're in, ${name}` : "You're in"}</h1>
-      <p className="mt-2 max-w-md text-[13px] leading-relaxed text-muted-foreground">
+      <Logo inverse={false} size={44} />
+      <div className="mt-5 text-[12px] font-semibold tracking-[0.12em] text-faint uppercase">You are registered</div>
+      <h1 className="mt-2 text-[27px] font-semibold tracking-[-0.02em] sm:text-[32px]">{name ? `You're in, ${name}` : "You're in"}</h1>
+      <p className="mt-2.5 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
         Nothing is required of you yet. When the organisers open Section A this screen becomes the puzzles, by itself — leave it open and do
         not refresh.
       </p>
 
       <div className="mt-6 flex flex-col items-center">
         <Clock />
-        <span className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+        <span className="mt-2 flex items-center gap-2 text-[13.5px] text-muted-foreground">
           <span className="size-1.5 animate-pulse rounded-full bg-green" />
           Waiting for the organisers to start
         </span>
       </div>
 
-      <RulesGrid className="mt-7 w-full max-w-2xl" />
+      <RulesGrid className="mt-8 w-full max-w-3xl" />
     </div>
   );
 }
@@ -215,6 +215,26 @@ export function Ended() {
           </Button>
         </div>
       </Hold>
+    </div>
+  );
+}
+
+/**
+ * What a competitor sees for the moment before their screen arrives.
+ *
+ * Not a grid of grey bars: they have no idea what is loading, and a skeleton
+ * of a layout that may not even be the next one is just noise. The mark and one
+ * honest line say the app is alive and working, which is the only thing worth
+ * saying for half a second.
+ */
+export function ContestLoading() {
+  return (
+    <div className="flex min-h-[calc(100vh-56px)] flex-col items-center justify-center px-6 py-10 text-center" aria-busy>
+      <Logo inverse={false} size={40} className="opacity-90" />
+      <span className="mt-6 flex items-center gap-2 text-[13.5px] text-muted-foreground">
+        <Icon.Spinner size={15} />
+        Loading the contest…
+      </span>
     </div>
   );
 }

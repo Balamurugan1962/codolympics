@@ -20,10 +20,8 @@ import { AuctionFloor } from "@/components/contest/auction-floor";
 import { CodingRound } from "@/components/contest/coding-round";
 import { SectionA } from "@/components/contest/section-a";
 import { SectionB } from "@/components/contest/section-b";
-import { Ended, NotSelected, Reviewing, Waiting } from "@/components/contest/waiting";
+import { ContestLoading, Ended, NotSelected, Reviewing, Waiting } from "@/components/contest/waiting";
 import { useContest } from "@/components/contest-provider";
-import { CardSkeleton } from "@/components/ui/skeleton";
-import { PageBody } from "@/components/ui/page";
 
 export default function ContestPage() {
   const { state } = useContest();
@@ -34,13 +32,7 @@ export default function ContestPage() {
     if (state && state.viewer.role !== "participant") router.replace("/grade");
   }, [router, state]);
 
-  if (!state) {
-    return (
-      <PageBody>
-        <CardSkeleton lines={6} />
-      </PageBody>
-    );
-  }
+  if (!state) return <ContestLoading />;
 
   const phase = state.contest.phase;
   // Phase 2 is closed to anyone the organisers did not select.
