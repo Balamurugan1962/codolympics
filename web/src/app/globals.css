@@ -286,8 +286,8 @@
 .pane::-webkit-scrollbar-thumb:hover { background: var(--faint); background-clip: content-box; }
 .pane::-webkit-scrollbar-track { background: transparent; }
 
-/* Full-height workspace below the shell (navbar 56px + phase timeline 40px). */
-.workspace { height: calc(100vh - 96px); }
+/* Full-height workspace below the shell (the 56px navbar is all there is). */
+.workspace { height: calc(100vh - 56px); }
 
 /* Screen-reader only. */
 .sr-only {
