@@ -33,8 +33,30 @@ input and a validator that rejects illegal ones:
 
 - *Largest sum of a contiguous block* — breaks on an all-negative array
   (`3 / -5 -2 -9`), because the given solution seeds its best at zero.
-- *Count the occurrences* — breaks when the run of the target touches index 0
-  (`3 7 / 7 7 9`), because the walk outwards stops one short.
+- *Count the occurrences* — breaks when the run of the target touches index 0,
+  because the walk outwards stops one short.
+
+### Inputs to try — Count the occurrences
+
+Format is `n x` on the first line, then the sorted array. All verified against
+the judge.
+
+| Input | Result | Why |
+|---|---|---|
+| `3 7` / `7 7 9` | **hacked** | the run of 7s starts at index 0 |
+| `4 3` / `3 3 3 8` | **hacked** | three 3s from index 0 |
+| `5 -4` / `-4 -4 -4 -4 0` | **hacked** | negatives, four from index 0 |
+| `6 2` / `2 2 2 2 2 5` | **hacked** | five 2s from index 0 |
+| `2 5` / `5 5` | survives | the search lands on index 0, so nothing is walked left |
+| `4 5` / `1 5 5 9` | survives | the run does not touch index 0 |
+| `3 4` / `1 2 3` | survives | the target is absent |
+| `3 7` / `9 7 7` | rejected | the array must be sorted non-decreasing |
+| `2 7` / `7 99999` | rejected | 99999 is above the maximum 1000 |
+| `2 7` / `7 7 7` | rejected | three values but `n` says 2 |
+
+The rule: the run of the target must **start at index 0** and be long enough
+that the binary search lands past it. A run of two where the search lands on
+index 0 survives, which is why `2 5 / 5 5` is not a hack.
 
 **Phase 2** — four interview classics with an explicit stdin/stdout contract,
 two hints each, and a reference solution that passes every test:
