@@ -248,7 +248,7 @@ function VerdictPanel({ j, sampleCount }: { j: Judgement; sampleCount: number })
   return (
     <div className="max-h-48 overflow-auto px-3 pb-3 text-sm">
       <p>{explain(j, sampleCount)}</p>
-      {j.state === "running" && <div className="mt-2 h-1.5 w-full rounded bg-white/10"><div className="h-1.5 rounded bg-green transition-[width]" style={{ width: `${j.progress.total ? (100 * j.progress.done) / j.progress.total : 0}%` }} /></div>}
+      {j.state === "running" && <div className="mt-2 h-1.5 w-full rounded bg-white/10"><div className="h-1.5 rounded bg-brand transition-[width]" style={{ width: `${j.progress.total ? (100 * j.progress.done) / j.progress.total : 0}%` }} /></div>}
       {j.state === "done" && j.verdict !== "CE" && <p className="mt-1 text-xs text-white/50">{j.passed}/{j.total} tests · {j.max_time_ms?.toFixed(0)} ms</p>}
       {j.verdict === "CE" && j.compile_output && <pre className="mt-2 max-h-32 overflow-auto rounded bg-black/40 p-2 text-xs text-red-300">{j.compile_output}</pre>}
     </div>

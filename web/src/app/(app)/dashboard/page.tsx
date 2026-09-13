@@ -38,11 +38,11 @@ export default function HomePage() {
   return (
     <PageBody className="animate-fade-in">
       <div className="space-y-5">
-        <section className="overflow-hidden rounded-box border border-green/30 bg-card">
-          <div className="h-1 bg-green" />
+        <section className="overflow-hidden rounded-box border border-brand/30 bg-card">
+          <div className="h-1 bg-brand" />
           <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-green-dark">Now · {PHASE_LABEL[phase]}</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-dark">Now · {PHASE_LABEL[phase]}</div>
               <h1 className="mt-1 text-[20px] font-semibold leading-tight sm:text-[22px]">{now.title}</h1>
               <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{now.body}</p>
               {contest.phase_ends_at && <p className="mt-2.5 flex items-center gap-1.5 text-[13px] text-muted-foreground"><Icon.Clock size={14} /> <Countdown until={contest.phase_ends_at} className="font-semibold text-ink" /> remaining</p>}

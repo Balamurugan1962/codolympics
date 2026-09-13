@@ -36,7 +36,7 @@ export function Stepper({ steps, current, compact = false, className }: { steps:
               aria-current={state === "current" ? "step" : undefined}
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-2 py-1 text-[12px] font-semibold transition-colors",
-                state === "current" && "bg-green-tint text-green-dark ring-1 ring-green/30 ring-inset",
+                state === "current" && "bg-brand-tint text-brand-dark ring-1 ring-brand/30 ring-inset",
                 state === "done" && "text-muted-foreground",
                 state === "todo" && "text-faint",
               )}
@@ -44,8 +44,8 @@ export function Stepper({ steps, current, compact = false, className }: { steps:
               <span
                 className={cn(
                   "flex size-4 items-center justify-center rounded-full text-[9px] font-bold",
-                  state === "done" && "bg-green text-white",
-                  state === "current" && "bg-green-dark text-white",
+                  state === "done" && "bg-brand text-white",
+                  state === "current" && "bg-brand-dark text-white",
                   state === "todo" && "border border-line-2 bg-card text-faint",
                 )}
               >
@@ -54,7 +54,7 @@ export function Stepper({ steps, current, compact = false, className }: { steps:
               <span className="hidden md:inline">{s.label}</span>
               <span className="md:hidden">{s.short ?? s.label}</span>
             </div>
-            {i < steps.length - 1 && <span className={cn("mx-1 h-px w-4 shrink-0", i < idx ? "bg-green/50" : "bg-line-2")} />}
+            {i < steps.length - 1 && <span className={cn("mx-1 h-px w-4 shrink-0", i < idx ? "bg-brand/50" : "bg-line-2")} />}
           </li>
         );
       })}

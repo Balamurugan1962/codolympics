@@ -58,7 +58,7 @@ export function WizardSteps({
                     : active
                       ? "bg-navy text-white"
                       : state === "done"
-                        ? "bg-green text-white"
+                        ? "bg-brand text-white"
                         : "border border-line-2 bg-card text-faint",
                 )}
               >

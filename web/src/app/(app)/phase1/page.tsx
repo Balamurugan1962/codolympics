@@ -30,7 +30,7 @@ export default function Phase1Hub() {
             <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-box ${c.state === "open" ? "bg-green-tint text-green-dark" : "bg-page text-muted-foreground"}`}>{c.icon}</span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[13.5px] font-semibold group-hover:text-green-dark">{c.title}</span>
+                <span className="text-[13.5px] font-semibold group-hover:text-brand-dark">{c.title}</span>
                 {c.state === "open" && <Badge variant="success">open</Badge>}
                 {c.state === "closed" && <Badge variant="neutral">closed</Badge>}
                 {c.state === "not yet" && <Badge variant="outline">not yet</Badge>}

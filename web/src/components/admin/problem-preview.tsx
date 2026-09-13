@@ -24,7 +24,7 @@ export function ProblemPreview({ title, difficulty, score, statementMd, timeLimi
       </div>
       <div className="flex gap-1 border-b border-line px-4">
         {["Problem", "Submissions", "Hints"].map((t, i) => (
-          <span key={t} className={`-mb-px border-b-2 px-3 py-2 text-[13px] font-semibold ${i === 0 ? "border-green text-ink" : "border-transparent text-faint"}`}>{t}</span>
+          <span key={t} className={`-mb-px border-b-2 px-3 py-2 text-[13px] font-semibold ${i === 0 ? "border-brand text-ink" : "border-transparent text-faint"}`}>{t}</span>
         ))}
       </div>
       <div className="p-4">

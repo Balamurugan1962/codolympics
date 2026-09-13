@@ -45,7 +45,7 @@ export default function LoginPage() {
       </form>
 
       <p className="mt-6 text-center text-[13px] text-muted-foreground">
-        First time here? <Link href="/register" className="font-semibold text-green-dark hover:underline">Register</Link>
+        First time here? <Link href="/register" className="font-semibold text-brand-dark hover:underline">Register</Link>
       </p>
       <p className="mt-5 flex items-start gap-2 rounded-box bg-page px-3 py-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
         <Icon.Info size={14} className="mt-0.5 shrink-0 text-faint" />

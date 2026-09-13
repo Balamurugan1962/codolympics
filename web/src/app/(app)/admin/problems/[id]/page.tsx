@@ -82,8 +82,8 @@ export default function ProblemPage() {
           const target: Tab = s.key === "details" ? "details" : "package";
           return (
             <li key={s.key}>
-              <button type="button" onClick={() => goTab(target)} className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-page ${now ? "bg-green-tint/50" : "bg-card"}`}>
-                <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${s.done ? "bg-green text-white" : now ? "bg-navy text-white" : "border border-line-2 text-faint"}`}>
+              <button type="button" onClick={() => goTab(target)} className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-page ${now ? "bg-brand-tint/60" : "bg-card"}`}>
+                <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${s.done ? "bg-brand text-white" : now ? "bg-navy text-white" : "border border-line-2 text-faint"}`}>
                   {s.done ? <Icon.Check size={11} strokeWidth={3} /> : i + 1}
                 </span>
                 <span className="min-w-0">
@@ -190,7 +190,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
                 <TableCell className="font-mono text-[12.5px] font-semibold">{v}</TableCell>
                 <TableCell>{v === problem.current ? <StatusDot tone="success">Live</StatusDot> : <StatusDot tone="neutral">Not live</StatusDot>}</TableCell>
                 <TableCell className="hidden text-muted-foreground sm:table-cell">{v === problem.versions.at(-1) ? "latest upload" : ""}</TableCell>
-                <TableCell className="text-right tabular-nums">{v === version ? <span className="text-[12px] font-semibold text-green-dark">Selected</span> : <Button size="sm" variant="ghost" onClick={() => { setVersion(v); setReport(null); }}>Select</Button>}</TableCell>
+                <TableCell className="text-right tabular-nums">{v === version ? <span className="text-[12px] font-semibold text-brand-dark">Selected</span> : <Button size="sm" variant="ghost" onClick={() => { setVersion(v); setReport(null); }}>Select</Button>}</TableCell>
               </TableRow>
             ))}
           </TableBody>

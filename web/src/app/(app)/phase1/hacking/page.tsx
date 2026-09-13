@@ -58,7 +58,7 @@ export default function HackingPage() {
             <div className="flex items-center justify-between border-b border-line px-4 py-3 text-[13px]"><span className="font-semibold">Solutions</span><span className="text-muted-foreground">{hackedIds.size} of {data.questions.length} hacked</span></div>
             <ol className="p-2">{data.questions.map((x, i) => (
               <li key={x.id}><button onClick={() => { setCurrent(i); setInput(""); }} aria-current={i === current ? "true" : undefined}
-                className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-green-tint font-semibold text-ink" : "text-muted-foreground hover:bg-page hover:text-ink"}`}>
+                className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-brand-tint font-semibold text-ink" : "text-muted-foreground hover:bg-page hover:text-ink"}`}>
                 <span className={`h-2 w-2 shrink-0 rounded-full ${hackedIds.has(x.id) ? "bg-green" : "border border-line-2"}`} /><span className="truncate">{i + 1}. {x.title}</span><span className="ml-auto text-[11.5px] tabular-nums text-faint">{x.hack_points}</span></button></li>
             ))}</ol>
             <div className="border-t border-line p-3">

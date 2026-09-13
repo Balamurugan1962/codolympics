@@ -71,7 +71,7 @@ export default function AuctionPage() {
               <>
                 <div className="grid gap-6 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <div className="min-w-0">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-green-dark">Now offering</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-dark">Now offering</div>
                     <h2 className="mt-1 text-[24px] font-semibold leading-tight tracking-[-0.01em]">{lot.title}</h2>
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       <Badge variant={lot.difficulty === "hard" ? "destructive" : lot.difficulty === "medium" ? "warning" : "success"}>{lot.difficulty}</Badge>
@@ -87,7 +87,7 @@ export default function AuctionPage() {
                   </div>
                 </div>
 
-                <div className={`grid gap-4 border-t border-line px-5 py-4 sm:grid-cols-3 ${mine ? "bg-green-tint" : hasBids ? "bg-page" : "bg-card"}`}>
+                <div className={`grid gap-4 border-t border-line px-5 py-4 sm:grid-cols-3 ${mine ? "bg-brand-tint" : hasBids ? "bg-page" : "bg-card"}`}>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Highest bid</div>
                     <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none">{lot.current_bid ?? "—"}</div>
@@ -95,7 +95,7 @@ export default function AuctionPage() {
                   </div>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Next bid</div>
-                    <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none text-green-dark">{lot.next_bid}</div>
+                    <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none text-brand-dark">{lot.next_bid}</div>
                     <div className="mt-1.5 text-[12.5px] text-muted-foreground">+{auction.increment} each time</div>
                   </div>
                   <div>
@@ -129,9 +129,9 @@ export default function AuctionPage() {
             ) : (
               <ul className="divide-y divide-line">
                 {auction.recent_bids.map((b, i) => (
-                  <li key={b.id} className={`flex items-center gap-3 px-5 py-2 text-[13px] ${i === 0 ? "bg-green-tint/60" : ""}`}>
+                  <li key={b.id} className={`flex items-center gap-3 px-5 py-2 text-[13px] ${i === 0 ? "bg-brand-tint/60" : ""}`}>
                     <span className="w-16 font-semibold tabular-nums">{b.amount}</span>
-                    <span className="flex-1 truncate">{b.name}{b.participant_id === viewer.id && <span className="ml-1.5 text-[11.5px] font-semibold text-green-dark">you</span>}</span>
+                    <span className="flex-1 truncate">{b.name}{b.participant_id === viewer.id && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-dark">you</span>}</span>
                     <span className="text-[11.5px] text-faint">{ago(b.at, serverNow())}</span>
                   </li>
                 ))}
@@ -143,8 +143,8 @@ export default function AuctionPage() {
         <Section title="Running order" description={`${sold} sold · ${auction.order.filter((o) => o.state === "unsold").length} unsold · ${auction.order.filter((o) => o.state === "pending").length} to come`} padded={false} className="lg:sticky lg:top-28 lg:self-start">
           <ol className="pane max-h-[60vh] divide-y divide-line overflow-auto">
             {auction.order.map((o) => (
-              <li key={o.id} className={`flex items-center gap-3 px-4 py-2.5 text-[13px] ${o.state === "open" ? "bg-green-tint" : o.state === "pending" ? "" : "opacity-70"}`}>
-                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${o.state === "open" ? "bg-green text-white" : o.state === "closed" ? "bg-line-2 text-ink" : "border border-line-2 text-faint"}`}>{o.order}</span>
+              <li key={o.id} className={`flex items-center gap-3 px-4 py-2.5 text-[13px] ${o.state === "open" ? "bg-brand-tint" : o.state === "pending" ? "" : "opacity-70"}`}>
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${o.state === "open" ? "bg-brand text-white" : o.state === "closed" ? "bg-line-2 text-ink" : "border border-line-2 text-faint"}`}>{o.order}</span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{o.title}</div>
                   <div className="text-[11.5px] text-faint">{o.difficulty} · {o.score} pts · base {o.base_price}</div>

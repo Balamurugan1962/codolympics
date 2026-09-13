@@ -132,12 +132,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "relative flex h-14 items-center gap-2 px-3 text-[13px] font-semibold transition-colors",
-                    active ? "text-green-bright" : "text-white/70 hover:text-white",
+                    active ? "text-brand-bright" : "text-white/70 hover:text-white",
                   )}
                 >
                   <I size={15} />
                   {label}
-                  {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-t bg-green-bright" />}
+                  {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-t bg-brand-bright" />}
                 </Link>
               );
             })}
@@ -148,7 +148,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               className="hidden items-center gap-2 rounded-full bg-white/10 py-1 pr-3 pl-2.5 text-[12px] font-semibold sm:inline-flex"
               title="Current phase"
             >
-              <span className="size-1.5 rounded-full bg-green-bright" />
+              <span className="size-1.5 rounded-full bg-brand-bright" />
               {PHASE_LABEL[contest.phase]}
               {contest.phase_ends_at && (
                 <span className="border-l border-white/20 pl-2 text-white/90">
@@ -165,7 +165,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {me && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="flex items-center gap-1.5 rounded-full bg-green-bright/15 py-1 pr-3 pl-2.5 text-[12px] font-semibold text-green-bright">
+                  <span className="flex items-center gap-1.5 rounded-full bg-brand-bright/15 py-1 pr-3 pl-2.5 text-[12px] font-semibold text-brand-bright">
                     <Icon.Coins size={14} />
                     <span className="tabular-nums">{me.balance.toLocaleString()}</span>
                   </span>
@@ -186,9 +186,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-md px-1 py-1 text-sm text-white/85 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-green-bright/60 focus-visible:outline-none">
+                <button className="flex items-center gap-2 rounded-md px-1 py-1 text-sm text-white/85 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-brand-bright/60 focus-visible:outline-none">
                   <Avatar className="size-7 rounded-full">
-                    <AvatarFallback className="bg-green-bright text-[11px] font-bold text-navy">
+                    <AvatarFallback className="bg-brand-bright text-[11px] font-bold text-navy">
                       {viewer.name.slice(0, 1).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -223,7 +223,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <SheetContent side="left" className="w-72 gap-0 border-white/10 bg-navy p-0 text-white">
           <SheetHeader className="h-14 justify-center border-b border-white/10 px-5">
             <SheetTitle className="flex items-center gap-2.5 text-[15px] font-bold tracking-tight text-white">
-              <Mark size={24} /> Cod<span className="-ml-2.5 text-green-bright">olympics</span>
+              <Mark size={24} /> Cod<span className="-ml-2.5 text-brand-bright">olympics</span>
             </SheetTitle>
           </SheetHeader>
           <nav className="p-3" aria-label="Primary">
@@ -233,7 +233,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 href={href}
                 className={cn(
                   "flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-semibold transition-colors",
-                  isActive(href) ? "bg-white/10 text-green-bright" : "text-white/80 hover:bg-white/5 hover:text-white",
+                  isActive(href) ? "bg-white/10 text-brand-bright" : "text-white/80 hover:bg-white/5 hover:text-white",
                 )}
               >
                 <I size={16} />

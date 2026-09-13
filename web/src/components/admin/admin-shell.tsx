@@ -99,7 +99,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-5">
         <Mark size={24} />
         <span className="text-[15px] font-bold tracking-tight text-white">
-          Cod<span className="text-green-bright">olympics</span>
+          Cod<span className="text-brand-bright">olympics</span>
         </span>
         <span className="ml-auto rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/60 uppercase">
           Admin
@@ -127,7 +127,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     >
                       <I size={16} />
                       <span>{label}</span>
-                      {active && <span className="ml-auto size-1.5 rounded-full bg-green-bright" />}
+                      {active && <span className="ml-auto size-1.5 rounded-full bg-brand-bright" />}
                     </Link>
                   </li>
                 );
@@ -169,7 +169,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-2.5 text-sm">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-navy px-2.5 py-1 text-[11.5px] font-semibold text-white">
-              <span className="size-1.5 rounded-full bg-green-bright" />
+              <span className="size-1.5 rounded-full bg-brand-bright" />
               {PHASE_LABEL[contest.phase] ?? contest.phase}
             </span>
             {contest.phase_ends_at && (
@@ -184,7 +184,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <DropdownMenuTrigger asChild>
               <button className="ml-auto flex items-center gap-2 rounded-md px-1 py-1 text-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none">
                 <Avatar className="size-7">
-                  <AvatarFallback className="bg-navy text-[11px] font-bold text-green-bright">
+                  <AvatarFallback className="bg-navy text-[11px] font-bold text-brand-bright">
                     {viewer.name.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
