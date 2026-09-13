@@ -32,7 +32,7 @@ export function PageBody({
   className?: string;
   children: ReactNode;
 }) {
-  return <div className={cn("mx-auto w-full px-4 py-6 sm:px-6 lg:px-8", widths[width], className)}>{children}</div>;
+  return <div className={cn("mx-auto w-full px-4 py-5 sm:px-6 lg:px-8", widths[width], className)}>{children}</div>;
 }
 
 /** Title, one line of context, and the primary action. Nothing else belongs here. */
@@ -50,12 +50,14 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("mb-6", className)}>
-      {breadcrumb && <div className="mb-2.5">{breadcrumb}</div>}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <header className={cn("mb-5", className)}>
+      {breadcrumb && <div className="mb-2">{breadcrumb}</div>}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-[22px] leading-tight font-semibold tracking-[-0.015em] sm:text-2xl">{title}</h1>
-          {description && <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{description}</p>}
+          {/* An administration console is a tool, not a publication. The title
+              says which screen you are on and then gets out of the way. */}
+          <h1 className="text-[17px] leading-tight font-semibold tracking-[-0.012em]">{title}</h1>
+          {description && <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-muted-foreground">{description}</p>}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
       </div>

@@ -38,10 +38,10 @@ export default function RegisterPage() {
 
   return (
     <div className="animate-fade-in">
-      <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Create your account</h1>
-      <p className="mt-1 text-[13px] text-muted-foreground">One person, one account, one seat.</p>
+      <h1 className="text-[18px] font-semibold tracking-[-0.012em]">Create your account</h1>
+      <p className="mt-1 text-[12.5px] text-muted-foreground">One person, one account, one seat.</p>
 
-      <form onSubmit={submit} className="mt-7 space-y-4">
+      <form onSubmit={submit} className="mt-6 space-y-3.5">
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         <Field label="Display name" help="How you appear on the leaderboard. It cannot be taken by anyone else.">
           <Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required minLength={2} maxLength={32} placeholder="e.g. Bala" />
@@ -53,11 +53,11 @@ export default function RegisterPage() {
           <SimpleSelect className="w-full" size="default" value={language} onValueChange={setLanguage}
             options={LANGUAGES.map(([key, name]) => ({ value: key, label: name }))} />
         </Field>
-        <Button type="submit" size="lg" className="w-full" loading={busy}>Create account</Button>
+        <Button type="submit" className="w-full" loading={busy}>Create account</Button>
       </form>
 
-      <p className="mt-6 text-center text-[13px] text-muted-foreground">
-        Already registered? <Link href="/login" className="font-semibold text-brand-dark hover:underline">Sign in</Link>
+      <p className="mt-5 text-center text-[12.5px] text-muted-foreground">
+        Already registered? <Link href="/login" className="font-semibold text-brand-deep hover:underline">Sign in</Link>
       </p>
     </div>
   );

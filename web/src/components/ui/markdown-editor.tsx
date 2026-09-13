@@ -54,7 +54,7 @@ export function MarkdownEditor({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-md border border-input bg-card shadow-xs transition-[border-color,box-shadow]",
+        "overflow-hidden rounded-md border border-input bg-card transition-[border-color,box-shadow]",
         "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30",
         className,
       )}

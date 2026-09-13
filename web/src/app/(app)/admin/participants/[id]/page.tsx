@@ -334,7 +334,7 @@ export default function ParticipantPage() {
                       </TableCell>
                       <TableCell className="font-medium">{LEDGER_LABEL[l.reason] ?? l.reason}</TableCell>
                       <TableCell className="hidden font-mono text-[11.5px] text-faint md:table-cell">{l.ref}</TableCell>
-                      <TableCell className={cn("text-right font-semibold tabular-nums", l.delta < 0 ? "text-destructive" : "text-brand-dark")}>
+                      <TableCell className={cn("text-right font-semibold tabular-nums", l.delta < 0 ? "text-destructive" : "text-brand-deep")}>
                         {l.delta > 0 ? "+" : ""}
                         {l.delta.toLocaleString()}
                       </TableCell>
@@ -471,7 +471,7 @@ function HackItem({ h }: { h: Dossier["phase1"]["hacks"][number] }) {
                   <Badge variant="destructive">did not break it</Badge>
                 )}
                 {a.verdict && <span className="font-mono text-[11.5px] text-muted-foreground">{a.verdict}</span>}
-                <span className={cn("font-semibold tabular-nums", a.points_awarded > 0 ? "text-brand-dark" : a.points_awarded < 0 ? "text-destructive" : "text-faint")}>
+                <span className={cn("font-semibold tabular-nums", a.points_awarded > 0 ? "text-brand-deep" : a.points_awarded < 0 ? "text-destructive" : "text-faint")}>
                   {a.points_awarded > 0 ? "+" : ""}
                   {a.points_awarded}
                 </span>

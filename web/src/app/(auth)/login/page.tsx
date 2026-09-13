@@ -30,10 +30,10 @@ export default function LoginPage() {
 
   return (
     <div className="animate-fade-in">
-      <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Sign in</h1>
-      <p className="mt-1 text-[13px] text-muted-foreground">Use the display name you registered with.</p>
+      <h1 className="text-[18px] font-semibold tracking-[-0.012em]">Sign in</h1>
+      <p className="mt-1 text-[12.5px] text-muted-foreground">Use the display name you registered with.</p>
 
-      <form onSubmit={submit} className="mt-7 space-y-4">
+      <form onSubmit={submit} className="mt-6 space-y-3.5">
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         <Field label="Display name">
           <Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" required placeholder="e.g. Bala" />
@@ -41,11 +41,11 @@ export default function LoginPage() {
         <Field label="Password">
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required placeholder="••••••••" />
         </Field>
-        <Button type="submit" size="lg" className="w-full" loading={busy}>Sign in</Button>
+        <Button type="submit" className="w-full" loading={busy}>Sign in</Button>
       </form>
 
-      <p className="mt-6 text-center text-[13px] text-muted-foreground">
-        First time here? <Link href="/register" className="font-semibold text-brand-dark hover:underline">Register</Link>
+      <p className="mt-5 text-center text-[12.5px] text-muted-foreground">
+        First time here? <Link href="/register" className="font-semibold text-brand-deep hover:underline">Register</Link>
       </p>
       <p className="mt-5 flex items-start gap-2 rounded-box bg-page px-3 py-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
         <Icon.Info size={14} className="mt-0.5 shrink-0 text-faint" />

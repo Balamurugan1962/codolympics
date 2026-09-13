@@ -100,7 +100,7 @@ export default function AdminDashboard() {
                 {judgeDown
                   ? "Nothing can be judged until it is back. Submissions queue and retry on their own — none are lost."
                   : "An internal error is the judge's fault, not the competitor's."}{" "}
-                <Link href="/admin/judge" className="font-semibold text-brand-dark hover:underline">
+                <Link href="/admin/judge" className="font-semibold text-brand-deep hover:underline">
                   Open the judge
                 </Link>
               </AlertDescription>
@@ -256,7 +256,7 @@ function RegistrationPanel({ ready }: { ready: Readiness | null }) {
         title="Registering"
         description="Updates as people sign up at their machines."
         actions={
-          <Link href="/admin/participants" className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-dark hover:underline">
+          <Link href="/admin/participants" className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-deep hover:underline">
             Everyone <Icon.ChevronRight size={13} />
           </Link>
         }
@@ -282,7 +282,7 @@ function RegistrationPanel({ ready }: { ready: Readiness | null }) {
                   </span>
                   <Link
                     href={`/admin/participants/${p.id}`}
-                    className="min-w-0 flex-1 truncate text-[13px] font-medium hover:text-brand-dark hover:underline"
+                    className="min-w-0 flex-1 truncate text-[13px] font-medium hover:text-brand-deep hover:underline"
                   >
                     {p.name}
                   </Link>
@@ -307,7 +307,7 @@ function RegistrationPanel({ ready }: { ready: Readiness | null }) {
           {left ? (
             <>
               {left} thing{left === 1 ? "" : "s"} still to fix before this is fair to run.{" "}
-              <Link href="/admin/readiness" className="font-semibold text-brand-dark hover:underline">
+              <Link href="/admin/readiness" className="font-semibold text-brand-deep hover:underline">
                 Open the checklist
               </Link>
             </>
@@ -475,7 +475,7 @@ function DashboardSkeleton() {
           <Skeleton className="h-9 w-32" />
         </div>
       </Card>
-      <Skeleton className="h-56 w-full rounded-lg" />
+      <Skeleton className="h-56 w-full rounded-md" />
     </div>
   );
 }

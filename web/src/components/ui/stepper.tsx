@@ -36,7 +36,7 @@ export function Stepper({ steps, current, compact = false, className }: { steps:
               aria-current={state === "current" ? "step" : undefined}
               className={cn(
                 "flex items-center gap-1.5 rounded-none px-2 py-1 text-[12px] font-semibold transition-colors",
-                state === "current" && "bg-brand-tint text-brand-dark ring-1 ring-brand/30 ring-inset",
+                state === "current" && "bg-brand-tint text-brand-deep ring-1 ring-brand/30 ring-inset",
                 state === "done" && "text-muted-foreground",
                 state === "todo" && "text-faint",
               )}

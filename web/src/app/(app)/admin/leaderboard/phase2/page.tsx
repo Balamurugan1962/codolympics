@@ -27,7 +27,7 @@ export default function Phase2LeaderboardPage() {
           <AlertTitle>Phase 2 has not started</AlertTitle>
           <AlertDescription>
             This board fills once the selection is made and the first auction opens. Until then the one that matters is{" "}
-            <Link href="/admin/leaderboard/phase1" className="font-semibold text-brand-dark hover:underline">
+            <Link href="/admin/leaderboard/phase1" className="font-semibold text-brand-deep hover:underline">
               Phase 1
             </Link>
             .

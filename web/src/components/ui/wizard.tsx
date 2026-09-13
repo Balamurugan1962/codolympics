@@ -44,7 +44,7 @@ export function WizardSteps({
               className={cn(
                 "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors",
                 active
-                  ? "bg-card text-foreground shadow-xs ring-1 ring-border"
+                  ? "bg-card text-foreground ring-1 ring-border"
                   : can
                     ? "text-muted-foreground hover:bg-card/70 hover:text-foreground"
                     : "cursor-default text-faint",
@@ -116,7 +116,7 @@ export function WizardLayout({
 /** A short note on the rail — what this wizard produces and where it goes next. */
 export function WizardNote({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg border bg-card px-3.5 py-3 shadow-xs">
+    <div className="rounded-md border bg-card px-3.5 py-3">
       <div className="text-[11px] font-semibold tracking-[0.06em] text-faint uppercase">{title}</div>
       <div className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{children}</div>
     </div>

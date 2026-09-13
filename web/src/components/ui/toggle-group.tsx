@@ -34,9 +34,13 @@ function ToggleGroup({
       data-variant={variant}
       data-size={size}
       data-spacing={spacing}
-      style={{ "--gap": spacing } as React.CSSProperties}
+      // The spacing is an inline style rather than the upstream
+      // `gap-[--spacing(var(--gap))]`: a Tailwind function nested in an
+      // arbitrary value in a class name is a lot of machinery for one
+      // multiplication, and this says the same thing in plain CSS.
+      style={{ gap: `calc(var(--spacing) * ${spacing})` } as React.CSSProperties}
       className={cn(
-        "group/toggle-group flex w-fit items-center gap-[--spacing(var(--gap))] rounded-md data-[spacing=default]:data-[variant=outline]:shadow-xs",
+        "group/toggle-group flex w-fit items-center rounded-md",
         className
       )}
       {...props}

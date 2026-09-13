@@ -306,7 +306,7 @@ function NotForYou() {
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
         Evaluators grade, author questions and read every board. Contest settings and staff accounts belong to whoever is running the day.
       </p>
-      <Link href="/grade" className="mt-4 inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand-dark hover:underline">
+      <Link href="/grade" className="mt-4 inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand-deep hover:underline">
         Back to grading <Icon.ChevronRight size={13} />
       </Link>
     </div>

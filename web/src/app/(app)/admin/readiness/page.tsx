@@ -141,7 +141,7 @@ export default function ReadinessPage() {
                 }
                 description={g.blurb || undefined}
                 actions={
-                  <span className={cn("text-[12px] font-semibold tabular-nums", left ? "text-amber" : "text-brand-dark")}>
+                  <span className={cn("text-[12px] font-semibold tabular-nums", left ? "text-amber" : "text-brand-deep")}>
                     {g.items.length - left}/{g.items.length}
                   </span>
                 }
@@ -163,7 +163,7 @@ export default function ReadinessPage() {
                           <span className={cn("block text-[13px]", it.ok ? "text-muted-foreground" : "font-semibold")}>{it.label}</span>
                           <span className="mt-0.5 block truncate text-[11.5px] text-faint">{it.detail}</span>
                         </span>
-                        <span className="hidden shrink-0 items-center gap-1 text-[12px] font-semibold text-brand-dark sm:flex">
+                        <span className="hidden shrink-0 items-center gap-1 text-[12px] font-semibold text-brand-deep sm:flex">
                           {it.ok ? "Review" : "Fix"} <Icon.ChevronRight size={14} />
                         </span>
                         <Icon.ChevronRight size={15} className="shrink-0 text-faint sm:hidden" />

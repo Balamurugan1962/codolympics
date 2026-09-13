@@ -52,14 +52,14 @@ export function ChoiceCards<T extends string>({
             disabled={o.disabled}
             onClick={() => onChange(o.value)}
             className={cn(
-              "relative flex items-start gap-3 rounded-lg border bg-card text-left shadow-xs transition-[border-color,background-color,box-shadow] outline-none",
+              "relative flex items-start gap-3 rounded-md border bg-card text-left transition-[border-color,background-color,box-shadow] outline-none",
               "focus-visible:ring-[3px] focus-visible:ring-ring/30",
               size === "sm" ? "px-3 py-2.5" : "px-3.5 py-3",
               on ? "border-brand bg-brand-tint/50 ring-1 ring-brand/25" : "hover:border-line-2 hover:bg-muted/40",
               o.disabled && "cursor-not-allowed opacity-50",
             )}
           >
-            {o.icon && <span className={cn("mt-0.5 shrink-0", on ? "text-brand-dark" : "text-faint")}>{o.icon}</span>}
+            {o.icon && <span className={cn("mt-0.5 shrink-0", on ? "text-brand-deep" : "text-faint")}>{o.icon}</span>}
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-[13px] font-semibold">{o.label}</span>

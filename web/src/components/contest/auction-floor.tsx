@@ -71,7 +71,7 @@ export function AuctionFloor() {
               <>
                 <div className="grid gap-6 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <div className="min-w-0">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-dark">Now offering</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-deep">Now offering</div>
                     <h2 className="mt-1 text-[24px] font-semibold leading-tight tracking-[-0.01em]">{lot.title}</h2>
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       <Badge variant={lot.difficulty === "hard" ? "destructive" : lot.difficulty === "medium" ? "warning" : "success"}>{lot.difficulty}</Badge>
@@ -95,7 +95,7 @@ export function AuctionFloor() {
                   </div>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Next bid</div>
-                    <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none text-brand-dark">{lot.next_bid}</div>
+                    <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none text-brand-deep">{lot.next_bid}</div>
                     <div className="mt-1.5 text-[12.5px] text-muted-foreground">+{auction.increment} each time</div>
                   </div>
                   <div>
@@ -131,7 +131,7 @@ export function AuctionFloor() {
                 {auction.recent_bids.map((b, i) => (
                   <li key={b.id} className={`flex items-center gap-3 px-5 py-2 text-[13px] ${i === 0 ? "bg-brand-tint/60" : ""}`}>
                     <span className="w-16 font-semibold tabular-nums">{b.amount}</span>
-                    <span className="flex-1 truncate">{b.name}{b.participant_id === viewer.id && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-dark">you</span>}</span>
+                    <span className="flex-1 truncate">{b.name}{b.participant_id === viewer.id && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-deep">you</span>}</span>
                     <span className="text-[11.5px] text-faint">{ago(b.at, serverNow())}</span>
                   </li>
                 ))}

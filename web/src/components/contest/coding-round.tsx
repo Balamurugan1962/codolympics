@@ -42,11 +42,11 @@ export function CodingRound() {
   return (
     <PageBody className="animate-fade-in">
       <div className="space-y-5">
-        <section className="overflow-hidden rounded-lg border border-brand/30 bg-card shadow-xs">
+        <section className="overflow-hidden rounded-md border border-brand/30 bg-card">
           <div className="h-1 bg-brand" />
           <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="text-[11px] font-semibold tracking-[0.08em] text-brand-dark uppercase">
+              <div className="text-[11px] font-semibold tracking-[0.08em] text-brand-deep uppercase">
                 {contest.phase === "final" ? "Final round" : "Coding round"}
               </div>
               <h1 className="mt-1 text-[20px] leading-tight font-semibold sm:text-[22px]">
