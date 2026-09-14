@@ -18,6 +18,7 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 import { AnnouncementOverlay } from "./announcement-overlay";
+import { BlackoutOverlay } from "./contest/blackout-overlay";
 import { ContestLoading } from "./contest/waiting";
 import { useContest } from "./contest-provider";
 import { Countdown } from "./countdown";
@@ -71,6 +72,7 @@ type NavItem = { href: string; label: string; icon: (p: { size?: number }) => Re
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Contest", icon: Icon.Grid },
   { href: "/leaderboard", label: "Leaderboard", icon: Icon.Trophy },
+  { href: "/marketplace", label: "Marketplace", icon: Icon.Coins },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -92,7 +94,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
     );
   }
   const { viewer, contest, me } = state;
-  const nav = NAV;
+  // Nothing to buy or aim at if you are not competing.
+  const nav = viewer.role === "participant" ? NAV : NAV.filter((n) => n.href !== "/marketplace");
   const home = "/dashboard";
   const workspace = pathname.startsWith("/question/");
   // The workspace is opened from the contest screen, so it keeps that item lit.
@@ -268,6 +271,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <main id="main" className="flex-1">
         {children}
       </main>
+
+      {/* Above every screen, and outside <main> so nothing it covers is
+          unmounted — the page underneath is still there when it lifts. */}
+      {viewer.role === "participant" && <BlackoutOverlay />}
     </div>
   );
 }

@@ -22,6 +22,8 @@ export type ContestState = {
   auction?: AuctionSnapshot | null;
   submit?: { in_flight: boolean; cooldown_ms: number; server_now: number };
   notifications?: { id: number; body_md: string; created_at: string }[];
+  /** Server-decided. Present from the first paint so the overlay is never late. */
+  blackout?: { active: boolean; ends_at: string | null; count: number; by: string[]; server_now: number };
 };
 
 export type AuctionSnapshot = {

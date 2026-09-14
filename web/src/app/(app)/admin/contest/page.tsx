@@ -28,6 +28,7 @@ import { api, errorMessage } from "@/lib/client";
 
 type C = {
   auctionMode: "online" | "offline";
+  marketplaceOpen: boolean;
   startingBalance: number;
   bidIncrement: number;
   countdownSeconds: number;
@@ -45,6 +46,11 @@ type C = {
 const AUCTION_STYLE = [
   { value: "online", label: "Online — they bid from their seats" },
   { value: "offline", label: "Offline — you record what the room does" },
+] as const;
+
+const MARKETPLACE = [
+  { value: "closed", label: "Closed — nothing on sale" },
+  { value: "open", label: "Open — powerups can be bought" },
 ] as const;
 
 const VISIBILITY = [
@@ -110,6 +116,7 @@ export default function SettingsPage() {
       const saved = await api.patch<C>("/api/admin/contest", {
         reason,
         auction_mode: c.auctionMode,
+        marketplace_open: c.marketplaceOpen,
         starting_balance: c.startingBalance,
         bid_increment: c.bidIncrement,
         countdown_seconds: c.countdownSeconds,
@@ -187,6 +194,18 @@ export default function SettingsPage() {
               value={c.ownershipCap ?? ""}
               placeholder="no limit"
               onChange={(e) => set("ownershipCap", e.target.value === "" ? null : Number(e.target.value))}
+            />
+          </SettingRow>
+          <SettingRow
+            label="Marketplace"
+            description="Powerups are bought with the same money they bid with. Prices and durations are on the Powerups page."
+          >
+            <SimpleSelect
+              className="w-full"
+              size="default"
+              value={c.marketplaceOpen ? "open" : "closed"}
+              onValueChange={(v) => set("marketplaceOpen", v === "open")}
+              options={MARKETPLACE}
             />
           </SettingRow>
           <SettingRow label="Phase 2 leaderboard" description="Announce before the first auction. It changes how people bid.">

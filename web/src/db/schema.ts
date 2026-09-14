@@ -91,6 +91,13 @@ export const contest = pgTable(
     auctionMode: text("auction_mode").$type<AuctionMode>().notNull().default("online"),
 
     /**
+     * The marketplace as a whole. Individual powerups have their own switch;
+     * this is the one an organiser reaches for when the room is getting silly
+     * and everything must stop at once.
+     */
+    marketplaceOpen: boolean("marketplace_open").notNull().default(false),
+
+    /**
      * Set while an administrator has the auction held. The scheduler stops
      * settling lots and bids are refused; on resume every lot deadline is
      * pushed forward by exactly how long this was set, so a lot with eight
@@ -222,7 +229,7 @@ export const ledger = pgTable(
     participantId: text("participant_id").notNull().references(() => participant.userId),
     delta: integer("delta").notNull(), // negative debit, positive refund
     balanceAfter: integer("balance_after").notNull(),
-    reason: text("reason").$type<"bid_won" | "hint" | "refund" | "admin_adjust" | "starting_balance">().notNull(),
+    reason: text("reason").$type<"bid_won" | "hint" | "powerup" | "refund" | "admin_adjust" | "starting_balance">().notNull(),
     ref: text("ref"),
     createdAt: ts("created_at").notNull().defaultNow(),
   },
@@ -473,3 +480,109 @@ export const p1Advancement = pgTable("p1_advancement", {
   decidedAt: ts("decided_at").notNull().defaultNow(),
   reason: text("reason").notNull(),
 });
+
+
+// ---------------------------------------------------------------------------
+// Marketplace: powerups
+// ---------------------------------------------------------------------------
+
+/**
+ * What the server knows how to *do* with a powerup. Everything else about one —
+ * its name, price, duration, limits, when it may be used — is a row an
+ * administrator edits, so adding a third powerup later is a row plus a case in
+ * the apply switch, not a redesign.
+ */
+export const POWERUP_KINDS = ["blackout", "shield"] as const;
+export type PowerupKind = (typeof POWERUP_KINDS)[number];
+
+export const powerup = pgTable("powerup", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  kind: text("kind").$type<PowerupKind>().notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  price: integer("price").notNull(),
+  /** Blackout only: how long one lands for. Null for powerups with no duration. */
+  durationSeconds: integer("duration_seconds"),
+  enabled: boolean("enabled").notNull().default(true),
+  /** How many a participant may hold at once. Null means no limit. */
+  maxHeld: integer("max_held"),
+  /** How many a participant may buy across the whole contest. Null means no limit. */
+  maxPurchases: integer("max_purchases"),
+  /** The phases in which it may be USED. Buying is governed by the contest's own switch. */
+  usablePhases: jsonb("usable_phases").$type<Phase[]>().notNull().default([]),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+/**
+ * What a participant holds.
+ *
+ * A count rather than a row per unit: the only questions ever asked are "how
+ * many" and "take one", and a counter answers both under a row lock without
+ * accumulating a row per purchase for the life of the contest.
+ */
+export const powerupInventory = pgTable(
+  "powerup_inventory",
+  {
+    participantId: text("participant_id").notNull().references(() => participant.userId, { onDelete: "cascade" }),
+    powerupId: bigint("powerup_id", { mode: "number" }).notNull().references(() => powerup.id, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull().default(0),
+    /** Lifetime purchases, so a per-contest cap survives spending them. */
+    purchased: integer("purchased").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.participantId, t.powerupId] })],
+);
+
+export const POWERUP_EVENTS = ["purchase", "use", "blocked", "expired"] as const;
+export type PowerupEventKind = (typeof POWERUP_EVENTS)[number];
+
+/**
+ * Every purchase and every use, in order.
+ *
+ * Doubles as the idempotency table: the client sends a request id with each
+ * action and the unique index makes a replay — a double click, a retry after a
+ * dropped connection, a refresh that resubmits — collapse into the first
+ * attempt instead of charging twice.
+ */
+export const powerupEvent = pgTable(
+  "powerup_event",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    kind: text("kind").$type<PowerupEventKind>().notNull(),
+    powerupId: bigint("powerup_id", { mode: "number" }).references(() => powerup.id),
+    actorId: text("actor_id").notNull().references(() => participant.userId, { onDelete: "cascade" }),
+    /** Who it was aimed at, for an attack. Null for a purchase. */
+    targetId: text("target_id").references(() => participant.userId, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull().default(1),
+    cost: integer("cost").notNull().default(0),
+    requestId: text("request_id"),
+    detail: jsonb("detail").$type<Record<string, unknown>>(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("powerup_event_idempotent").on(t.actorId, t.requestId),
+    index("powerup_event_actor_idx").on(t.actorId),
+    index("powerup_event_target_idx").on(t.targetId),
+  ],
+);
+
+/**
+ * A blackout that has landed.
+ *
+ * Stacking is expressed as adjacency rather than overlap: a new one starts when
+ * the last one ends, so two attacks that arrive together queue back to back and
+ * the total is exactly the sum. The remaining time is `max(ends_at) - now`,
+ * which needs no running total to maintain and cannot drift.
+ */
+export const blackout = pgTable(
+  "blackout",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    participantId: text("participant_id").notNull().references(() => participant.userId, { onDelete: "cascade" }),
+    byId: text("by_id").notNull().references(() => participant.userId, { onDelete: "cascade" }),
+    seconds: integer("seconds").notNull(),
+    startsAt: ts("starts_at").notNull(),
+    endsAt: ts("ends_at").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("blackout_participant_idx").on(t.participantId, t.endsAt)],
+);
