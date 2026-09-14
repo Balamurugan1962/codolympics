@@ -116,7 +116,7 @@ export function WizardLayout({
 /** A short note on the rail — what this wizard produces and where it goes next. */
 export function WizardNote({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-md border bg-card px-3.5 py-3">
+    <div className="rounded-md border bg-card px-3.5 py-3 shadow-xs">
       <div className="text-[11px] font-semibold tracking-[0.06em] text-faint uppercase">{title}</div>
       <div className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{children}</div>
     </div>

@@ -174,7 +174,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <TooltipTrigger asChild>
                   <span className="flex items-center gap-1.5 rounded-none bg-brand-bright/15 px-2.5 py-1 text-[12px] font-semibold text-brand-bright">
                     <Icon.Coins size={14} />
-                    <span className="num">{me.balance.toLocaleString()}</span>
+                    <span className="tabular-nums">{me.balance.toLocaleString()}</span>
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>Your balance</TooltipContent>

@@ -83,10 +83,10 @@ export function Pagination<T>({ paged, className, unit = "rows" }: { paged: Page
   return (
     <nav className={cn("flex items-center gap-3 border-t py-2.5 text-[12px]", className)} aria-label="Pagination">
       <span className="text-muted-foreground">
-        <span className="num text-foreground">
+        <span className="tabular-nums text-foreground">
           {paged.from}–{paged.to}
         </span>{" "}
-        of <span className="num text-foreground">{paged.total}</span> {unit}
+        of <span className="tabular-nums text-foreground">{paged.total}</span> {unit}
       </span>
       <span className="ml-auto flex items-center gap-1">
         <Step href={href(1)} disabled={paged.page === 1} label="First page">
@@ -96,7 +96,7 @@ export function Pagination<T>({ paged, className, unit = "rows" }: { paged: Page
           <Icon.ChevronLeft size={14} />
         </Step>
         <span className="px-2 text-muted-foreground">
-          <span className="num text-foreground">{paged.page}</span> / <span className="num">{paged.pages}</span>
+          <span className="tabular-nums text-foreground">{paged.page}</span> / <span className="tabular-nums">{paged.pages}</span>
         </span>
         <Step href={href(paged.page + 1)} disabled={paged.page === paged.pages} label="Next page">
           <Icon.ChevronRight size={14} />

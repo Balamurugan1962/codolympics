@@ -132,7 +132,7 @@ function OrderPanel({ section }: { section: "puzzles" | "hacking" }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className={`text-[13px] font-medium ${r.voided ? "text-faint line-through" : ""}`}>{r.title}</span>
             {r.kind && <Badge variant="outline">{KIND_LABEL[r.kind as keyof typeof KIND_LABEL] ?? r.kind}</Badge>}
-            <span className="text-[11.5px] text-faint num">{r.points} pts</span>
+            <span className="text-[11.5px] text-faint tabular-nums">{r.points} pts</span>
             {r.voided ? <Badge variant="neutral">void</Badge> : r.published ? <Badge variant="success">live</Badge> : <Badge variant="warning">draft</Badge>}
           </div>
         )}

@@ -91,7 +91,7 @@ export default function AnnouncementsPage() {
           description="Markdown renders: bold, lists, code. Keep it to what people need to act on."
           footer={
             <>
-              <span className={cn("mr-auto text-[12px] num", text.length > MAX ? "font-semibold text-destructive" : "text-faint")}>
+              <span className={cn("mr-auto text-[12px] tabular-nums", text.length > MAX ? "font-semibold text-destructive" : "text-faint")}>
                 {text.length.toLocaleString()} / {MAX.toLocaleString()}
               </span>
               <Button variant="ghost" disabled={!text || busy} onClick={() => setText("")}>
@@ -142,7 +142,7 @@ export default function AnnouncementsPage() {
             <ol className="divide-y">
               {rows.map((a, i) => (
                 <li key={a.id} className="flex gap-4 px-5 py-3.5">
-                  <div className="w-20 shrink-0 pt-0.5 text-[11.5px] leading-snug text-faint num">
+                  <div className="w-20 shrink-0 pt-0.5 text-[11.5px] leading-snug text-faint tabular-nums">
                     <div>{new Date(a.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                     <div>{new Date(a.createdAt).toLocaleDateString([], { day: "numeric", month: "short" })}</div>
                     {i === 0 && <div className="mt-1 font-semibold text-brand-deep">latest</div>}

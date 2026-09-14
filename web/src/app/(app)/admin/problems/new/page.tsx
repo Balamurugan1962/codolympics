@@ -221,7 +221,7 @@ export default function NewProblemPage() {
                 {details.hints.length > 0 && (
                   <div className="border-t border-line px-5 py-4">
                     <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Hints, in the order they unlock</div>
-                    <ol className="space-y-1.5">{details.hints.map((h, i) => <li key={i} className="flex gap-3 text-[13px]"><span className="w-20 shrink-0 font-semibold num text-muted-foreground">{h.price} coins</span><span className="min-w-0 truncate">{h.body_md}</span></li>)}</ol>
+                    <ol className="space-y-1.5">{details.hints.map((h, i) => <li key={i} className="flex gap-3 text-[13px]"><span className="w-20 shrink-0 font-semibold tabular-nums text-muted-foreground">{h.price} coins</span><span className="min-w-0 truncate">{h.body_md}</span></li>)}</ol>
                   </div>
                 )}
               </Section>

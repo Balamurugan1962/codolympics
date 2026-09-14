@@ -109,7 +109,7 @@ export default function ReadinessPage() {
               </div>
               <div className="w-full sm:w-52">
                 <div className="mb-1.5 flex items-baseline justify-between text-[12px]">
-                  <span className="font-semibold num">
+                  <span className="font-semibold tabular-nums">
                     {ready.done} of {ready.total}
                   </span>
                   <span className="text-muted-foreground">passing</span>
@@ -135,7 +135,7 @@ export default function ReadinessPage() {
                 }
                 description={g.blurb || undefined}
                 actions={
-                  <span className={cn("text-[12px] font-semibold num", left ? "text-amber" : "text-brand-deep")}>
+                  <span className={cn("text-[12px] font-semibold tabular-nums", left ? "text-amber" : "text-brand-deep")}>
                     {g.items.length - left}/{g.items.length}
                   </span>
                 }

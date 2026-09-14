@@ -223,7 +223,7 @@ export default function ProblemsPage() {
               <TableBody>
                 {rows.map(({ id, p, q, stage }) => (
                   <TableRow key={id}>
-                    <TableCell className="hidden text-right text-faint num lg:table-cell">{q ? q.auctionOrder : "—"}</TableCell>
+                    <TableCell className="hidden text-right text-faint tabular-nums lg:table-cell">{q ? q.auctionOrder : "—"}</TableCell>
                     <TableCell>
                       <Link href={`/admin/problems/${encodeURIComponent(id)}`} className="group block">
                         <div className="flex items-center gap-2">
@@ -237,9 +237,9 @@ export default function ProblemsPage() {
                       </Link>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{q ? <DifficultyBadge d={q.difficulty} /> : <span className="text-faint">—</span>}</TableCell>
-                    <TableCell className="hidden text-right num sm:table-cell">{q ? q.score : <span className="text-faint">—</span>}</TableCell>
-                    <TableCell className="hidden text-right num lg:table-cell">{q ? q.basePrice : <span className="text-faint">—</span>}</TableCell>
-                    <TableCell className="hidden text-right num sm:table-cell">{p ? p.testcases : <span className="text-faint">—</span>}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{q ? q.score : <span className="text-faint">—</span>}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums lg:table-cell">{q ? q.basePrice : <span className="text-faint">—</span>}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{p ? p.testcases : <span className="text-faint">—</span>}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       {p?.current ? <span className="font-mono text-[12px]">{p.current}</span> : <span className="text-faint">—</span>}
                     </TableCell>

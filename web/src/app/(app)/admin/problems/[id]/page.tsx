@@ -194,7 +194,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
                 <TableCell className="font-mono text-[12.5px] font-semibold">{v}</TableCell>
                 <TableCell>{v === problem.current ? <StatusDot tone="success">Live</StatusDot> : <StatusDot tone="neutral">Not live</StatusDot>}</TableCell>
                 <TableCell className="hidden text-muted-foreground sm:table-cell">{v === problem.versions.at(-1) ? "latest upload" : ""}</TableCell>
-                <TableCell className="text-right num">{v === version ? <span className="text-[12px] font-semibold text-brand-deep">Selected</span> : <Button size="sm" variant="ghost" onClick={() => { setVersion(v); setReport(null); }}>Select</Button>}</TableCell>
+                <TableCell className="text-right tabular-nums">{v === version ? <span className="text-[12px] font-semibold text-brand-deep">Selected</span> : <Button size="sm" variant="ghost" onClick={() => { setVersion(v); setReport(null); }}>Select</Button>}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -377,7 +377,7 @@ function Preview({ id, problem, question }: { id: string; problem: P | null; que
           <ol className="divide-y divide-line">
             {question.hints.map((h) => (
               <li key={h.idx} className="flex gap-4 py-2.5 text-[13px]">
-                <span className="w-24 shrink-0 font-semibold num text-muted-foreground">Hint {h.idx + 1} · {h.price}</span>
+                <span className="w-24 shrink-0 font-semibold tabular-nums text-muted-foreground">Hint {h.idx + 1} · {h.price}</span>
                 <span className="min-w-0 flex-1 whitespace-pre-wrap">{h.bodyMd}</span>
               </li>
             ))}

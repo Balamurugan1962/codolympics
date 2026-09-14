@@ -154,8 +154,8 @@ export default function PeoplePage() {
                       <div className="font-mono text-[11.5px] text-faint">{p.username}</div>
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground sm:table-cell">{p.preferred_language ?? "—"}</TableCell>
-                    <TableCell className="text-right font-medium num">{p.balance.toLocaleString()}</TableCell>
-                    <TableCell className="hidden text-right num sm:table-cell">
+                    <TableCell className="text-right font-medium tabular-nums">{p.balance.toLocaleString()}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">
                       {p.owned > 0 ? p.owned : <span className="text-faint">0</span>}
                     </TableCell>
                     <TableCell>

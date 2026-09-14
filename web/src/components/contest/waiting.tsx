@@ -132,7 +132,7 @@ export function Ended() {
           {rank && (
             <div className="rounded-[5px] border border-line bg-card px-7 py-4">
               <div className="text-[11px] font-semibold tracking-[0.1em] text-faint uppercase">You finished</div>
-              <div className={cn("mt-1 text-[30px] leading-none font-semibold tracking-[-0.025em] num", rank.rank <= 3 && "text-brand-deep")}>
+              <div className={cn("mt-1 text-[30px] leading-none font-semibold tracking-[-0.025em] tabular-nums", rank.rank <= 3 && "text-brand-deep")}>
                 #{rank.rank}
               </div>
               <div className="mt-1.5 text-[12.5px] text-muted-foreground">

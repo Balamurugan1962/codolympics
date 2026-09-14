@@ -41,15 +41,15 @@ export default function LeaderboardPage() {
           )}
           <Section padded={false}>
             <Table>
-              <TableHeader><TableRow><TableHead className="w-16 text-right">Rank</TableHead><TableHead>Participant</TableHead><TableHead className="text-right num">Score</TableHead><TableHead className="hidden sm:table-cell text-right num">Solved</TableHead><TableHead className="hidden md:table-cell text-right num">Total solve time</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead className="w-16 text-right">Rank</TableHead><TableHead>Participant</TableHead><TableHead className="text-right tabular-nums">Score</TableHead><TableHead className="hidden sm:table-cell text-right tabular-nums">Solved</TableHead><TableHead className="hidden md:table-cell text-right tabular-nums">Total solve time</TableHead></TableRow></TableHeader>
               <TableBody>
                 {board.standings.map((s) => (
                   <TableRow key={s.participant_id} data-state={s.participant_id === me ? "selected" : undefined}>
-                    <TableCell className="font-semibold text-right num">{s.rank <= 3 ? <Badge variant={s.rank === 1 ? "success" : "neutral"}>#{s.rank}</Badge> : `#${s.rank}`}</TableCell>
+                    <TableCell className="font-semibold text-right tabular-nums">{s.rank <= 3 ? <Badge variant={s.rank === 1 ? "success" : "neutral"}>#{s.rank}</Badge> : `#${s.rank}`}</TableCell>
                     <TableCell className="font-medium">{s.name}{s.participant_id === me && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-deep">you</span>}</TableCell>
-                    <TableCell className="font-semibold text-right num">{s.score}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-right num">{s.solved}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right num">{fmt(s.total_time_ms)}</TableCell>
+                    <TableCell className="font-semibold text-right tabular-nums">{s.score}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-right tabular-nums">{s.solved}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right tabular-nums">{fmt(s.total_time_ms)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

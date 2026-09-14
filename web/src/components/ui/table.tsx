@@ -5,24 +5,16 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /*
- * Tables read as rows of facts.
+ * Tables read as rows of facts, not as a grid of boxes: a quiet uppercase
+ * header, one hairline between rows, 44px of height so a row is easy to hit,
+ * and numbers right-aligned and tabular so columns line up.
  *
- * A table does get a frame, unlike the rest of the page. Everything else is
- * separated by hairlines on one surface, but a grid of figures stretched
- * across 1600px of white with nothing holding it reads as unfinished rather
- * than minimal — the eye has no edge to come back to. So a table gets one
- * border, a header band to anchor the top, and its rows inside that.
- *
- * Dense on purpose: a 40px row at 13px is what you want when scanning two
- * hundred audit entries for the one that matters. The header is a band rather
- * than floating grey text, so the columns stay findable.
+ * Tuned away from the shadcn defaults, which are built for 8px-padded demo
+ * tables; contest tables carry names, times and scores that must be scannable.
  */
 function Table({ className, containerClassName, ...props }: React.ComponentProps<"table"> & { containerClassName?: string }) {
   return (
-    <div
-      data-slot="table-container"
-      className={cn("relative w-full overflow-x-auto rounded-md border bg-card", containerClassName)}
-    >
+    <div data-slot="table-container" className={cn("relative w-full overflow-x-auto", containerClassName)}>
       <table data-slot="table" className={cn("w-full caption-bottom border-collapse text-[13px]", className)} {...props} />
     </div>
   );
@@ -47,7 +39,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors last:border-0 hover:bg-muted/45",
+        "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-accent",
         className,
       )}
       {...props}
@@ -60,7 +52,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-9 px-3 text-left align-middle text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap text-muted-foreground uppercase first:pl-4 last:pr-4 [&:has([role=checkbox])]:pr-0",
+        "h-9 px-4 text-left align-middle text-[11px] font-semibold tracking-[0.06em] whitespace-nowrap text-muted-foreground uppercase [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
@@ -72,7 +64,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
-      className={cn("h-10 px-3 align-middle first:pl-4 last:pr-4 [&:has([role=checkbox])]:pr-0", className)}
+      className={cn("h-11 px-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
       {...props}
     />
   );
