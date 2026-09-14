@@ -19,7 +19,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { ReorderList } from "@/components/ui/reorder-list";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
@@ -89,7 +89,7 @@ function OrderPanel({ section }: { section: "puzzles" | "hacking" }) {
     }
   }
 
-  if (!rows) return <CardSkeleton lines={6} />;
+  if (!rows) return <ListSkeleton rows={6} />;
   if (rows.length === 0) {
     return (
       <Section padded={false}>

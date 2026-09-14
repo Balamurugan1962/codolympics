@@ -11,13 +11,17 @@ import { participantView } from "@/lib/submissions";
 
 describe("participant views", () => {
   it("a judgement never carries jury_detail", () => {
+    // The secret is a distinctive token, not a two-digit number: the view also
+    // carries timestamps, and asserting that "41" is absent fails whenever the
+    // clock happens to read 05:41.
+    const SECRET = "EXPECTED-GRAPE-GOT-MELON";
     const view = participantView({
       id: 1, submissionId: 1, state: "done", jobId: "j", verdict: "WA", passed: 3, total: 10, firstFail: 3, maxTimeMs: 12,
-      maxMemoryKb: 100, compileOutput: "", message: "wrong answer on test 3", juryDetail: "token 2: expected '41', got '39'",
+      maxMemoryKb: 100, compileOutput: "", message: "wrong answer on test 3", juryDetail: `token 2: ${SECRET}`,
       problemVersion: "v1", progressDone: 4, progressTotal: 10, attempt: 1, retries: 0, cancelled: false, supersededAt: null,
-      createdAt: new Date(), endedAt: new Date(),
+      createdAt: new Date("2026-01-01T00:00:00Z"), endedAt: new Date("2026-01-01T00:00:12Z"),
     });
-    expect(JSON.stringify(view)).not.toContain("41");
+    expect(JSON.stringify(view)).not.toContain(SECRET);
     expect(JSON.stringify(view)).not.toMatch(/jury/i);
     expect(view.first_fail).toBe(3); // the number is fine; the contents are not
   });

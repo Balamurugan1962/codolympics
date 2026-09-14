@@ -15,7 +15,7 @@ import { Menu } from "@/components/ui/menu";
 import { SearchInput } from "@/components/ui/field";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
 import { SimpleSelect } from "@/components/ui/select";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { PageSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
@@ -151,7 +151,7 @@ export default function ProblemsPage() {
       />
 
       {!problems ? (
-        <CardSkeleton lines={8} />
+        <PageSkeleton stats={4} rows={7} cols={6} />
       ) : all.length === 0 ? (
         <Section padded={false}>
           <EmptyState

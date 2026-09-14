@@ -155,7 +155,7 @@ export default function WorkspacePage() {
   }
 
   if (error) return <div className="p-6"><EmptyState icon={<Icon.Lock size={22} />} title="You don't own this question" body={error} action={<Link href="/dashboard"><Button variant="outline" size="sm">Back to home</Button></Link>} /></div>;
-  if (!q) return <div className="workspace grid grid-cols-2 gap-1 p-1"><Skeleton className="h-full" /><Skeleton className="h-full" /></div>;
+  if (!q) return <WorkspaceSkeleton />;
 
   // The polled copy is fresher than the page load it came with.
   const latest = (live ?? q.history[0]?.judgement ?? null) as LiveJudgement | null;
@@ -387,3 +387,51 @@ function History({ history, sampleCount }: { history: Question["history"]; sampl
 
 function safeGet(key: string): { source: string; language: string; at: number } | null { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } }
 function safeSet(key: string, value: unknown) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* the server copy still saves */ } }
+
+/**
+ * The workspace, waiting.
+ *
+ * Two grey rectangles told a competitor nothing and then jumped into a
+ * completely different screen. This is the real thing with the words taken
+ * out: the statement pane on the left with its header and tabs, the editor
+ * dark on the right. The dark half matters most — the editor is the one
+ * surface that would otherwise flash white and then go black.
+ */
+function WorkspaceSkeleton() {
+  return (
+    <div className="workspace grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" role="status" aria-label="Loading" aria-busy>
+      <div className="flex h-full flex-col border-r bg-card">
+        <div className="flex items-center gap-3 border-b px-4 py-2.5">
+          <Skeleton className="size-4" />
+          <Skeleton className="h-3 w-44" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+        <div className="flex gap-5 border-b px-4 py-2.5">
+          <Skeleton className="h-2.5 w-14" />
+          <Skeleton className="h-2.5 w-20" />
+          <Skeleton className="h-2.5 w-12" />
+        </div>
+        <div className="space-y-2.5 p-4">
+          <Skeleton className="h-2.5 w-full" />
+          <Skeleton className="h-2.5 w-11/12" />
+          <Skeleton className="h-2.5 w-4/5" />
+          <Skeleton className="mt-5 h-2.5 w-24" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="mt-4 h-2.5 w-28" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      </div>
+      <div className="flex h-full flex-col bg-[#1e1e1e]">
+        <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
+          <div className="h-7 w-44 animate-pulse rounded-[3px] bg-white/10" />
+          <div className="h-4 w-12 animate-pulse rounded-[3px] bg-white/5" />
+        </div>
+        <div className="flex-1 space-y-2.5 p-4">
+          {[11, 8, 6, 9, 5, 10, 7].map((w, i) => (
+            <div key={i} className="h-2.5 animate-pulse rounded-[3px] bg-white/5" style={{ width: `${w * 6}%` }} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

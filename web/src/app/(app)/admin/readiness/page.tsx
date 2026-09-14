@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { Progress } from "@/components/ui/progress";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/client";
 import { cn } from "@/lib/utils";
 
@@ -89,7 +89,7 @@ export default function ReadinessPage() {
       />
 
       {!ready ? (
-        <CardSkeleton lines={9} />
+        <ListSkeleton rows={9} />
       ) : (
         <div className="space-y-5">
           <Card className={cn("overflow-hidden", allClear && "border-green/40")}>

@@ -6,7 +6,7 @@ import { Icon } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, errorMessage } from "@/lib/client";
@@ -25,7 +25,7 @@ export default function ResultsPage() {
   return (
     <PageBody className="animate-fade-in">
       <PageHeader title="My Phase 1 results" description="Pending items are still with an evaluator." />
-      {error ? <EmptyState icon={<Icon.Clock size={20} />} title="Not available yet" body={error} /> : !data ? <CardSkeleton lines={6} /> : (
+      {error ? <EmptyState icon={<Icon.Clock size={20} />} title="Not available yet" body={error} /> : !data ? <ListSkeleton rows={6} /> : (
         <div className="space-y-4">
           <StatRow cols={4}>
             <Stat label="Total points" value={data.standing?.points ?? 0} tone="success" icon={<Icon.Trophy size={13} />} hint={data.standing?.provisional ? "provisional — grading continues" : "final"} />

@@ -1,36 +1,173 @@
 import { cn } from "@/lib/utils";
 
+/**
+ * Loading placeholders.
+ *
+ * A skeleton is only worth showing if it is the shape of the thing that
+ * arrives. A generic grey card in front of a table is worse than nothing: the
+ * page settles once into the placeholder and then jumps again into a layout
+ * that looks nothing like it, which reads as a glitch rather than as loading.
+ *
+ * So these mirror the real components — same heights, same column rhythm, same
+ * hairlines — and each page uses the one matching what it renders.
+ *
+ * One `role="status"` on the wrapper and nothing readable inside: a screen
+ * reader should hear "loading", not count forty empty boxes.
+ */
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="skeleton" className={cn("animate-pulse rounded-md bg-muted", className)} {...props} />;
+  return <div data-slot="skeleton" className={cn("animate-pulse rounded-[3px] bg-border", className)} {...props} />;
 }
 
-export { Skeleton };
-
-/** A card-shaped loading placeholder, so a page does not jump when data lands. */
-function CardSkeleton({ lines = 3, className }: { lines?: number; className?: string }) {
+/**
+ * The wrapper every skeleton sits in.
+ *
+ * It is the layout element itself — no extra div inside — because wrapping the
+ * children would break any grid or flex laid out on it, which is exactly the
+ * kind of bug that makes a skeleton stop matching the thing it stands for.
+ * The bars carry no text, so nothing here needs hiding from a screen reader
+ * beyond the one label on this element.
+ */
+function Loading({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={cn("rounded-md border bg-card p-5", className)} aria-hidden>
-      <Skeleton className="mb-4 h-4 w-1/3" />
-      {Array.from({ length: lines }).map((_, i) => (
-        <Skeleton key={i} className={cn("mb-2.5 h-3", i % 2 ? "w-2/3" : "w-full")} />
-      ))}
+    <div role="status" aria-label="Loading" aria-busy className={className}>
+      {children}
     </div>
   );
 }
 
-/** Rows of a table that has not arrived yet. */
-function TableSkeleton({ rows = 6, cols = 4 }: { rows?: number; cols?: number }) {
+/** Widths that repeat so rows do not look like a bar chart of random numbers. */
+const CELL = ["w-16", "w-12", "w-14", "w-10", "w-16", "w-12"];
+
+/**
+ * A table that has not arrived: the header rule, then rows at the real row
+ * height, with a wide first column and narrow figures after it.
+ */
+function TableSkeleton({ rows = 6, cols = 5, firstWide = true }: { rows?: number; cols?: number; firstWide?: boolean }) {
   return (
-    <div aria-hidden className="divide-y">
+    <Loading>
+      <div className="flex h-8 items-center gap-3 border-b">
+        <div className="min-w-0 flex-[2]">
+          <Skeleton className={cn("h-2", firstWide ? "w-24" : "w-12")} />
+        </div>
+        {Array.from({ length: Math.max(0, cols - 1) }).map((_, c) => (
+          // Each trailing column takes its own share of the width, so the
+          // figures land where the real ones do instead of bunching at the
+          // right edge.
+          <div key={c} className="flex flex-1 justify-end">
+            <Skeleton className={cn("h-2", CELL[c % CELL.length])} />
+          </div>
+        ))}
+      </div>
       {Array.from({ length: rows }).map((_, r) => (
-        <div key={r} className="flex h-11 items-center gap-4 px-4">
-          {Array.from({ length: cols }).map((_, c) => (
-            <Skeleton key={c} className={cn("h-3", c === 0 ? "w-1/4" : "flex-1")} />
+        <div key={r} className="flex h-10 items-center gap-3 border-b">
+          <div className="min-w-0 flex-[2]">{c0(r, firstWide)}</div>
+          {Array.from({ length: Math.max(0, cols - 1) }).map((_, c) => (
+            <div key={c} className="flex flex-1 justify-end">
+              <Skeleton className={cn("h-2.5", CELL[(c + r) % CELL.length])} />
+            </div>
           ))}
         </div>
       ))}
+    </Loading>
+  );
+}
+
+/** The first cell carries a title and, often, a mono id under it. */
+function c0(r: number, wide: boolean) {
+  if (!wide) return <Skeleton className="h-2.5 w-20" />;
+  return (
+    <div className="space-y-1.5">
+      <Skeleton className={cn("h-2.5", r % 3 === 0 ? "w-56" : r % 3 === 1 ? "w-40" : "w-48")} />
+      <Skeleton className="h-2 w-28" />
     </div>
   );
 }
 
-export { CardSkeleton, TableSkeleton };
+/** The ruled readout strip above a table. */
+function StatStripSkeleton({ cols = 4 }: { cols?: number }) {
+  const map: Record<number, string> = {
+    2: "sm:grid-cols-2",
+    3: "sm:grid-cols-3",
+    4: "sm:grid-cols-2 lg:grid-cols-4",
+    5: "sm:grid-cols-2 lg:grid-cols-5",
+  };
+  return (
+    <Loading className={cn("grid grid-cols-2 divide-x divide-y border-b sm:divide-y-0", map[cols] ?? map[4])}>
+      {Array.from({ length: cols }).map((_, i) => (
+        <div key={i} className="px-4 py-2.5 first:pl-0">
+          <Skeleton className="h-2.5 w-20" />
+          <Skeleton className="mt-2 h-4 w-12" />
+          <Skeleton className="mt-2 h-2.5 w-24" />
+        </div>
+      ))}
+    </Loading>
+  );
+}
+
+/** Hairline rows of prose: announcements, an audit trail, a result list. */
+function ListSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <Loading className="border-t">
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex items-start gap-3 border-b py-3">
+          <Skeleton className="mt-0.5 size-3.5 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className={cn("h-2.5", r % 2 ? "w-2/5" : "w-1/3")} />
+            <Skeleton className={cn("h-2", r % 3 ? "w-4/5" : "w-3/5")} />
+          </div>
+          <Skeleton className="h-2 w-14 shrink-0" />
+        </div>
+      ))}
+    </Loading>
+  );
+}
+
+/** Settings: a label and its explanation on the left, a control on the right. */
+function FieldsSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <Loading className="border-t">
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex items-center gap-6 border-b py-3.5">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className={cn("h-2.5", r % 2 ? "w-40" : "w-32")} />
+            <Skeleton className={cn("h-2", r % 3 ? "w-3/5" : "w-2/5")} />
+          </div>
+          <Skeleton className="h-8 w-32 shrink-0" />
+        </div>
+      ))}
+    </Loading>
+  );
+}
+
+/** A block of prose or a detail pane, where no stronger shape is known. */
+function TextSkeleton({ lines = 4, className }: { lines?: number; className?: string }) {
+  return (
+    <Loading className={className}>
+      {Array.from({ length: lines }).map((_, i) => (
+        <Skeleton key={i} className={cn("mb-2.5 h-2.5", i === lines - 1 ? "w-2/5" : i % 2 ? "w-4/5" : "w-full")} />
+      ))}
+    </Loading>
+  );
+}
+
+/**
+ * What most administration screens are: an optional readout strip, the filter
+ * bar, and a table. One component so every list page waits the same way.
+ */
+function PageSkeleton({ stats = 0, rows = 7, cols = 5, toolbar = true }: { stats?: number; rows?: number; cols?: number; toolbar?: boolean }) {
+  return (
+    <div className="space-y-5">
+      {stats > 0 && <StatStripSkeleton cols={stats} />}
+      {toolbar && (
+        <Loading className="flex items-center gap-2">
+          <Skeleton className="h-9 w-full max-w-[22rem]" />
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="ml-auto h-2.5 w-12" />
+        </Loading>
+      )}
+      <TableSkeleton rows={rows} cols={cols} />
+    </div>
+  );
+}
+
+export { Skeleton, TableSkeleton, StatStripSkeleton, ListSkeleton, FieldsSkeleton, TextSkeleton, PageSkeleton };

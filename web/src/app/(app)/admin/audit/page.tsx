@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SearchInput } from "@/components/ui/field";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { PageSkeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
 
@@ -46,7 +46,7 @@ export default function AuditPage() {
       />
 
       {!rows ? (
-        <CardSkeleton lines={8} />
+        <PageSkeleton rows={9} cols={5} />
       ) : (
         <Section padded={false}>
           <Toolbar>

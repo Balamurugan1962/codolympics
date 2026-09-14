@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { SimpleSelect } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { TextSkeleton } from "@/components/ui/skeleton";
 import { Checklist, Summary, SummaryItem } from "@/components/ui/summary";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -52,7 +52,7 @@ export default function ProblemPage() {
   useEffect(() => { void load(); }, [load]);
   function goTab(t: Tab) { setTab(t); router.replace(`/admin/problems/${encodeURIComponent(id)}?tab=${t}`, { scroll: false }); }
 
-  if (problem === undefined || question === undefined) return <PageBody width="wide"><CardSkeleton lines={10} /></PageBody>;
+  if (problem === undefined || question === undefined) return <PageBody width="wide"><TextSkeleton lines={8} /></PageBody>;
   const hackOnly = Boolean(problem?.hack_only);
   // A passing validation counts wherever it ran; where it ran is said out loud
   // rather than being the difference between "Validated" and "Not validated".

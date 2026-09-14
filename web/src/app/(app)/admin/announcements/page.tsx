@@ -19,7 +19,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Hint } from "@/components/ui/hint";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { api, errorMessage } from "@/lib/client";
@@ -134,7 +134,7 @@ export default function AnnouncementsPage() {
         >
           {!rows ? (
             <div className="p-5">
-              <CardSkeleton lines={4} className="border-0 p-0 shadow-none" />
+              <ListSkeleton rows={4} />
             </div>
           ) : rows.length === 0 ? (
             <EmptyState compact icon={<Icon.Megaphone />} title="Nothing announced yet" />

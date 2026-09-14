@@ -20,7 +20,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { ReorderList } from "@/components/ui/reorder-list";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
@@ -80,7 +80,7 @@ export default function AuctionOrderPage() {
       )}
 
       {!rows ? (
-        <CardSkeleton lines={6} />
+        <ListSkeleton rows={6} />
       ) : rows.length === 0 ? (
         <Section padded={false}>
           <EmptyState icon={<Icon.Gavel />} title="No auction questions yet" body="Add problems and give them contest details first." />

@@ -21,7 +21,7 @@ import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { SimpleSelect } from "@/components/ui/select";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { PageSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,7 +81,7 @@ export default function PeoplePage() {
       />
 
       {!rows ? (
-        <CardSkeleton lines={8} />
+        <PageSkeleton stats={4} rows={8} cols={5} />
       ) : all.length === 0 ? (
         <Section padded={false}>
           <EmptyState
