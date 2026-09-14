@@ -407,6 +407,11 @@ function LiveAuction() {
   if (!a) return null;
   const lot = a.lot;
   const position = lot ? a.order.findIndex((o) => o.id === lot.id) + 1 : 0;
+  // Whether a clock is actually running on the open lot: before the first bid
+  // it is the opening window, after it the countdown, and either may have been
+  // switched off by hand.
+  const timerOn = Boolean(lot && (lot.current_bid !== null ? lot.bidding_ends_at : lot.no_bid_deadline));
+  const offline = a.mode === "offline";
 
   return (
     <Section
@@ -431,18 +436,64 @@ function LiveAuction() {
               toast({ title: "Lot closed", tone: "success" });
             }}
           />
-          <ReasonAction
-            label="Disable timer"
-            title="Disable the countdown on this lot"
-            disabled={!lot}
-            icon={<Icon.Pause size={14} />}
-            defaultReason={lot ? `Running ${lot.title} to a manual close.` : "Running this lot to a manual close."}
-            description="Bidding then stays open until you close it by hand."
-            onConfirm={async (reason) => {
-              await api.post("/api/admin/lots/disable-timer", { reason });
-              toast({ title: "Timer disabled", tone: "success" });
-            }}
-          />
+          {/* Everything that can be stopped here can be started again here.
+              Sending someone to another page to undo what this card just did is
+              how a timer stays off for the rest of a round. */}
+          {!offline &&
+            (timerOn ? (
+              <ReasonAction
+                label="Stop the timer"
+                title="Run this lot to a manual close"
+                disabled={!lot}
+                icon={<Icon.Pause size={14} />}
+                defaultReason={lot ? `Running ${lot.title} to a manual close.` : "Running this lot to a manual close."}
+                description="Bidding then stays open until you close it by hand. You can start it again from here."
+                onConfirm={async (reason) => {
+                  await api.post("/api/admin/auction/timer", { reason, mode: "off" });
+                  toast({ title: "Timer stopped", description: "This lot now closes only by hand.", tone: "success" });
+                }}
+              />
+            ) : (
+              <ReasonAction
+                label="Restart timer"
+                title="Put the countdown back on this lot"
+                disabled={!lot}
+                icon={<Icon.Play size={14} />}
+                defaultReason={lot ? `Putting the clock back on ${lot.title}.` : "Putting the clock back on."}
+                description="A full countdown starts now, and the lot settles on its own again."
+                onConfirm={async (reason) => {
+                  await api.post("/api/admin/auction/timer", { reason, mode: "restart" });
+                  toast({ title: "Timer restarted", tone: "success" });
+                }}
+              />
+            ))}
+
+          {a.paused ? (
+            <ReasonAction
+              label="Resume"
+              variant="default"
+              title="Resume the auction"
+              icon={<Icon.Play size={14} />}
+              defaultReason="Resuming the auction."
+              description="Every deadline moves forward by exactly how long it was held, so whatever time was left is still there."
+              onConfirm={async (reason) => {
+                await api.post("/api/admin/auction/resume", { reason });
+                toast({ title: "Auction resumed", tone: "success" });
+              }}
+            />
+          ) : (
+            <ReasonAction
+              label="Pause"
+              title="Pause the auction"
+              icon={<Icon.Pause size={14} />}
+              defaultReason="Pausing the auction."
+              description="The clock stops where it is, bids are refused, and nothing settles until you resume."
+              onConfirm={async (reason) => {
+                await api.post("/api/admin/auction/pause", { reason });
+                toast({ title: "Auction paused", tone: "success" });
+              }}
+            />
+          )}
         </>
       }
     >
@@ -457,7 +508,15 @@ function LiveAuction() {
           </SummaryItem>
           <SummaryItem label={lot.current_bid !== null ? "Closes in" : "Opens for"}>
             <span className="text-[15px] font-semibold">
-              <Countdown until={lot.current_bid !== null ? lot.bidding_ends_at : lot.no_bid_deadline} />
+              {a.paused ? (
+                <span className="text-amber">held</span>
+              ) : offline ? (
+                <span className="text-muted-foreground">in the room</span>
+              ) : timerOn ? (
+                <Countdown until={lot.current_bid !== null ? lot.bidding_ends_at : lot.no_bid_deadline} />
+              ) : (
+                <span className="text-muted-foreground">no timer — closes by hand</span>
+              )}
             </span>
           </SummaryItem>
         </Summary>

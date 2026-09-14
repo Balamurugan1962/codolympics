@@ -23,7 +23,16 @@ export async function stateFor(viewer: Viewer) {
     contest: phaseSnapshot(c),
     announcements: await db.select().from(announcement).orderBy(desc(announcement.id)).limit(20),
   };
-  if (viewer.role !== "participant") return base;
+  if (viewer.role !== "participant") {
+    /*
+     * Organisers are watching the same room, so they get the same auction
+     * snapshot — it is the participant-facing one, so nothing secret travels
+     * with it. Without this the dashboard's live auction card had no data and
+     * silently rendered nothing, which is why its controls appeared to be
+     * missing rather than broken.
+     */
+    return { ...base, auction: isAuction(c.phase) ? await auctionSnapshot(c.phase === "auction2" ? 2 : 1) : null };
+  }
 
   const [p] = await db.select().from(participant).where(eq(participant.userId, viewer.id));
   const unread = await db
