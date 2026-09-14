@@ -5,8 +5,25 @@ import { cn } from "@/lib/utils"
 import { XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"
 
-function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />
+/**
+ * Focus on close. See the note in dialog.tsx: Base UI returns focus to its own
+ * Trigger, and these are opened from React state rather than a Trigger, so the
+ * previously focused element is captured and handed back as `finalFocus`.
+ */
+const ReturnFocus = React.createContext<React.RefObject<HTMLElement | null> | null>(null)
+
+function Sheet({ open, ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
+  const returnTo = React.useRef<HTMLElement | null>(null)
+  const wasOpen = React.useRef(false)
+  if (open && !wasOpen.current && typeof document !== "undefined") {
+    returnTo.current = document.activeElement as HTMLElement | null
+  }
+  wasOpen.current = Boolean(open)
+  return (
+    <ReturnFocus.Provider value={returnTo}>
+      <SheetPrimitive.Root data-slot="sheet" open={open} {...props} />
+    </ReturnFocus.Provider>
+  )
 }
 
 function SheetTrigger({
@@ -53,10 +70,12 @@ function SheetContent({
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
 }) {
+  const returnTo = React.useContext(ReturnFocus)
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Popup
+        finalFocus={returnTo ?? undefined}
         data-slot="sheet-content"
         className={cn(
           "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[closed]:animate-out data-[closed]:duration-300 data-[open]:animate-in data-[open]:duration-500",

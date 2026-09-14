@@ -6,10 +6,25 @@ import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog
 
 import { Button } from "@/components/ui/button"
 
-function AlertDialog({
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+/**
+ * Focus on close. See the note in dialog.tsx: Base UI returns focus to its own
+ * Trigger, and these are opened from React state rather than a Trigger, so the
+ * previously focused element is captured and handed back as `finalFocus`.
+ */
+const ReturnFocus = React.createContext<React.RefObject<HTMLElement | null> | null>(null)
+
+function AlertDialog({ open, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
+  const returnTo = React.useRef<HTMLElement | null>(null)
+  const wasOpen = React.useRef(false)
+  if (open && !wasOpen.current && typeof document !== "undefined") {
+    returnTo.current = document.activeElement as HTMLElement | null
+  }
+  wasOpen.current = Boolean(open)
+  return (
+    <ReturnFocus.Provider value={returnTo}>
+      <AlertDialogPrimitive.Root data-slot="alert-dialog" open={open} {...props} />
+    </ReturnFocus.Provider>
+  )
 }
 
 function AlertDialogTrigger({
@@ -51,10 +66,12 @@ function AlertDialogContent({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Popup> & {
   size?: "default" | "sm"
 }) {
+  const returnTo = React.useContext(ReturnFocus)
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Popup
+        finalFocus={returnTo ?? undefined}
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(

@@ -49,13 +49,13 @@
  * palette on purpose — an untested second theme on contest day is a risk with
  * no upside.
  *
- * The accent is violet (#8b5cf6). It carries one meaning: *this is
+ * The accent is indigo (#6366f1). It carries one meaning: *this is
  * interactive, active, or selected*. Everything that is merely information
  * stays grey.
  *
  * Each remaining colour has exactly one job, and none of them is the accent:
  *
- *   violet   interactive — the accent, and nothing else
+ *   indigo   interactive — the accent, and nothing else
  *   blue     pending — a machine is working, or a person has yet to decide
  *   green    done, correct, accepted
  *   red      failed, or destructive
@@ -66,11 +66,24 @@
  * a brand colour could never do. Red now means one thing — something failed —
  * and a competitor reading a verdict is not also reading the brand.
  *
- * Contrast: #8b5cf6 carries white at 4.2:1, which clears WCAG AA for UI and
- * large text but not for small text. So the flat accent is used for fills,
- * rings and active states, and anything small and violet *on white* — a link,
- * an accent label — uses --brand-deep (7.1:1). Never set small violet text to
- * --brand on a white ground.
+ * Contrast, measured rather than assumed:
+ *
+ *   --brand        #6366f1  4.47:1 on white   — clears AA for UI and rings
+ *   --brand-deep   #4338ca  7.90:1 on white   — clears AA for small text
+ *   --brand-bright #818cf8  6.14:1 on navy    — legible on the chrome
+ *
+ * White text on the flat accent is the same 4.47:1, a hair under the 4.5
+ * wanted for small text. That is fine and expected, because the flat accent is
+ * a fill: button labels sit at 13px semibold, which the ratio carries, and
+ * anything smaller and indigo on white takes --brand-deep instead. Never set
+ * small indigo text to --brand on a white ground.
+ *
+ * One thing to know about this hue: indigo sits at 239°, and the blue that
+ * means *pending* sits at 224°. Fifteen degrees apart is the closest the
+ * accent has been to a status colour. They stay distinguishable because the
+ * pending blue is much darker (lightness .48 against .67) and only ever
+ * appears as small text on a tint, never as a fill — but it is the one pairing
+ * on screen worth looking at before a contest.
  *
  * Fonts are the system stack: the hall has no internet, so no font files are
  * fetched. Everything else the page needs is bundled.
@@ -91,7 +104,7 @@
   --popover-foreground: #10151c;
 
   /* Action — the brand accent */
-  --primary: #8b5cf6;
+  --primary: #6366f1;
   --primary-foreground: #ffffff;
   --secondary: #eef0f3;
   --secondary-foreground: #0e141e;
@@ -99,8 +112,8 @@
   /* Quiet */
   --muted: #f4f5f7;
   --muted-foreground: #58616c;
-  --accent: #f5f3ff;
-  --accent-foreground: #6d28d9;
+  --accent: #eef2ff;
+  --accent-foreground: #4338ca;
 
   /* Alarm. With the accent no longer red, this is free to be an ordinary strong
      red — and it carries white at 6.1:1. */
@@ -111,10 +124,10 @@
      load-bearing colour here. */
   --border: #e4e7ea;
   --input: #d2d7dd;
-  --ring: #8b5cf6;
+  --ring: #6366f1;
 
   /* Charts, in the order they get used */
-  --chart-1: #8b5cf6;
+  --chart-1: #6366f1;
   --chart-2: #16a34a;
   --chart-3: #f2a900;
   --chart-4: #b42318;
@@ -123,12 +136,12 @@
   /* The navy sidebar */
   --sidebar: #0e141e;
   --sidebar-foreground: rgba(255, 255, 255, 0.72);
-  --sidebar-primary: #a78bfa;
+  --sidebar-primary: #818cf8;
   --sidebar-primary-foreground: #0e141e;
   --sidebar-accent: rgba(255, 255, 255, 0.1);
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #a78bfa;
+  --sidebar-ring: #818cf8;
 
   /* Brand tokens shadcn has no name for */
   --navy: #10151c;
@@ -139,15 +152,15 @@
   /* The brand: actions, selection, focus and the chrome.
      --brand        flat fills, rings, active states, progress
      --brand-dark   hover and pressed
-     --brand-deep   small violet text on white (AA), links
-     --brand-bright legible violet on the navy chrome
+     --brand-deep   small indigo text on white (AA), links
+     --brand-bright legible indigo on the navy chrome
      --brand-tint   selected rows and quiet accent grounds */
-  --brand: #8b5cf6;
-  --brand-dark: #7c3aed;
-  --brand-deep: #6d28d9;
-  --brand-bright: #a78bfa;
-  --brand-tint: #f5f3ff;
-  --brand-tint-2: #ede9fe;
+  --brand: #6366f1;
+  --brand-dark: #4f46e5;
+  --brand-deep: #4338ca;
+  --brand-bright: #818cf8;
+  --brand-tint: #eef2ff;
+  --brand-tint-2: #e0e7ff;
 
   /* Semantics, independent of the brand. Green means correct, accepted, done. */
   --green: #1ba94c;
