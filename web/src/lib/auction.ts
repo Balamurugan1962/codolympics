@@ -60,6 +60,10 @@ export async function auctionSnapshot(round: number) {
 
   return {
     round,
+    /* Participants see this too: a frozen countdown with no explanation reads
+     * as a broken page, and the first thing they do is reload. */
+    paused: c.auctionPausedAt !== null,
+    paused_at: c.auctionPausedAt?.toISOString() ?? null,
     increment: c.bidIncrement,
     countdown_seconds: c.countdownSeconds,
     opening_window_seconds: c.openingWindowSeconds,
@@ -96,6 +100,7 @@ export function nextBidAmount(currentBid: number | null, basePrice: number, incr
 // ---------------------------------------------------------------------------
 
 export type BidRejection =
+  | "auction_paused"
   | "bidding_closed"
   | "already_highest"
   | "wrong_increment"
@@ -117,6 +122,7 @@ export async function placeBid(participantId: string, lotId: number, amount: num
 
     const reject = (code: BidRejection, message: string) => errors.conflict(code, message);
     if (p.disqualifiedAt) throw reject("disqualified", "your account is disqualified");
+    if (c.auctionPausedAt) throw reject("auction_paused", "the organisers have paused the auction");
     if (l.state !== "open") throw reject("bidding_closed", "bidding on this question has closed");
     if (l.currentBidderId === participantId) throw reject("already_highest", "you already hold the highest bid");
     const expected = nextBidAmount(l.currentBid, q.basePrice, c.bidIncrement);
@@ -169,6 +175,7 @@ export async function createLotsForRound(round: 1 | 2): Promise<number> {
 /** Open the next pending lot of the round, if any. Returns whether one opened. */
 export async function openNextLot(round: number): Promise<boolean> {
   const c = await getContest();
+  if (c.auctionPausedAt) return false;
   const opened = await db.transaction(async (tx) => {
     const [already] = await tx.select({ id: lot.id }).from(lot).where(eq(lot.state, "open")).limit(1);
     if (already) return false;
@@ -242,16 +249,6 @@ export async function closeLotNow(actorId: string, reason: string): Promise<void
   await openNextLot(c.phase === "auction2" ? 2 : 1);
 }
 
-/** Administrator: pull the countdown off the open lot so only a manual close ends it. */
-export async function disableTimerOnOpenLot(actorId: string, reason: string): Promise<void> {
-  const open = await currentLot();
-  if (!open) throw errors.conflict("no_open_lot", "no question is open for bidding");
-  await db.update(lot).set({ biddingEndsAt: null, noBidDeadline: null }).where(eq(lot.id, open.lot.id));
-  await audit({ actorId, action: "lot.timer_disabled", target: String(open.lot.id), reason });
-  const c = await getContest();
-  publish("auction", await auctionSnapshot(c.phase === "auction2" ? 2 : 1));
-}
-
 /**
  * The scheduler calls this every tick. Deadlines are columns, so a restart
  * loses nothing -- the loop rereads them and carries on (decision 66).
@@ -259,6 +256,7 @@ export async function disableTimerOnOpenLot(actorId: string, reason: string): Pr
 export async function tickAuction(): Promise<void> {
   const c = await getContest();
   if (c.phase !== "auction1" && c.phase !== "auction2") return;
+  if (c.auctionPausedAt) return; // held by an administrator; resume shifts the deadlines
   const round = c.phase === "auction2" ? 2 : 1;
   const open = await currentLot();
   const now = Date.now();

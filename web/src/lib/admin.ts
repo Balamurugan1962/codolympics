@@ -23,7 +23,8 @@ import { deleteAllPackages } from "./problems";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-async function credit(tx: Tx, participantId: string, delta: number, reason: "refund" | "admin_adjust", ref: string): Promise<number> {
+/** Exported for auction-control.ts, which undoes sales and so moves money the same way. */
+export async function credit(tx: Tx, participantId: string, delta: number, reason: "refund" | "admin_adjust", ref: string): Promise<number> {
   const [p] = await tx.select().from(participant).where(eq(participant.userId, participantId)).for("update");
   if (!p) throw errors.notFound("participant");
   const balanceAfter = p.balance + delta;
@@ -33,7 +34,7 @@ async function credit(tx: Tx, participantId: string, delta: number, reason: "ref
   return balanceAfter;
 }
 
-async function notify(tx: Tx, participantId: string, bodyMd: string): Promise<void> {
+export async function notify(tx: Tx, participantId: string, bodyMd: string): Promise<void> {
   await tx.insert(notification).values({ participantId, bodyMd });
 }
 

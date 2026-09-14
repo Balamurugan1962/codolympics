@@ -26,7 +26,7 @@ async function reset() {
 beforeAll(async () => {
   await reset();
   await db.insert(contest).values({ id: 1 }).onConflictDoNothing();
-  await db.update(contest).set({ phase: "auction1", bidIncrement: 10, countdownSeconds: 60, openingWindowSeconds: 60, ownershipCap: null }).where(eq(contest.id, 1));
+  await db.update(contest).set({ phase: "auction1", bidIncrement: 10, countdownSeconds: 60, openingWindowSeconds: 60, ownershipCap: null, auctionPausedAt: null }).where(eq(contest.id, 1));
   await db.insert(question).values({ id: "test-q", title: "Test", difficulty: "easy", score: 100, basePrice: 100, auctionOrder: 1 });
   for (const id of ids) {
     await db.insert(user).values({ id, name: id, email: `${id}@contest.local`, emailVerified: false, createdAt: new Date(), updatedAt: new Date(), role: "participant" } as never);

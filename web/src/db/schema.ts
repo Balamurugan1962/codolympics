@@ -74,6 +74,15 @@ export const contest = pgTable(
 
     leaderboardMode: text("leaderboard_mode").$type<LeaderboardMode>().notNull().default("live"),
     leaderboardFrozenAt: ts("leaderboard_frozen_at"),
+
+    /**
+     * Set while an administrator has the auction held. The scheduler stops
+     * settling lots and bids are refused; on resume every lot deadline is
+     * pushed forward by exactly how long this was set, so a lot with eight
+     * seconds left still has eight seconds (decision: pause gives the time
+     * back). Null means the auction is running.
+     */
+    auctionPausedAt: ts("auction_paused_at"),
   },
   (t) => [check("contest_single_row", sql`${t.id} = 1`)],
 );
@@ -141,7 +150,9 @@ export const lot = pgTable(
     id: bigserial("id", { mode: "number" }).primaryKey(),
     questionId: text("question_id").notNull().references(() => question.id),
     round: integer("round").notNull(), // 1 or 2
-    state: text("state").$type<"pending" | "open" | "closed" | "unsold">().notNull().default("pending"),
+    // withdrawn: pulled off the block by an administrator. Nothing was sold and
+    // no money moved; it can be restored to pending and offered again.
+    state: text("state").$type<"pending" | "open" | "closed" | "unsold" | "withdrawn">().notNull().default("pending"),
     order: integer("order").notNull(),
     openedAt: ts("opened_at"),
     // The clock lives here, not in a timer (decision 66). A scheduler reads it.

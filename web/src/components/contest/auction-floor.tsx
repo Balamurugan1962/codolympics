@@ -43,6 +43,10 @@ export function AuctionFloor() {
   const sold = auction.order.filter((o) => o.state === "closed").length;
   const position = lot ? auction.order.findIndex((o) => o.id === lot.id) + 1 : 0;
   const stepsLeft = lot && affordable ? Math.floor((balance - lot.next_bid) / auction.increment) : 0;
+  /* An administrator is holding the auction. The ring is frozen and the server
+   * refuses bids, so say so rather than leaving a stopped clock and a button
+   * that fails — a silent freeze reads as a broken page and everyone reloads. */
+  const paused = auction.paused;
 
   async function bid() {
     if (!lot) return;
@@ -81,8 +85,12 @@ export function AuctionFloor() {
                     <p className="mt-3 text-[11.5px] text-faint">The statement is what you are buying. You will read it only if you win.</p>
                   </div>
                   <div className="flex justify-center">
-                    <div key={hasBids ? lot.bidding_ends_at ?? "manual" : lot.no_bid_deadline ?? "manual"} className={hasBids ? "pulse-once rounded-full" : ""}>
-                      <CountdownRing until={hasBids ? lot.bidding_ends_at : lot.no_bid_deadline} totalSeconds={hasBids ? auction.countdown_seconds : auction.opening_window_seconds} label={hasBids ? (lot.bidding_ends_at ? "to close" : "manual close") : "to open bids"} />
+                    <div key={hasBids ? lot.bidding_ends_at ?? "manual" : lot.no_bid_deadline ?? "manual"} className={hasBids && !paused ? "pulse-once rounded-full" : ""}>
+                      <CountdownRing
+                        until={paused ? null : hasBids ? lot.bidding_ends_at : lot.no_bid_deadline}
+                        totalSeconds={hasBids ? auction.countdown_seconds : auction.opening_window_seconds}
+                        label={paused ? "paused" : hasBids ? (lot.bidding_ends_at ? "to close" : "manual close") : "to open bids"}
+                      />
                     </div>
                   </div>
                 </div>
@@ -108,11 +116,11 @@ export function AuctionFloor() {
                 <div className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:flex-row sm:items-center">
                   {eligible ? (
                     <>
-                      <Button size="lg" onClick={bid} loading={busy} disabled={mine || !affordable} className="sm:min-w-44"><Icon.Gavel size={16} /> 
-                        {mine ? "You're winning" : `Bid ${lot.next_bid}`}
+                      <Button size="lg" onClick={bid} loading={busy} disabled={paused || mine || !affordable} className="sm:min-w-44"><Icon.Gavel size={16} /> 
+                        {paused ? "Paused" : mine ? "You're winning" : `Bid ${lot.next_bid}`}
                       </Button>
                       <span className="text-[13px] text-muted-foreground" aria-live="polite">
-                        {mine ? "Nobody has outbid you. If the ring empties, the question is yours." : !affordable ? `You'd need ${lot.next_bid - balance} more.` : hasBids ? "Outbid to restart the countdown." : "Be the first: the countdown starts on the first bid."}
+                        {paused ? "The organisers have paused the auction. The clock is stopped and nothing is lost — bidding resumes with the time that was left." : mine ? "Nobody has outbid you. If the ring empties, the question is yours." : !affordable ? `You'd need ${lot.next_bid - balance} more.` : hasBids ? "Outbid to restart the countdown." : "Be the first: the countdown starts on the first bid."}
                       </span>
                     </>
                   ) : viewer.role === "participant" ? (
