@@ -131,7 +131,7 @@ export function Section({
 /** Filters on the left, actions on the right, sitting above a table. */
 export function Toolbar({ children, actions, className }: { children?: ReactNode; actions?: ReactNode; className?: string }) {
   return (
-    <div className={cn("flex flex-wrap items-center gap-2 border-b py-2", className)}>
+    <div className={cn("flex flex-wrap items-center gap-2 pb-3", className)}>
       {children}
       {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
     </div>

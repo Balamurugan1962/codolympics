@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useContest } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
+import { Pagination, usePaged } from "@/components/ui/pagination";
 import { PHASE_LABEL } from "@/components/shell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge, StatusDot } from "@/components/ui/badge";
@@ -66,6 +67,7 @@ export default function PeoplePage() {
   const inPhase2 = ["auction1", "coding1", "auction2", "final"].includes(phase);
   const all = rows ?? [];
   const shown = all.filter((r) => !filter || r.name.toLowerCase().includes(filter.toLowerCase()) || (r.username ?? "").toLowerCase().includes(filter.toLowerCase()));
+  const paged = usePaged(shown, { param: "page" });
   const ownNothing = inPhase2 ? all.filter((r) => r.owned === 0 && !r.disqualified).length : 0;
   const money = all.reduce((s, r) => s + r.balance, 0);
 
@@ -128,7 +130,7 @@ export default function PeoplePage() {
                 onClear={() => setFilter("")}
               />
               <span className="ml-auto text-[12px] text-muted-foreground">
-                {shown.length} of {all.length}
+{paged.from}–{paged.to} of {paged.total}
               </span>
             </Toolbar>
             <Table>
@@ -145,7 +147,7 @@ export default function PeoplePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {shown.map((p) => (
+                {paged.rows.map((p) => (
                   <TableRow key={p.id} className={p.disqualified ? "opacity-60" : ""}>
                     <TableCell>
                       <div className="font-semibold">{p.name}</div>
@@ -189,6 +191,7 @@ export default function PeoplePage() {
                 ))}
               </TableBody>
             </Table>
+            <Pagination paged={paged} unit="people" />
             {shown.length === 0 && <EmptyState compact icon={<Icon.Search />} title="Nobody matches that filter" />}
           </Section>
         </div>
