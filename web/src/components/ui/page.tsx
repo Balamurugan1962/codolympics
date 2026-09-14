@@ -1,12 +1,16 @@
 /**
  * Page scaffolding shared by every screen.
  *
- * One rhythm everywhere: a centred content column with a fixed gutter, a header
- * that states what this page is and offers its primary action, and sections —
- * shadcn Cards with a titled band — that group related things.
+ * A page is one surface. Regions are separated by a hairline and named by a
+ * small label — not by white cards floating on grey, which is how every
+ * administration tool built from a template looks and which turns a dense
+ * screen into a bag of boxes.
  *
- * Anything a page needs to lay itself out should come from here rather than
- * from ad-hoc divs, so spacing stays identical across 27 screens.
+ * `Section` therefore draws a rule and a label, and nothing else. Pass
+ * `boxed` for the rare region that genuinely is a discrete object.
+ *
+ * Anything a page needs to lay itself out comes from here, so spacing stays
+ * identical across 27 screens.
  */
 import type { ReactNode } from "react";
 
@@ -50,14 +54,15 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("mb-5", className)}>
+    <header className={cn("mb-4", className)}>
       {breadcrumb && <div className="mb-2">{breadcrumb}</div>}
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          {/* An administration console is a tool, not a publication. The title
-              says which screen you are on and then gets out of the way. */}
-          <h1 className="text-[17px] leading-tight font-semibold tracking-[-0.012em]">{title}</h1>
-          {description && <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-muted-foreground">{description}</p>}
+          {/* A tool, not a publication: the title says which screen this is and
+              gets out of the way. Most pages need no description at all — if
+              the screen needs a paragraph to explain it, fix the screen. */}
+          <h1 className="text-[15px] leading-tight font-semibold tracking-[-0.008em]">{title}</h1>
+          {description && <p className="mt-0.5 max-w-[70ch] text-[12px] leading-relaxed text-muted-foreground">{description}</p>}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
       </div>
@@ -66,8 +71,11 @@ export function PageHeader({
 }
 
 /**
- * A group of related content: a titled card with an optional action and footer.
- * `title` should be nameable in three words — anything longer is two sections.
+ * A named region: a label, a rule, and the content under it.
+ *
+ * `title` should be nameable in three words — anything longer is two regions.
+ * `boxed` puts it back in a bordered panel, for the few places where the
+ * content really is a separate object rather than the next part of the page.
  */
 export function Section({
   title,
@@ -75,6 +83,7 @@ export function Section({
   actions,
   footer,
   padded = true,
+  boxed = false,
   className,
   bodyClassName,
   children,
@@ -84,29 +93,45 @@ export function Section({
   actions?: ReactNode;
   footer?: ReactNode;
   padded?: boolean;
+  boxed?: boolean;
   className?: string;
   bodyClassName?: string;
   children: ReactNode;
 }) {
+  if (boxed) {
+    return (
+      <Card className={cn("overflow-hidden", className)}>
+        {(title || actions) && (
+          <CardHeader>
+            <CardTitle>{title}</CardTitle>
+            {description && <CardDescription>{description}</CardDescription>}
+            {actions && <CardAction>{actions}</CardAction>}
+          </CardHeader>
+        )}
+        {padded ? <CardContent className={bodyClassName}>{children}</CardContent> : <div className={bodyClassName}>{children}</div>}
+        {footer && <CardFooter className="justify-end">{footer}</CardFooter>}
+      </Card>
+    );
+  }
   return (
-    <Card className={cn("overflow-hidden", className)}>
+    <section className={cn("min-w-0", className)}>
       {(title || actions) && (
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          {description && <CardDescription>{description}</CardDescription>}
-          {actions && <CardAction>{actions}</CardAction>}
-        </CardHeader>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b pb-1.5">
+          {title && <h2 className="text-[11px] font-semibold tracking-[0.08em] text-faint uppercase">{title}</h2>}
+          {description && <p className="min-w-0 text-[12px] text-muted-foreground">{description}</p>}
+          {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
+        </div>
       )}
-      {padded ? <CardContent className={bodyClassName}>{children}</CardContent> : <div className={bodyClassName}>{children}</div>}
-      {footer && <CardFooter className="justify-end">{footer}</CardFooter>}
-    </Card>
+      <div className={cn(padded && (title || actions) ? "pt-3" : undefined, bodyClassName)}>{children}</div>
+      {footer && <div className="mt-3 flex justify-end gap-2 border-t pt-3">{footer}</div>}
+    </section>
   );
 }
 
 /** Filters on the left, actions on the right, sitting above a table. */
 export function Toolbar({ children, actions, className }: { children?: ReactNode; actions?: ReactNode; className?: string }) {
   return (
-    <div className={cn("flex flex-wrap items-center gap-2 border-b bg-muted/30 px-4 py-2.5", className)}>
+    <div className={cn("flex flex-wrap items-center gap-2 border-b py-2", className)}>
       {children}
       {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
     </div>
@@ -115,6 +140,6 @@ export function Toolbar({ children, actions, className }: { children?: ReactNode
 
 /** A vertical stack with the page's standard gaps. */
 export function Stack({ gap = "md", className, children }: { gap?: "sm" | "md" | "lg"; className?: string; children: ReactNode }) {
-  const g = { sm: "gap-3", md: "gap-5", lg: "gap-6" }[gap];
+  const g = { sm: "gap-3", md: "gap-6", lg: "gap-8" }[gap];
   return <div className={cn("flex flex-col", g, className)}>{children}</div>;
 }

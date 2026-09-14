@@ -32,7 +32,7 @@ export function HackQuestionView({ q, index, total, hacked = false, eyebrowExtra
         <div className="space-y-4">
           {q.statement_md.trim() ? <Markdown>{q.statement_md}</Markdown> : <p className="text-[13px] text-faint">The problem statement goes here.</p>}
           {q.constraints_md.trim() && (
-            <div className="rounded-box border border-line bg-page p-3 text-[13px]">
+            <div className="rounded-box border border-line bg-muted p-3 text-[13px]">
               <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Constraints</div>
               <Markdown>{q.constraints_md}</Markdown>
             </div>

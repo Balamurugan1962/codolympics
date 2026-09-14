@@ -20,7 +20,7 @@ export function LocalTime({ iso, withDate = false, className = "" }: { iso: stri
     setText(withDate ? `${d.toLocaleDateString([], { day: "numeric", month: "short" })} · ${time}` : time);
   }, [iso, withDate]);
   // The placeholder is the width of "00:00" so the row does not jump.
-  return <span className={`tabular-nums ${className}`} suppressHydrationWarning>{text ?? "     "}</span>;
+  return <span className={`num ${className}`} suppressHydrationWarning>{text ?? "     "}</span>;
 }
 
 /** Markdown reduced to plain text, for one-line previews where `**bold**` would show its asterisks. */

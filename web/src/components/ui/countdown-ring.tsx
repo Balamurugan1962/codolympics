@@ -25,7 +25,7 @@ export function CountdownRing({ until, totalSeconds, size = 120, label }: { unti
           strokeDasharray={c} strokeDashoffset={c * (1 - frac)} strokeLinecap="round" style={{ transition: "stroke-dashoffset .1s linear, stroke .2s" }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className={`text-3xl font-semibold tabular-nums ${urgent ? "text-red" : "text-ink"}`}>{until ? s : "—"}</div>
+        <div className={`text-3xl font-semibold num ${urgent ? "text-red" : "text-ink"}`}>{until ? s : "—"}</div>
         {label && <div className="text-[11px] font-semibold uppercase tracking-wide text-faint">{label}</div>}
       </div>
     </div>

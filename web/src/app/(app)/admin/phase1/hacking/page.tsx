@@ -16,7 +16,7 @@ export default function HackingPage() {
     <PageBody width="wide">
       <PageHeader
         title="Section B · Hacking"
-        description="A deliberately flawed solution per question. Participants read it and send an input that breaks it; a known breaking input must be proven before it can go live."
+        description="Each one needs a proven breaking input before it can go live."
         actions={
           <>
             <TransferActions section="hacking" onImported={async () => setVersion((v) => v + 1)} />

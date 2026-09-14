@@ -401,7 +401,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
           {f.grading === "validator" && (
             <Section title="Validator" description="Python, run once per distinct entry in the judge sandbox when the section closes. Raising marks that one entry as an error and moves on.">
               <div className="overflow-hidden rounded-box border border-line"><CodeEditor value={f.validator_py} language="python" onChange={(v) => set("validator_py", v)} height="280px" /></div>
-              <div className="mt-2 rounded-box bg-page px-3 py-2 font-mono text-[11.5px] text-muted-foreground">def check(entry) → bool · entry.rest() entry.int(lo, hi) entry.word() entry.line() entry.ints(n) entry.eof()</div>
+              <div className="mt-2 rounded-box bg-muted px-3 py-2 font-mono text-[11.5px] text-muted-foreground">def check(entry) → bool · entry.rest() entry.int(lo, hi) entry.word() entry.line() entry.ints(n) entry.eof()</div>
               <FormGrid cols={2} className="mt-4">
                 <Field label="Points per valid entry" help="Distinct valid entries × this, capped by Maximum entries.">
                   <Input type="number" min={1} step={1} value={f.points_per_entry} onChange={(e) => set("points_per_entry", Number(e.target.value))} />
@@ -426,7 +426,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
         <>
           {allIssues.length > 0 && <Alert variant="destructive"><AlertTitle>{existing ? "Cannot save yet" : "Not ready to create"}</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{allIssues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
           <Section title="As a participant sees it" description="Live: the controls work, nothing is saved. What they never see: the key, the validator, the model answer." padded={false}>
-            <div className="bg-page p-4"><PreviewCard view={view} /></div>
+            <div className="bg-muted p-4"><PreviewCard view={view} /></div>
           </Section>
           <Section title="Summary">
             <Summary cols={4}>
@@ -525,7 +525,7 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
         footer={<Button onClick={test} loading={busy}><Icon.Play size={14} /> {puzzle.grading === "manual" ? "Check readiness" : "Run self-test"}</Button>}
       >
         {puzzle.grading === "auto" && (
-          <div className="rounded-box border border-line bg-page p-4">
+          <div className="rounded-box border border-line bg-muted p-4">
             <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">The intended answer</div>
             <AnswerInput q={view} value={answer} disabled={false} onChange={(v) => setAnswer(v)} />
           </div>
@@ -541,7 +541,7 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
           </FormGrid>
         )}
         {puzzle.grading === "manual" && (
-          <div className="rounded-box border border-line bg-page p-4 text-[13px]">
+          <div className="rounded-box border border-line bg-muted p-4 text-[13px]">
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Model answer on record</div>
             {puzzle.modelAnswer?.trim() ? <p className="whitespace-pre-wrap">{puzzle.modelAnswer}</p> : <p className="text-red">None — add one under Grading.</p>}
           </div>

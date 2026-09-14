@@ -43,7 +43,7 @@ export function Field({
     <div className={cn("min-w-0", className)}>
       {label && (
         <div className="mb-1.5 flex items-baseline justify-between gap-2">
-          <Label htmlFor={htmlFor} className="text-[12.5px] font-semibold text-foreground">
+          <Label htmlFor={htmlFor} className="text-[12px] font-semibold text-foreground">
             {label}
             {required && <span className="text-destructive">*</span>}
           </Label>
@@ -56,7 +56,7 @@ export function Field({
           <Icon.CircleAlert size={13} className="mt-px shrink-0" /> {error}
         </p>
       ) : help ? (
-        <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">{help}</p>
+        <p className="mt-1 text-[11.5px] leading-snug text-faint">{help}</p>
       ) : null}
     </div>
   );

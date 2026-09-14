@@ -193,7 +193,7 @@ export default function WorkspacePage() {
           <div className="space-y-3">
             {q.hints.total === 0 ? <EmptyState icon={<Icon.Lightbulb size={22} />} title="No hints for this question" /> : (
               <>
-                {q.hints.revealed.map((h) => <div key={h.idx} className="rounded-box border border-line bg-page p-3 text-sm"><div className="mb-1 text-xs font-semibold text-faint">Hint {h.idx + 1} · bought for {h.price}</div><Markdown>{h.body_md}</Markdown></div>)}
+                {q.hints.revealed.map((h) => <div key={h.idx} className="rounded-box border border-line bg-muted p-3 text-sm"><div className="mb-1 text-xs font-semibold text-faint">Hint {h.idx + 1} · bought for {h.price}</div><Markdown>{h.body_md}</Markdown></div>)}
                 {q.hints.next ? (
                   <div className="rounded-box border border-dashed border-line-2 p-4 text-center">
                     <div className="text-sm">Hint {q.hints.next.idx + 1} of {q.hints.total}</div>
@@ -331,7 +331,7 @@ function ResultPanel({ j, stage, stalled, unreachable, sampleCount, open, onTogg
             <span className={cn("font-semibold", tone?.text ?? "text-white/80")}>{j.cancelled ? "Cancelled" : (tone?.label ?? j.verdict ?? "Pending")}</span>
           </>
         )}
-        <span className="ml-auto text-[11.5px] tabular-nums text-white/45">
+        <span className="ml-auto text-[11.5px] num text-white/45">
           {!running && j.verdict !== "CE" && j.total ? `${j.passed}/${j.total} tests` : ""}
           {!running && j.max_time_ms ? ` · ${j.max_time_ms.toFixed(0)} ms` : ""}
         </span>

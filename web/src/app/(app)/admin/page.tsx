@@ -78,7 +78,6 @@ export default function AdminDashboard() {
     <PageBody width="wide">
       <PageHeader
         title="Dashboard"
-        description={`Now: ${PHASE_LABEL[phase] ?? phase}. Everything below follows the phase you are in.`}
         actions={
           <Button variant="outline" size="sm" onClick={load}>
             <Icon.Refresh size={14} /> Refresh
@@ -362,7 +361,7 @@ function ReviewPanel({ rows }: { rows: P1Row[] | null }) {
       <Section title="Where review stands" description="Grading finishes first, then the selection. Both can be revised until Phase 2 opens.">
         <Summary cols={4}>
           <SummaryItem label="Items graded">
-            <span className="text-[15px] font-semibold tabular-nums">
+            <span className="text-[15px] font-semibold num">
               {graded}
               <span className="text-[12px] font-normal text-faint">/{queue?.total ?? "—"}</span>
             </span>
@@ -374,7 +373,7 @@ function ReviewPanel({ rows }: { rows: P1Row[] | null }) {
             {provisional ? <Badge variant="warning">{provisional}</Badge> : <span className="text-green-dark">none</span>}
           </SummaryItem>
           <SummaryItem label="Selected so far">
-            <span className="text-[15px] font-semibold tabular-nums">{chosen}</span>
+            <span className="text-[15px] font-semibold num">{chosen}</span>
           </SummaryItem>
         </Summary>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -442,7 +441,7 @@ function LiveAuction() {
             <span className="block truncate text-[15px] font-semibold">{lot.title}</span>
           </SummaryItem>
           <SummaryItem label="Highest bid">
-            <span className="text-[15px] font-semibold tabular-nums">{lot.current_bid ?? "—"}</span>{" "}
+            <span className="text-[15px] font-semibold num">{lot.current_bid ?? "—"}</span>{" "}
             <span className="text-muted-foreground">{lot.current_bidder_name ? `by ${lot.current_bidder_name}` : "no bids"}</span>
           </SummaryItem>
           <SummaryItem label={lot.current_bid !== null ? "Closes in" : "Opens for"}>

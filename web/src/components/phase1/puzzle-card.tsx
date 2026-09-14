@@ -47,7 +47,7 @@ export function PuzzleCard({ q, index, total, answer, explanation, status, locke
       </div>
       <div className="space-y-5 p-5">
         {q.body_md.trim() ? <Markdown>{q.body_md}</Markdown> : <p className="text-[13px] text-faint">The question text goes here.</p>}
-        <section className="rounded-box border border-line bg-page p-4">
+        <section className="rounded-box border border-line bg-muted p-4">
           <div className="mb-3 flex items-center justify-between">
             <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Your answer</div>
             <span className={`text-[11.5px] ${status === "failed" ? "font-semibold text-red" : "text-faint"}`} aria-live="polite">{statusText}</span>
@@ -122,10 +122,10 @@ export function SequenceInput({ items, value, disabled, onChange }: { items: str
     <ol className="space-y-1.5">
       {order.map((idx, pos) => (
         <li key={idx} className="flex items-center gap-2 rounded-box border border-line bg-card px-3 py-2 text-[13px]">
-          <span className="w-5 font-semibold tabular-nums text-faint">{pos + 1}.</span>
+          <span className="w-5 font-semibold num text-faint">{pos + 1}.</span>
           <span className="min-w-0 flex-1">{items[idx]}</span>
-          <button type="button" disabled={disabled || pos === 0} onClick={() => move(pos, -1)} className="rounded p-1 text-muted-foreground hover:bg-page disabled:opacity-30" aria-label="Move up">↑</button>
-          <button type="button" disabled={disabled || pos === order.length - 1} onClick={() => move(pos, 1)} className="rounded p-1 text-muted-foreground hover:bg-page disabled:opacity-30" aria-label="Move down">↓</button>
+          <button type="button" disabled={disabled || pos === 0} onClick={() => move(pos, -1)} className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="Move up">↑</button>
+          <button type="button" disabled={disabled || pos === order.length - 1} onClick={() => move(pos, 1)} className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="Move down">↓</button>
         </li>
       ))}
       <li className="pt-1 text-[11.5px] text-faint">Use the arrows to put the items in the right order.</li>

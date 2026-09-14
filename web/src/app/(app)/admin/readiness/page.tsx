@@ -81,7 +81,6 @@ export default function ReadinessPage() {
     <PageBody>
       <PageHeader
         title="Readiness"
-        description="Everything that must be true before the contest can run. Checked live against the judge and the database."
         actions={
           <Button variant="outline" size="sm" onClick={load} loading={busy}>
             <Icon.Refresh size={14} /> Re-check
@@ -115,7 +114,7 @@ export default function ReadinessPage() {
               </div>
               <div className="w-full sm:w-52">
                 <div className="mb-1.5 flex items-baseline justify-between text-[12px]">
-                  <span className="font-semibold tabular-nums">
+                  <span className="font-semibold num">
                     {ready.done} of {ready.total}
                   </span>
                   <span className="text-muted-foreground">passing</span>
@@ -141,7 +140,7 @@ export default function ReadinessPage() {
                 }
                 description={g.blurb || undefined}
                 actions={
-                  <span className={cn("text-[12px] font-semibold tabular-nums", left ? "text-amber" : "text-brand-deep")}>
+                  <span className={cn("text-[12px] font-semibold num", left ? "text-amber" : "text-brand-deep")}>
                     {g.items.length - left}/{g.items.length}
                   </span>
                 }

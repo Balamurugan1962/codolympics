@@ -218,7 +218,7 @@ export default function ParticipantPage() {
           <Section title="How Phase 1 went" padded>
             <Summary cols={4}>
               <SummaryItem label="Points">
-                <span className="text-[15px] font-semibold tabular-nums">{p1.standing?.points ?? 0}</span>
+                <span className="text-[15px] font-semibold num">{p1.standing?.points ?? 0}</span>
                 {p1.standing?.provisional && <Badge variant="warning" className="ml-2">provisional</Badge>}
               </SummaryItem>
               <SummaryItem label="Rank">{p1.standing ? `#${p1.standing.rank} of ${p1.of}` : "—"}</SummaryItem>
@@ -240,7 +240,7 @@ export default function ParticipantPage() {
             title="Section A · Puzzles"
             description="Every published puzzle, and what they put. An unanswered one is shown too — a blank is a fact."
             actions={
-              <span className="text-[12px] text-muted-foreground tabular-nums">
+              <span className="text-[12px] text-muted-foreground num">
                 {p1.puzzles.filter((q) => q.answered).length}/{p1.puzzles.length} answered
               </span>
             }
@@ -261,7 +261,7 @@ export default function ParticipantPage() {
             title="Section B · Hacking"
             description="Every attempt, in the order it was sent, with the input itself."
             actions={
-              <span className="text-[12px] text-muted-foreground tabular-nums">
+              <span className="text-[12px] text-muted-foreground num">
                 {p1.hacks.reduce((s, h) => s + h.attempts.length, 0)} attempt
                 {p1.hacks.reduce((s, h) => s + h.attempts.length, 0) === 1 ? "" : "s"}
               </span>
@@ -284,7 +284,7 @@ export default function ParticipantPage() {
           <Section title="How Phase 2 went" padded>
             <Summary cols={4}>
               <SummaryItem label="Score">
-                <span className="text-[15px] font-semibold tabular-nums">{p2.standing?.score ?? 0}</span>
+                <span className="text-[15px] font-semibold num">{p2.standing?.score ?? 0}</span>
               </SummaryItem>
               <SummaryItem label="Rank">{p2.standing ? `#${p2.standing.rank} of ${p2.of}` : "—"}</SummaryItem>
               <SummaryItem label="Solved">
@@ -299,7 +299,7 @@ export default function ParticipantPage() {
               <EmptyState
                 icon={<Icon.Gavel />}
                 title="They own no questions"
-                body="They either lost every bid or did not reach Phase 2. Owning nothing is a legitimate outcome of the auction."
+                body="They lost every bid, or did not reach Phase 2."
               />
             </Section>
           ) : (
@@ -334,11 +334,11 @@ export default function ParticipantPage() {
                       </TableCell>
                       <TableCell className="font-medium">{LEDGER_LABEL[l.reason] ?? l.reason}</TableCell>
                       <TableCell className="hidden font-mono text-[11.5px] text-faint md:table-cell">{l.ref}</TableCell>
-                      <TableCell className={cn("text-right font-semibold tabular-nums", l.delta < 0 ? "text-destructive" : "text-brand-deep")}>
+                      <TableCell className={cn("text-right font-semibold num", l.delta < 0 ? "text-destructive" : "text-brand-deep")}>
                         {l.delta > 0 ? "+" : ""}
                         {l.delta.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{l.balance_after.toLocaleString()}</TableCell>
+                      <TableCell className="text-right num">{l.balance_after.toLocaleString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -429,7 +429,7 @@ function PuzzleItem({ q }: { q: Dossier["phase1"]["puzzles"][number] }) {
           {pending ? (
             <Badge variant="review">awaiting grading</Badge>
           ) : (
-            <span className="text-[15px] font-semibold tabular-nums">
+            <span className="text-[15px] font-semibold num">
               {q.awarded ?? 0}
               <span className="text-[12px] font-normal text-faint">/{total}</span>
             </span>
@@ -447,7 +447,7 @@ function HackItem({ h }: { h: Dossier["phase1"]["hacks"][number] }) {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <span className="text-[13.5px] font-semibold">{h.title}</span>
         {broke ? <Badge variant="success">broke it</Badge> : h.attempts.length ? <Badge variant="neutral">never broke it</Badge> : <Badge variant="outline">no attempt</Badge>}
-        <span className="ml-auto text-[15px] font-semibold tabular-nums">
+        <span className="ml-auto text-[15px] font-semibold num">
           {h.awarded}
           <span className="text-[12px] font-normal text-faint">/{h.points_possible}</span>
         </span>
@@ -460,7 +460,7 @@ function HackItem({ h }: { h: Dossier["phase1"]["hacks"][number] }) {
           {h.attempts.map((a, i) => (
             <li key={a.id} className="rounded-md border bg-muted/30 px-3 py-2.5">
               <div className="flex flex-wrap items-center gap-2 text-[12px]">
-                <span className="font-semibold text-faint tabular-nums">#{i + 1}</span>
+                <span className="font-semibold text-faint num">#{i + 1}</span>
                 {a.state !== "done" ? (
                   <Badge variant="info">judging</Badge>
                 ) : a.valid_input === false ? (
@@ -471,7 +471,7 @@ function HackItem({ h }: { h: Dossier["phase1"]["hacks"][number] }) {
                   <Badge variant="destructive">did not break it</Badge>
                 )}
                 {a.verdict && <span className="font-mono text-[11.5px] text-muted-foreground">{a.verdict}</span>}
-                <span className={cn("font-semibold tabular-nums", a.points_awarded > 0 ? "text-brand-deep" : a.points_awarded < 0 ? "text-destructive" : "text-faint")}>
+                <span className={cn("font-semibold num", a.points_awarded > 0 ? "text-brand-deep" : a.points_awarded < 0 ? "text-destructive" : "text-faint")}>
                   {a.points_awarded > 0 ? "+" : ""}
                   {a.points_awarded}
                 </span>
@@ -505,7 +505,7 @@ function OwnedQuestion({ o }: { o: Dossier["phase2"]["owned"][number] }) {
       }
       description={<span className="font-mono text-[11.5px]">{o.question_id}</span>}
       actions={
-        <span className="text-[15px] font-semibold tabular-nums">
+        <span className="text-[15px] font-semibold num">
           {solved ? o.score : 0}
           <span className="text-[12px] font-normal text-faint">/{o.score}</span>
         </span>
@@ -535,7 +535,7 @@ function OwnedQuestion({ o }: { o: Dossier["phase2"]["owned"][number] }) {
             <ul className="divide-y border-b bg-muted/20">
               {o.hints_bought.map((h) => (
                 <li key={h.idx} className="flex gap-4 px-5 py-2.5">
-                  <span className="w-24 shrink-0 text-[11.5px] text-faint tabular-nums">
+                  <span className="w-24 shrink-0 text-[11.5px] text-faint num">
                     Hint {h.idx + 1} · {h.price_paid}
                   </span>
                   <div className="min-w-0 flex-1 text-[12.5px]">
@@ -566,7 +566,7 @@ function OwnedQuestion({ o }: { o: Dossier["phase2"]["owned"][number] }) {
           <TableBody>
             {o.submissions.map((s, i) => (
               <TableRow key={s.id}>
-                <TableCell className="text-right text-faint tabular-nums">{o.submissions.length - i}</TableCell>
+                <TableCell className="text-right text-faint num">{o.submissions.length - i}</TableCell>
                 <TableCell className="whitespace-nowrap text-muted-foreground">
                   <LocalTime iso={s.created_at} />
                 </TableCell>
@@ -577,12 +577,12 @@ function OwnedQuestion({ o }: { o: Dossier["phase2"]["owned"][number] }) {
                   </div>
                 </TableCell>
                 <TableCell className="hidden font-mono text-[12px] sm:table-cell">{s.language}</TableCell>
-                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                <TableCell className="hidden text-right num md:table-cell">
                   {s.passed ?? "—"}
                   <span className="text-faint">/{s.total ?? "—"}</span>
                   {s.first_fail !== null && <span className="text-faint"> @{s.first_fail}</span>}
                 </TableCell>
-                <TableCell className="hidden text-right tabular-nums lg:table-cell">
+                <TableCell className="hidden text-right num lg:table-cell">
                   {s.max_time_ms !== null ? `${s.max_time_ms.toFixed(0)} ms` : "—"}
                 </TableCell>
                 <TableCell className="hidden max-w-[24ch] truncate font-mono text-[11.5px] text-muted-foreground xl:table-cell" title={s.jury_detail ?? ""}>

@@ -121,7 +121,7 @@ export function PuzzleList() {
       )}
       {rows.length === 0 ? (
         <Section padded={false}>
-          <EmptyState icon={<Icon.Puzzle size={20} />} title="No puzzles yet" body="Section A is logical puzzles: multiple choice, short answers, sequences, lists — or written answers an evaluator marks. Each must pass its self-test before it can be published."
+          <EmptyState icon={<Icon.Puzzle size={20} />} title="No puzzles yet" body="Each must pass its self-test before it can go live."
             action={<Link href="/admin/phase1/puzzles/new"><Button size="sm"><Icon.Plus size={14} /> Create the first puzzle</Button></Link>} />
         </Section>
       ) : (
@@ -134,11 +134,11 @@ export function PuzzleList() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12 text-right tabular-nums">#</TableHead>
+                <TableHead className="w-12 text-right num">#</TableHead>
                 <TableHead>Puzzle</TableHead>
                 <TableHead className="hidden md:table-cell">Kind</TableHead>
                 <TableHead className="hidden lg:table-cell">Graded by</TableHead>
-                <TableHead className="text-right tabular-nums">Points</TableHead>
+                <TableHead className="text-right num">Points</TableHead>
                 <TableHead>State</TableHead>
                 <TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
@@ -148,7 +148,7 @@ export function PuzzleList() {
                 const s = stateOf(r);
                 return (
                   <TableRow key={r.id} className={r.voided ? "opacity-60" : ""}>
-                    <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
+                    <TableCell className="text-faint text-right num">{r.orderIndex}</TableCell>
                     <TableCell>
                       <Link href={`/admin/phase1/puzzles/${r.id}`} className="group block">
                         <div className="font-semibold group-hover:text-brand-deep">{r.title}</div>
@@ -157,7 +157,7 @@ export function PuzzleList() {
                     </TableCell>
                     <TableCell className="hidden md:table-cell"><Badge variant="outline">{KIND_LABEL[r.kind]}</Badge></TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell">{GRADING_LABEL[r.grading]}{r.explainPoints > 0 && <span className="text-faint"> + reasoning</span>}</TableCell>
-                    <TableCell className="font-medium text-right tabular-nums">{r.points}{r.explainPoints > 0 && <span className="text-faint"> +{r.explainPoints}</span>}</TableCell>
+                    <TableCell className="font-medium text-right num">{r.points}{r.explainPoints > 0 && <span className="text-faint"> +{r.explainPoints}</span>}</TableCell>
                     <TableCell>
                       <StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot>
                       {r.verifiedElsewhere && <ProvenElsewhere />}
@@ -214,7 +214,7 @@ export function HackList() {
       {rows.length === 0 ? (
         <Section padded={false}>
           <EmptyState icon={<Icon.Bug size={20} />} title="No hacking questions yet"
-            body="Each one is a problem plus a deliberately flawed solution. The judge package (limits, validator, reference) is uploaded under Problems; the question references it."
+            body="A statement, a flawed solution, and a judge package uploaded under Problems."
             action={<Link href="/admin/phase1/hacking/new"><Button size="sm"><Icon.Plus size={14} /> Create the first hacking question</Button></Link>} />
         </Section>
       ) : (
@@ -225,12 +225,12 @@ export function HackList() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12 text-right tabular-nums">#</TableHead>
+                <TableHead className="w-12 text-right num">#</TableHead>
                 <TableHead>Question</TableHead>
                 <TableHead className="hidden md:table-cell">Judge problem</TableHead>
                 <TableHead className="hidden sm:table-cell">Language</TableHead>
-                <TableHead className="text-right tabular-nums">Points</TableHead>
-                <TableHead className="hidden lg:table-cell text-right tabular-nums">Penalty</TableHead>
+                <TableHead className="text-right num">Points</TableHead>
+                <TableHead className="hidden lg:table-cell text-right num">Penalty</TableHead>
                 <TableHead>State</TableHead>
                 <TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
@@ -240,7 +240,7 @@ export function HackList() {
                 const s = stateOf(r);
                 return (
                   <TableRow key={r.id} className={r.voided ? "opacity-60" : ""}>
-                    <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
+                    <TableCell className="text-faint text-right num">{r.orderIndex}</TableCell>
                     <TableCell>
                       <Link href={`/admin/phase1/hacking/${r.id}`} className="group block">
                         <div className="font-semibold group-hover:text-brand-deep">{r.title}</div>
@@ -249,8 +249,8 @@ export function HackList() {
                     </TableCell>
                     <TableCell className="hidden font-mono text-[12px] md:table-cell">{r.problemId}</TableCell>
                     <TableCell className="hidden text-muted-foreground sm:table-cell">{r.givenLanguage}</TableCell>
-                    <TableCell className="font-medium text-right tabular-nums">{r.hackPoints}</TableCell>
-                    <TableCell className="hidden text-muted-foreground lg:table-cell text-right tabular-nums">{r.failPenalty ? `−${r.failPenalty}` : "0"}</TableCell>
+                    <TableCell className="font-medium text-right num">{r.hackPoints}</TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell text-right num">{r.failPenalty ? `−${r.failPenalty}` : "0"}</TableCell>
                     <TableCell>
                       <StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot>
                       {r.verifiedElsewhere && <ProvenElsewhere />}
@@ -332,9 +332,9 @@ export function Review() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-10"><span className="sr-only">Select</span></TableHead>
-              <TableHead className="w-16 text-right tabular-nums">Rank</TableHead>
+              <TableHead className="w-16 text-right num">Rank</TableHead>
               <TableHead>Participant</TableHead>
-              <TableHead className="text-right tabular-nums">Points</TableHead>
+              <TableHead className="text-right num">Points</TableHead>
               <TableHead className="hidden sm:table-cell">Submitted</TableHead>
               <TableHead>Decision</TableHead>
             </TableRow>
@@ -343,9 +343,9 @@ export function Review() {
             {rows.map((s) => (
               <TableRow key={s.participant_id} data-state={chosen.has(s.participant_id) ? "selected" : undefined} className={s.disqualified ? "opacity-50" : ""}>
                 <TableCell><input type="checkbox" className="h-4 w-4 accent-brand" disabled={s.disqualified} checked={chosen.has(s.participant_id)} onChange={(e) => toggle(s.participant_id, e.target.checked)} aria-label={`Select ${s.name}`} /></TableCell>
-                <TableCell className="font-semibold text-right tabular-nums">{s.rank || "—"}</TableCell>
+                <TableCell className="font-semibold text-right num">{s.rank || "—"}</TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
-                <TableCell className="font-semibold text-right tabular-nums">{s.points}{s.provisional && <span className="ml-1 text-faint" title="provisional">*</span>}</TableCell>
+                <TableCell className="font-semibold text-right num">{s.points}{s.provisional && <span className="ml-1 text-faint" title="provisional">*</span>}</TableCell>
                 <TableCell className="hidden text-faint sm:table-cell">{s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "never finished"}</TableCell>
                 <TableCell>{s.disqualified ? <StatusDot tone="destructive">Disqualified</StatusDot> : s.advanced === true ? <StatusDot tone="success">Advancing</StatusDot> : s.advanced === false ? <StatusDot tone="neutral">Not selected</StatusDot> : <StatusDot tone="warning">Undecided</StatusDot>}</TableCell>
               </TableRow>

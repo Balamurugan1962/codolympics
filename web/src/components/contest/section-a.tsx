@@ -67,10 +67,10 @@ export function SectionA() {
               {data.questions.map((x, i) => (
                 <li key={x.id}>
                   <button onClick={() => setCurrent(i)} aria-current={i === current ? "true" : undefined}
-                    className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-brand-tint font-semibold text-ink" : "text-muted-foreground hover:bg-page hover:text-ink"}`}>
+                    className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-brand-tint font-semibold text-ink" : "text-muted-foreground hover:bg-muted hover:text-ink"}`}>
                     <span className={`h-2 w-2 shrink-0 rounded-full ${answered.has(x.id) ? "bg-green" : "border border-line-2"}`} aria-label={answered.has(x.id) ? "answered" : "unanswered"} />
                     <span className="truncate">{i + 1}. {x.title}</span>
-                    <span className="ml-auto text-[11.5px] tabular-nums text-faint">{x.points}</span>
+                    <span className="ml-auto text-[11.5px] num text-faint">{x.points}</span>
                   </button>
                 </li>
               ))}

@@ -65,7 +65,7 @@ export default function AuctionOrderPage() {
     <PageBody>
       <PageHeader
         title="Auction order"
-        description="The order lots are offered in. Drag to reorder, or focus a row and use the arrow keys."
+        description="Drag to reorder, or use the arrow keys."
       />
 
       {started && (
@@ -121,7 +121,7 @@ export default function AuctionOrderPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`text-[13px] font-medium ${r.status === "void" ? "text-faint line-through" : ""}`}>{r.title}</span>
                 <DifficultyBadge d={r.difficulty} />
-                <span className="text-[11.5px] text-faint tabular-nums">
+                <span className="text-[11.5px] text-faint num">
                   {r.score} pts · base {r.basePrice}
                 </span>
                 {r.status === "void" && <Badge variant="neutral">void</Badge>}

@@ -47,7 +47,7 @@ export default function LoginPage() {
       <p className="mt-5 text-center text-[12.5px] text-muted-foreground">
         First time here? <Link href="/register" className="font-semibold text-brand-deep hover:underline">Register</Link>
       </p>
-      <p className="mt-5 flex items-start gap-2 rounded-box bg-page px-3 py-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+      <p className="mt-5 flex items-start gap-2 rounded-box bg-muted px-3 py-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
         <Icon.Info size={14} className="mt-0.5 shrink-0 text-faint" />
         Signing in here ends any session you have open on another machine. That is deliberate — one seat per person.
       </p>

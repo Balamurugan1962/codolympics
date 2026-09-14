@@ -28,7 +28,7 @@ export function AuctionFloor() {
   if (!auction) {
     return (
       <PageBody className="animate-fade-in">
-        <PageHeader title="Auction" description="Questions are auctioned one at a time in Auction 1 and Auction 2." />
+        <PageHeader title="Auction"  />
         <EmptyState icon={<Icon.Gavel size={20} />} title="No auction is running" body={`The current phase is ${contest.phase.replace(/\d/, (d) => ` ${d}`)}. When an auction opens, this page comes alive on its own — no refresh needed.`} />
       </PageBody>
     );
@@ -87,20 +87,20 @@ export function AuctionFloor() {
                   </div>
                 </div>
 
-                <div className={`grid gap-4 border-t border-line px-5 py-4 sm:grid-cols-3 ${mine ? "bg-brand-tint" : hasBids ? "bg-page" : "bg-card"}`}>
+                <div className={`grid gap-4 border-t border-line px-5 py-4 sm:grid-cols-3 ${mine ? "bg-brand-tint" : hasBids ? "bg-muted" : "bg-card"}`}>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Highest bid</div>
-                    <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none">{lot.current_bid ?? "—"}</div>
+                    <div className="mt-0.5 text-[24px] font-semibold num leading-none">{lot.current_bid ?? "—"}</div>
                     <div className="mt-1.5 text-[12.5px] text-muted-foreground">{lot.current_bidder_name ? <>{lot.current_bidder_name}{mine && <Badge variant="success" className="ml-2">you</Badge>}</> : "no bids yet"}</div>
                   </div>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Next bid</div>
-                    <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none text-brand-deep">{lot.next_bid}</div>
+                    <div className="mt-0.5 text-[24px] font-semibold num leading-none text-brand-deep">{lot.next_bid}</div>
                     <div className="mt-1.5 text-[12.5px] text-muted-foreground">+{auction.increment} each time</div>
                   </div>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Your balance</div>
-                    <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none">{balance.toLocaleString()}</div>
+                    <div className="mt-0.5 text-[24px] font-semibold num leading-none">{balance.toLocaleString()}</div>
                     <div className="mt-1.5 text-[12.5px] text-muted-foreground">{affordable ? `${stepsLeft} more step${stepsLeft === 1 ? "" : "s"} after this` : "not enough for the next bid"}</div>
                   </div>
                 </div>
@@ -130,7 +130,7 @@ export function AuctionFloor() {
               <ul className="divide-y divide-line">
                 {auction.recent_bids.map((b, i) => (
                   <li key={b.id} className={`flex items-center gap-3 px-5 py-2 text-[13px] ${i === 0 ? "bg-brand-tint/60" : ""}`}>
-                    <span className="w-16 font-semibold tabular-nums">{b.amount}</span>
+                    <span className="w-16 font-semibold num">{b.amount}</span>
                     <span className="flex-1 truncate">{b.name}{b.participant_id === viewer.id && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-deep">you</span>}</span>
                     <span className="text-[11.5px] text-faint">{ago(b.at, serverNow())}</span>
                   </li>

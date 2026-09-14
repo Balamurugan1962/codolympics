@@ -18,7 +18,7 @@ export function Countdown({ until, className = "", warnUnderMs = 60_000 }: { unt
   const text = s >= 3600
     ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`
     : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-  return <span className={`tabular-nums ${ms < warnUnderMs && ms > 0 ? "text-red" : ""} ${className}`}>{text}</span>;
+  return <span className={`num ${ms < warnUnderMs && ms > 0 ? "text-red" : ""} ${className}`}>{text}</span>;
 }
 
 export function remainingMs(until: string | null, serverNow: () => number): number {

@@ -18,7 +18,7 @@ export default function PuzzlesPage() {
     <PageBody width="wide">
       <PageHeader
         title="Section A · Puzzles"
-        description="Logical puzzles: multiple choice, short answers, sequences, lists — or written answers an evaluator marks. Each must pass its self-test before it can go live."
+        description="Each one must pass its self-test before it can go live."
         actions={
           <>
             <TransferActions section="puzzles" onImported={async () => setVersion((v) => v + 1)} />

@@ -53,7 +53,6 @@ export default function JudgePage() {
     <PageBody>
       <PageHeader
         title="Judge"
-        description="The sandbox that compiles and runs every submission. Everything scored in this contest passes through it."
         actions={
           <Button variant="outline" size="sm" onClick={load} loading={busy}>
             <Icon.Refresh size={14} /> Re-check
