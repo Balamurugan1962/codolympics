@@ -9,6 +9,7 @@ import { requireApiViewer } from "@/lib/session";
 const Patch = z.object({
   reason: z.string().min(3),
   auction_mode: z.enum(AUCTION_MODES).optional(),
+  marketplace_open: z.boolean().optional(),
   starting_balance: z.number().int().min(0).optional(),
   bid_increment: z.number().int().min(1).optional(),
   countdown_seconds: z.number().int().min(0).optional(),      // 0 disables the countdown
@@ -33,7 +34,7 @@ export const PATCH = route(async (req) => {
   const viewer = await requireApiViewer("admin");
   const { reason, ...b } = await body(req, Patch);
   await updateContest(viewer.id, {
-    auctionMode: b.auction_mode, startingBalance: b.starting_balance, bidIncrement: b.bid_increment, countdownSeconds: b.countdown_seconds,
+    auctionMode: b.auction_mode, marketplaceOpen: b.marketplace_open, startingBalance: b.starting_balance, bidIncrement: b.bid_increment, countdownSeconds: b.countdown_seconds,
     openingWindowSeconds: b.opening_window_seconds, ownershipCap: b.ownership_cap, coding1Minutes: b.coding1_minutes,
     finalMinutes: b.final_minutes, p1PuzzlesMinutes: b.p1_puzzles_minutes, p1HackingMinutes: b.p1_hacking_minutes,
     p1SelectionBasis: b.p1_selection_basis, p1LeaderboardMode: b.p1_leaderboard_mode, leaderboardMode: b.leaderboard_mode,

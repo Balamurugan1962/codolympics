@@ -6,5 +6,7 @@ export async function register() {
   const { getContest } = await import("./lib/contest");
   await getContest(); // creates the single contest row on first start
   await ensureAdmin();
+  const { ensurePowerups } = await import("./lib/powerups");
+  await ensurePowerups(); // fills an empty catalogue once; never overwrites
   startScheduler();
 }

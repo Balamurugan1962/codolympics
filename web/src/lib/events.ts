@@ -15,7 +15,8 @@ export type EventName =
   | "hack"         // one participant's hack attempt progressed
   | "announce"     // broadcast announcement
   | "notify"       // one participant was notified
-  | "leaderboard"; // standings may have changed
+  | "leaderboard"  // standings may have changed
+  | "powerup";     // a blackout landed or lifted on one participant
 
 type Subscriber = {
   userId: string;

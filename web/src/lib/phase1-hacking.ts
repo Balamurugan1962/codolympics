@@ -15,6 +15,7 @@ import { errors } from "./api";
 import { getContest } from "./contest";
 import { publish } from "./events";
 import { judge, JudgeError, type HackResult } from "./judge";
+import { assertNotBlackedOut } from "./powerups";
 
 const COOLDOWN_MS = 3_000;
 
@@ -54,6 +55,9 @@ export function participantAttempt(a: typeof p1HackAttempt.$inferSelect) {
 }
 
 export async function submitHack(participantId: string, questionId: number, input: string): Promise<number> {
+  // Blacked out means blacked out: the overlay is what they see, this is what
+  // stops a client that ignores it.
+  await assertNotBlackedOut(participantId);
   const c = await getContest();
   if (c.phase !== "p1_hacking") throw errors.conflict("section_closed", "Section B is not open");
   if (c.phaseEndsAt && c.phaseEndsAt.getTime() <= Date.now()) throw errors.conflict("section_closed", "Section B has closed");

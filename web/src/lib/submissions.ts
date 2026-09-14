@@ -15,6 +15,7 @@ import { getContest, isPhase2 } from "./contest";
 import { publish } from "./events";
 import { judge, JudgeError, type Judgement as JudgeResult } from "./judge";
 import { allowedLanguage } from "./languages";
+import { assertNotBlackedOut } from "./powerups";
 
 export const COOLDOWN_MS = 3_000;
 const IN_FLIGHT = ["pending", "queued", "running"] as const;
@@ -27,6 +28,9 @@ export async function submitSolution(
   participantId: string,
   input: { questionId: string; language: string; source: string },
 ): Promise<number> {
+  // Blacked out means blacked out: the overlay is what they see, this is what
+  // stops a client that ignores it.
+  await assertNotBlackedOut(participantId);
   const c = await getContest();
   if (!isPhase2(c.phase) || c.phase === "ended") throw errors.conflict("not_open", "submissions are not open");
   if (c.phaseEndsAt && c.phaseEndsAt.getTime() <= Date.now() && (c.phase === "coding1" || c.phase === "final")) {

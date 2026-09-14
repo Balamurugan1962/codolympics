@@ -10,6 +10,7 @@ import { hint, hintPurchase, ledger, ownership, participant } from "@/db/schema"
 import { errors } from "./api";
 import { audit } from "./audit";
 import { publish } from "./events";
+import { assertNotBlackedOut } from "./powerups";
 
 /** Hints for a question as the owner sees them: bought ones in full, the next one's price only. */
 export async function hintsFor(participantId: string, questionId: string) {
@@ -28,6 +29,9 @@ export async function hintsFor(participantId: string, questionId: string) {
 }
 
 export async function buyHint(participantId: string, questionId: string): Promise<{ idx: number; body_md: string; balance: number }> {
+  // Blacked out means blacked out: the overlay is what they see, this is what
+  // stops a client that ignores it.
+  await assertNotBlackedOut(participantId);
   const result = await db.transaction(async (tx) => {
     const [p] = await tx.select().from(participant).where(eq(participant.userId, participantId)).for("update");
     if (!p) throw errors.forbidden("not a participant");

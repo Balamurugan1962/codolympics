@@ -16,6 +16,7 @@ import { errors } from "./api";
 import { getContest } from "./contest";
 import { publish } from "./events";
 import { judge, JudgeError, type AnswersResult } from "./judge";
+import { assertNotBlackedOut } from "./powerups";
 
 export type Q = typeof p1Question.$inferSelect;
 
@@ -62,6 +63,9 @@ async function assertSectionOpen(participantId: string): Promise<void> {
 
 /** Save (or change) an answer. Auto-graded kinds are scored immediately; the score is not shown until the section closes. */
 export async function saveAnswer(participantId: string, questionId: number, input: { answer?: unknown; explanation?: string }): Promise<void> {
+  // Blacked out means blacked out: the overlay is what they see, this is what
+  // stops a client that ignores it.
+  await assertNotBlackedOut(participantId);
   await assertSectionOpen(participantId);
   const [q] = await db.select().from(p1Question).where(and(eq(p1Question.id, questionId), eq(p1Question.published, true)));
   if (!q) throw errors.notFound("question");

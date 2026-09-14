@@ -14,6 +14,7 @@ import { phase2Standings } from "./scoring";
 import { ownedQuestions } from "./questions";
 import { submitStatus } from "./submissions";
 import type { Viewer } from "./session";
+import { blackoutState } from "./powerups";
 
 export async function stateFor(viewer: Viewer) {
   const c = await getContest();
@@ -50,6 +51,7 @@ export async function stateFor(viewer: Viewer) {
       : null,
     auction: isAuction(c.phase) ? await auctionSnapshot(c.phase === "auction2" ? 2 : 1) : null,
     submit: await submitStatus(viewer.id),
+    blackout: await blackoutState(viewer.id),
     notifications: unread.map((n) => ({ id: n.id, body_md: n.bodyMd, created_at: n.createdAt.toISOString() })),
   };
 }

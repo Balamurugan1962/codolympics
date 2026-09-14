@@ -43,7 +43,7 @@ export async function notify(tx: Tx, participantId: string, bodyMd: string): Pro
 // ---------------------------------------------------------------------------
 
 export type ContestPatch = Partial<Pick<typeof contest.$inferInsert,
-  "auctionMode" | "startingBalance" | "bidIncrement" | "countdownSeconds" | "openingWindowSeconds" | "ownershipCap" |
+  "auctionMode" | "marketplaceOpen" | "startingBalance" | "bidIncrement" | "countdownSeconds" | "openingWindowSeconds" | "ownershipCap" |
   "coding1Minutes" | "finalMinutes" | "p1PuzzlesMinutes" | "p1HackingMinutes" | "p1SelectionBasis" |
   "p1LeaderboardMode" | "leaderboardMode">>;
 

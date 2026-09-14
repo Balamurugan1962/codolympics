@@ -36,6 +36,13 @@
       "when": 1789393060005,
       "tag": "0004_auction_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789395710767,
+      "tag": "0005_powerups",
+      "breakpoints": true
     }
   ]
 }

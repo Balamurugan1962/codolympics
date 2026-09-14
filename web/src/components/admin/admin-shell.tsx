@@ -70,6 +70,7 @@ const NAV: Group[] = [
       { href: "/admin/problems", label: "Problems", icon: Icon.Code },
       { href: "/admin/problems/order", label: "Auction order", icon: Icon.Sort },
       { href: "/admin/auction", label: "Auction control", icon: Icon.Gavel },
+      { href: "/admin/powerups", label: "Powerups", icon: Icon.Spark },
     ],
   },
   {

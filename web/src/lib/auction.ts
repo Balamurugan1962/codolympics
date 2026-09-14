@@ -18,6 +18,7 @@ import { errors } from "./api";
 import { audit } from "./audit";
 import { getContest } from "./contest";
 import { publish } from "./events";
+import { assertNotBlackedOut } from "./powerups";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -123,6 +124,9 @@ export type BidRejection =
   | "disqualified";
 
 export async function placeBid(participantId: string, lotId: number, amount: number): Promise<void> {
+  // Blacked out means blacked out: the overlay is what they see, this is what
+  // stops a client that ignores it.
+  await assertNotBlackedOut(participantId);
   const c = await getContest();
 
   await db.transaction(async (tx) => {
