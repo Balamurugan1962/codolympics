@@ -43,12 +43,17 @@ export async function notify(tx: Tx, participantId: string, bodyMd: string): Pro
 // ---------------------------------------------------------------------------
 
 export type ContestPatch = Partial<Pick<typeof contest.$inferInsert,
-  "startingBalance" | "bidIncrement" | "countdownSeconds" | "openingWindowSeconds" | "ownershipCap" |
+  "auctionMode" | "startingBalance" | "bidIncrement" | "countdownSeconds" | "openingWindowSeconds" | "ownershipCap" |
   "coding1Minutes" | "finalMinutes" | "p1PuzzlesMinutes" | "p1HackingMinutes" | "p1SelectionBasis" |
   "p1LeaderboardMode" | "leaderboardMode">>;
 
 export async function updateContest(actorId: string, patch: ContestPatch, reason: string): Promise<void> {
   const c = await getContest();
+  // The two modes settle a lot differently — one on a deadline, one on a
+  // person — so a round must be all of one or all of the other.
+  if (patch.auctionMode && patch.auctionMode !== c.auctionMode && (c.phase === "auction1" || c.phase === "auction2")) {
+    throw errors.conflict("auction_running", "finish or leave the auction round before changing how it is run");
+  }
   const set: ContestPatch & { leaderboardFrozenAt?: Date | null } = { ...patch };
   if (patch.leaderboardMode && patch.leaderboardMode !== c.leaderboardMode) {
     set.leaderboardFrozenAt = patch.leaderboardMode === "frozen" ? new Date() : null;

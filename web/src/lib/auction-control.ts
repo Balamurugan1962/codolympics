@@ -22,11 +22,12 @@ import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { user } from "@/db/auth-schema";
-import { bid, contest, hintPurchase, lot, ownership, question } from "@/db/schema";
+import { bid, contest, hintPurchase, lot, ownership, participant, question } from "@/db/schema";
+import { count } from "drizzle-orm";
 
 import { credit, notify } from "./admin";
 import { errors } from "./api";
-import { auctionSnapshot, currentLot } from "./auction";
+import { auctionSnapshot, award, currentLot, openNextLot } from "./auction";
 import { audit } from "./audit";
 import { getContest } from "./contest";
 import { publish } from "./events";
@@ -430,6 +431,7 @@ export async function auctionControlSnapshot() {
 
   return {
     round,
+    mode: c.auctionMode,
     paused_at: c.auctionPausedAt?.toISOString() ?? null,
     countdown_seconds: c.countdownSeconds,
     opening_window_seconds: c.openingWindowSeconds,
@@ -450,6 +452,121 @@ export async function auctionControlSnapshot() {
       owner_name: r.ownerName,
       price_paid: r.pricePaid,
     })),
+    // Only ever sent to an administrator: this route is admin-gated, and a
+    // participant's own snapshot carries their balance and nobody else's.
+    balances: await bidderBalances(),
     server_now: Date.now(),
   };
+}
+
+
+// ---------------------------------------------------------------------------
+// The offline auction
+// ---------------------------------------------------------------------------
+
+/**
+ * Record a sale the auctioneer made in the room.
+ *
+ * Offline, the app decides nothing: a person calls the lot, a hand goes up, and
+ * this writes down what happened. What it still does is refuse to write down
+ * something impossible — a price the buyer cannot cover, a question somebody
+ * already owns, a buyer past the ownership cap — because those are not
+ * judgement calls the room can make. The money is inside the contest whether it
+ * was bid on a screen or shouted across a hall.
+ *
+ * Settlement goes through the same `award` the online close uses. There is one
+ * way to pay for a question, not two.
+ */
+export async function recordSale(
+  actorId: string,
+  input: { lotId: number; participantId: string; price: number; reason: string },
+): Promise<void> {
+  const c = await getContest();
+  if (c.auctionMode !== "offline") throw errors.conflict("not_offline", "this contest runs its auction online");
+  if (!(await activeRound())) throw errors.conflict("not_auctioning", "no auction is running");
+  if (c.auctionPausedAt) throw errors.conflict("auction_paused", "the auction is paused — resume it before recording a sale");
+  if (!Number.isInteger(input.price) || input.price < 0) throw errors.invalid("the price must be a whole number");
+
+  await db.transaction(async (tx) => {
+    const [l] = await tx.select().from(lot).where(eq(lot.id, input.lotId)).for("update");
+    if (!l) throw errors.notFound("lot");
+    if (l.state !== "open") throw errors.conflict("not_open", "that question is not on the block");
+
+    const [q] = await tx.select().from(question).where(eq(question.id, l.questionId));
+    // The base price is published in advance; a sale under it is a different
+    // question from the one everyone was bidding on.
+    if (input.price < q.basePrice) throw errors.conflict("below_base", `the base price is ${q.basePrice}`);
+
+    const [p] = await tx.select().from(participant).where(eq(participant.userId, input.participantId)).for("update");
+    if (!p) throw errors.notFound("participant");
+    if (p.disqualifiedAt) throw errors.conflict("disqualified", "that account is disqualified");
+    if (input.price > p.balance) throw errors.conflict("insufficient_balance", `they have ${p.balance}, and this sale is ${input.price}`);
+
+    if (c.ownershipCap !== null) {
+      const [{ owned }] = await tx
+        .select({ owned: count() })
+        .from(ownership)
+        .where(and(eq(ownership.participantId, input.participantId), isNull(ownership.voidedAt)));
+      if (owned >= c.ownershipCap) throw errors.conflict("ownership_cap_reached", `they already own the maximum of ${c.ownershipCap}`);
+    }
+
+    await award(tx, l.id, l.questionId, input.participantId, input.price);
+    await audit({
+      actorId,
+      action: "lot.record_sale",
+      target: String(l.id),
+      reason: input.reason,
+      detail: { question: l.questionId, to: input.participantId, price: input.price, mode: "offline" },
+    }, tx);
+  });
+
+  await announce();
+  publish("leaderboard", {});
+  const round = await activeRound();
+  if (round) await openNextLot(round);
+}
+
+/** Nobody bid, or nobody bid enough: close the lot with nothing sold. */
+export async function recordUnsold(actorId: string, input: { lotId: number; reason: string }): Promise<void> {
+  const c = await getContest();
+  if (c.auctionMode !== "offline") throw errors.conflict("not_offline", "this contest runs its auction online");
+  await db.transaction(async (tx) => {
+    const [l] = await tx.select().from(lot).where(eq(lot.id, input.lotId)).for("update");
+    if (!l) throw errors.notFound("lot");
+    if (l.state !== "open") throw errors.conflict("not_open", "that question is not on the block");
+    await tx.update(lot).set({ state: "unsold", closedAt: new Date(), noBidDeadline: null, biddingEndsAt: null }).where(eq(lot.id, l.id));
+    await audit({ actorId, action: "lot.record_unsold", target: String(l.id), reason: input.reason, detail: { question: l.questionId, mode: "offline" } }, tx);
+  });
+  await announce();
+  const round = await activeRound();
+  if (round) await openNextLot(round);
+}
+
+/**
+ * Who can still afford what, for the organiser running the room.
+ *
+ * The auctioneer's question between lots is "who is still in this" — and with
+ * bidding happening out loud rather than on screens, nothing else on the admin
+ * side answers it. Administrators only: a participant sees their own balance
+ * and no one else's, the same as in an online round.
+ */
+export async function bidderBalances() {
+  const rows = await db
+    .select({ id: participant.userId, name: user.name, balance: participant.balance, disqualified: participant.disqualifiedAt })
+    .from(participant)
+    .innerJoin(user, eq(user.id, participant.userId))
+    .orderBy(desc(participant.balance));
+  const owned = await db
+    .select({ pid: ownership.participantId, n: count() })
+    .from(ownership)
+    .where(isNull(ownership.voidedAt))
+    .groupBy(ownership.participantId);
+  const by = new Map(owned.map((o) => [o.pid, o.n]));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    balance: r.balance,
+    owned: by.get(r.id) ?? 0,
+    disqualified: Boolean(r.disqualified),
+  }));
 }

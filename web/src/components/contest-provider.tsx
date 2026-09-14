@@ -26,6 +26,8 @@ export type ContestState = {
 
 export type AuctionSnapshot = {
   round: number;
+  /** "offline" means the room bids out loud and an organiser records each sale. */
+  mode: "online" | "offline";
   /** An administrator is holding the auction: the clock is stopped and bids are refused. */
   paused: boolean;
   paused_at: string | null;
@@ -38,7 +40,11 @@ export type AuctionSnapshot = {
     current_bid: number | null; current_bidder_id: string | null; current_bidder_name: string | null; next_bid: number;
     no_bid_deadline: string | null; bidding_ends_at: string | null; opened_at: string | null;
   } | null;
-  order: { id: number; questionId: string; title: string; difficulty: string; score: number; base_price: number; state: string; current_bid: number | null; order: number }[];
+  order: {
+    id: number; questionId: string; title: string; difficulty: string; score: number; base_price: number;
+    state: string; current_bid: number | null; order: number;
+    winner_id: string | null; winner_name: string | null; price_paid: number | null;
+  }[];
   server_now: number;
 };
 

@@ -49,6 +49,9 @@ export const LEADERBOARD_MODES = ["live", "frozen", "hidden"] as const;
 export type LeaderboardMode = (typeof LEADERBOARD_MODES)[number];
 
 /** Exactly one row (id = 1). Every tunable an administrator can change. */
+export const AUCTION_MODES = ["online", "offline"] as const;
+export type AuctionMode = (typeof AUCTION_MODES)[number];
+
 export const contest = pgTable(
   "contest",
   {
@@ -74,6 +77,18 @@ export const contest = pgTable(
 
     leaderboardMode: text("leaderboard_mode").$type<LeaderboardMode>().notNull().default("live"),
     leaderboardFrozenAt: ts("leaderboard_frozen_at"),
+
+    /**
+     * How the auction is run.
+     *
+     * "online": participants bid from their seats, the clock settles lots, and
+     * the app decides who wins. "offline": the auctioneer runs it in the room
+     * and an administrator records each sale — the app holds the money, the
+     * ownership and the record, but decides nothing. Changing this while an
+     * auction is open is refused; the two modes settle lots differently and a
+     * round should not be half of each.
+     */
+    auctionMode: text("auction_mode").$type<AuctionMode>().notNull().default("online"),
 
     /**
      * Set while an administrator has the auction held. The scheduler stops
