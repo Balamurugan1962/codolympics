@@ -73,14 +73,14 @@ export function AnnouncementOverlay() {
   const current = queue[0];
 
   return (
-    <Dialog open={Boolean(current)} onOpenChange={(o) => !o && dismiss()}>
-      <DialogContent
-        showCloseButton={false}
-        // Announcements are read, not escaped: no backdrop click, no Escape.
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-        className="w-[min(46rem,calc(100vw-2rem))] gap-0 p-0 sm:max-w-3xl"
-      >
+    /*
+     * Announcements are acknowledged, not escaped. The button at the bottom is
+     * the only way out, so every other dismissal request is ignored: the dialog
+     * is controlled, `onOpenChange` does nothing, and pointer dismissal is off.
+     * Radix needed two events cancelled individually; this says it once.
+     */
+    <Dialog open={Boolean(current)} onOpenChange={() => {}} disablePointerDismissal>
+      <DialogContent showCloseButton={false} className="w-[min(46rem,calc(100vw-2rem))] gap-0 p-0 sm:max-w-3xl">
         <div className="flex items-center gap-2.5 rounded-t-lg bg-navy px-5 py-3 text-white">
           <span className="flex size-7 items-center justify-center rounded-full bg-brand-bright text-navy">
             <Icon.Megaphone size={15} />
