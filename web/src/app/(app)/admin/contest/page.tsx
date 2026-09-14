@@ -121,18 +121,18 @@ export default function SettingsPage() {
             </Hint>
           </span>
         }
-        description="The structure of the contest is fixed; these are its numbers. Every change is audit-logged."
+        description="Every change is audit-logged."
       />
 
       <div className="space-y-5">
         <Section title="Phase 1" description="The qualifying round." padded={false}>
-          <SettingRow label="Section A duration" description="Logical puzzles. Participants may revise answers until it closes.">
+          <SettingRow label="Section A duration" description="Answers can be revised until it closes.">
             {numberField("p1PuzzlesMinutes", "minutes")}
           </SettingRow>
-          <SettingRow label="Section B duration" description="Hacking. You open this section by hand when Section A is done.">
+          <SettingRow label="Section B duration" description="You open this by hand when Section A is done.">
             {numberField("p1HackingMinutes", "minutes")}
           </SettingRow>
-          <SettingRow label="Selection basis" description="Shown to participants before Phase 1 begins. Discretion is fine; silence is not.">
+          <SettingRow label="Selection basis" description="Shown to participants before Phase 1 begins.">
             <Textarea
               rows={3}
               value={c.p1SelectionBasis}
@@ -140,21 +140,21 @@ export default function SettingsPage() {
               placeholder="e.g. Roughly the top half, at the organisers' discretion."
             />
           </SettingRow>
-          <SettingRow label="Phase 1 standings" description="Whether participants can watch the Phase 1 leaderboard.">
+          <SettingRow label="Phase 1 standings" description="Whether participants can watch it.">
             <SimpleSelect className="w-full" size="default" value={c.p1LeaderboardMode} onValueChange={(v) => set("p1LeaderboardMode", v)} options={VISIBILITY} />
           </SettingRow>
         </Section>
 
         <Section title="Money" description="Identical for everyone who advances." padded={false}>
-          <SettingRow label="Starting balance" description="What each finalist has to bid with. Money never becomes score.">
+          <SettingRow label="Starting balance" description="What each finalist bids with. Never becomes score.">
             {numberField("startingBalance", "coins")}
           </SettingRow>
-          <SettingRow label="Bid increment" description="Every bid is exactly this much above the last. There is no free bidding.">
+          <SettingRow label="Bid increment" description="Every bid is exactly this much above the last.">
             {numberField("bidIncrement", "coins")}
           </SettingRow>
           <SettingRow
             label="Ownership cap"
-            description="Leave blank for no limit. This is your lever against one person taking everything and another owning nothing."
+            description="Blank for no limit. Stops one person taking everything."
           >
             <Input
               type="number"
@@ -164,13 +164,13 @@ export default function SettingsPage() {
               onChange={(e) => set("ownershipCap", e.target.value === "" ? null : Number(e.target.value))}
             />
           </SettingRow>
-          <SettingRow label="Phase 2 leaderboard" description="Announce this before the first auction — it changes how people bid.">
+          <SettingRow label="Phase 2 leaderboard" description="Announce before the first auction. It changes how people bid.">
             <SimpleSelect className="w-full" size="default" value={c.leaderboardMode} onValueChange={(v) => set("leaderboardMode", v)} options={VISIBILITY} />
           </SettingRow>
         </Section>
 
         <Section title="Auction and rounds" description="Timing for Phase 2." padded={false}>
-          <SettingRow label="Opening window" description="A question with no bid in this time goes unsold and the auction moves on.">
+          <SettingRow label="Opening window" description="No bid in this time and the question goes unsold.">
             {numberField("openingWindowSeconds", "seconds")}
           </SettingRow>
           <SettingRow label="Bid countdown" description="Restarts on every bid, so bidding last never wins. Set 0 to close lots only by hand.">

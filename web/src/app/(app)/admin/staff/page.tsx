@@ -36,7 +36,7 @@ export default function StaffPage() {
     <PageBody width="wide">
       <PageHeader
         title="Staff"
-        description="Administrators run the contest; evaluators grade Phase 1 and review hack attempts. Neither competes, and neither can create their own account."
+        description="Staff never compete and cannot register themselves."
       />
       <StaffPanel />
     </PageBody>
@@ -80,7 +80,7 @@ function StaffPanel() {
           <EmptyState
             icon={<Icon.Shield />}
             title="No staff accounts yet"
-            body="You are signed in as the bootstrap administrator. Create an evaluator before Phase 1 so grading is not one person's job."
+            body="Add an evaluator before Phase 1, so grading is not one person's job."
             action={
               <Button size="sm" onClick={() => setCreating(true)}>
                 <Icon.UserPlus size={14} /> Create a staff account

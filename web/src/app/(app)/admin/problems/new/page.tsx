@@ -121,7 +121,6 @@ export default function NewProblemPage() {
       <PageHeader
         breadcrumb={<Link href="/admin/problems" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Problems</Link>}
         title="New problem"
-        description="Upload the judge package, describe the problem for participants, add hints, and check the result before anything is created."
       />
 
       <WizardLayout
@@ -212,7 +211,7 @@ export default function NewProblemPage() {
 
             {!hackOnly && (
               <Section title="As the owner will see it" description="The workspace's problem pane, rendered from what you entered and the package's first testcases." padded={false}>
-                <div className="bg-page p-4">
+                <div className="bg-muted p-4">
                   <ProblemPreview
                     title={details.title} difficulty={details.difficulty} score={details.score} statementMd={details.statement_md}
                     timeLimitMs={inspection.problem?.time_limit_ms ?? null} memoryLimitMb={inspection.problem?.memory_limit_mb ?? null}
@@ -222,7 +221,7 @@ export default function NewProblemPage() {
                 {details.hints.length > 0 && (
                   <div className="border-t border-line px-5 py-4">
                     <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Hints, in the order they unlock</div>
-                    <ol className="space-y-1.5">{details.hints.map((h, i) => <li key={i} className="flex gap-3 text-[13px]"><span className="w-20 shrink-0 font-semibold tabular-nums text-muted-foreground">{h.price} coins</span><span className="min-w-0 truncate">{h.body_md}</span></li>)}</ol>
+                    <ol className="space-y-1.5">{details.hints.map((h, i) => <li key={i} className="flex gap-3 text-[13px]"><span className="w-20 shrink-0 font-semibold num text-muted-foreground">{h.price} coins</span><span className="min-w-0 truncate">{h.body_md}</span></li>)}</ol>
                   </div>
                 )}
               </Section>
@@ -255,10 +254,10 @@ function Inspection({ r }: { r: PackageInspection }) {
   return (
     <div className="mt-4 space-y-4">
       {r.issues.length > 0 && <Alert variant="destructive"><AlertTitle>The judge would reject this package</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{r.issues.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
-      {r.warnings.length > 0 && <Alert variant="warning"><AlertTitle>Worth a look</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{r.warnings.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
+      {r.warnings.length > 0 && <Alert variant="warning"><AlertTitle>Warnings</AlertTitle><AlertDescription><ul className="ml-4 list-disc space-y-0.5">{r.warnings.map((i) => <li key={i}>{i}</li>)}</ul></AlertDescription></Alert>}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="rounded-box border border-line">
-          <div className="border-b border-line bg-page/60 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">What is in it</div>
+          <div className="border-b border-line bg-muted/60 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">What is in it</div>
           <div className="p-3.5">
             <Checklist items={[
               { ok: Boolean(pj), label: "problem.json", detail: pj ? `${pj.time_limit_ms ?? "?"} ms · ${pj.memory_limit_mb ?? "?"} MB · compare ${pj.compare ?? "tokens"}${pj.early_exit === false ? " · runs every test" : ""}` : "missing at the root" },
@@ -271,7 +270,7 @@ function Inspection({ r }: { r: PackageInspection }) {
           </div>
         </div>
         <div className="rounded-box border border-line">
-          <div className="border-b border-line bg-page/60 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Files · {r.files.length}{r.strippedFolder ? ` · inside ${r.strippedFolder}/` : ""}</div>
+          <div className="border-b border-line bg-muted/60 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Files · {r.files.length}{r.strippedFolder ? ` · inside ${r.strippedFolder}/` : ""}</div>
           <ul className="pane max-h-56 overflow-auto p-2 font-mono text-[11.5px] text-muted-foreground">
             {r.files.slice(0, 200).map((f) => <li key={f} className="truncate px-1.5 py-0.5">{f}</li>)}
             {r.files.length > 200 && <li className="px-1.5 py-0.5 text-faint">… {r.files.length - 200} more</li>}
@@ -280,10 +279,10 @@ function Inspection({ r }: { r: PackageInspection }) {
       </div>
       {r.samples[0] && (
         <div className="rounded-box border border-line">
-          <div className="border-b border-line bg-page/60 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">First testcase</div>
+          <div className="border-b border-line bg-muted/60 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">First testcase</div>
           <div className="grid gap-3 p-3.5 sm:grid-cols-2">
-            <pre className="max-h-32 overflow-auto rounded-box border border-line bg-page p-2 text-[12px]">{r.samples[0].input}</pre>
-            <pre className="max-h-32 overflow-auto rounded-box border border-line bg-page p-2 text-[12px]">{r.samples[0].output || <span className="text-faint">(no answer file)</span>}</pre>
+            <pre className="max-h-32 overflow-auto rounded-box border border-line bg-muted p-2 text-[12px]">{r.samples[0].input}</pre>
+            <pre className="max-h-32 overflow-auto rounded-box border border-line bg-muted p-2 text-[12px]">{r.samples[0].output || <span className="text-faint">(no answer file)</span>}</pre>
           </div>
         </div>
       )}

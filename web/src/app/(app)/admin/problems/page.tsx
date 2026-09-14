@@ -137,7 +137,6 @@ export default function ProblemsPage() {
     <PageBody width="wide">
       <PageHeader
         title="Problems"
-        description="Every judge package and what participants see of it. A problem is auctionable once it is validated, described and published."
         actions={
           <>
             <ValidateAllButton onDone={load} />
@@ -158,7 +157,7 @@ export default function ProblemsPage() {
           <EmptyState
             icon={<Icon.Package />}
             title="No problems yet"
-            body="Create one from a judge package — problem.json and tests/, plus a checker, validator or reference solution if the problem needs them."
+            body="A package is problem.json plus tests/."
             action={
               <Button size="sm" asChild>
                 <Link href="/admin/problems/new">
@@ -172,19 +171,19 @@ export default function ProblemsPage() {
         <div className="space-y-5">
           <StatRow cols={4}>
             <Stat label="Problems" value={all.length} icon={<Icon.Code size={13} />} hint={`${hacking} for hacking`} />
-            <Stat label="Ready" value={ready} tone="success" icon={<Icon.Check size={13} />} hint="validated and published" />
+            <Stat label="Ready" value={ready} tone="success" icon={<Icon.Check size={13} />} hint="live" />
             <Stat
               label="Need attention"
               value={attention}
               tone={attention ? "warning" : "default"}
               icon={<Icon.Alert size={13} />}
-              hint={attention ? "unvalidated, undescribed or unpublished" : "nothing outstanding"}
+              hint={attention ? "unvalidated, undescribed or unpublished" : undefined}
             />
             <Stat
               label="Auction lots"
               value={questions.filter((q) => q.status !== "void").length}
               icon={<Icon.Gavel size={13} />}
-              hint="with details, in auction order"
+              hint="described"
             />
           </StatRow>
 
@@ -224,7 +223,7 @@ export default function ProblemsPage() {
               <TableBody>
                 {rows.map(({ id, p, q, stage }) => (
                   <TableRow key={id}>
-                    <TableCell className="hidden text-right text-faint tabular-nums lg:table-cell">{q ? q.auctionOrder : "—"}</TableCell>
+                    <TableCell className="hidden text-right text-faint num lg:table-cell">{q ? q.auctionOrder : "—"}</TableCell>
                     <TableCell>
                       <Link href={`/admin/problems/${encodeURIComponent(id)}`} className="group block">
                         <div className="flex items-center gap-2">
@@ -238,9 +237,9 @@ export default function ProblemsPage() {
                       </Link>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{q ? <DifficultyBadge d={q.difficulty} /> : <span className="text-faint">—</span>}</TableCell>
-                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{q ? q.score : <span className="text-faint">—</span>}</TableCell>
-                    <TableCell className="hidden text-right tabular-nums lg:table-cell">{q ? q.basePrice : <span className="text-faint">—</span>}</TableCell>
-                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{p ? p.testcases : <span className="text-faint">—</span>}</TableCell>
+                    <TableCell className="hidden text-right num sm:table-cell">{q ? q.score : <span className="text-faint">—</span>}</TableCell>
+                    <TableCell className="hidden text-right num lg:table-cell">{q ? q.basePrice : <span className="text-faint">—</span>}</TableCell>
+                    <TableCell className="hidden text-right num sm:table-cell">{p ? p.testcases : <span className="text-faint">—</span>}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       {p?.current ? <span className="font-mono text-[12px]">{p.current}</span> : <span className="text-faint">—</span>}
                     </TableCell>

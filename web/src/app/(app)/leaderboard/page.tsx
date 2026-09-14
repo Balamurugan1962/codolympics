@@ -26,9 +26,9 @@ export default function LeaderboardPage() {
 
   return (
     <PageBody className="animate-fade-in">
-      <PageHeader title="Leaderboard" description="Score first; ties broken by the lower total solve time, then by Phase 1 rank." />
+      <PageHeader title="Leaderboard" description="Ties: lower solve time, then Phase 1 rank." />
       {!board ? <CardSkeleton lines={6} /> : board.mode === "hidden" ? (
-        <EmptyState icon={<Icon.Eye size={20} />} title="Standings are hidden" body="The organisers have chosen not to show the leaderboard during this contest." />
+        <EmptyState icon={<Icon.Eye size={20} />} title="Standings are hidden" body="The organisers turned it off for this contest." />
       ) : (
         <div className="space-y-3">
           {board.mode === "frozen" && <Alert variant="warning"><AlertTitle>Leaderboard frozen</AlertTitle><AlertDescription>Shown as of {board.frozen_at ? new Date(board.frozen_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "the freeze"}. Results after that are not reflected until it is unfrozen.</AlertDescription></Alert>}
@@ -41,15 +41,15 @@ export default function LeaderboardPage() {
           )}
           <Section padded={false}>
             <Table>
-              <TableHeader><TableRow><TableHead className="w-16 text-right tabular-nums">Rank</TableHead><TableHead>Participant</TableHead><TableHead className="text-right tabular-nums">Score</TableHead><TableHead className="hidden sm:table-cell text-right tabular-nums">Solved</TableHead><TableHead className="hidden md:table-cell text-right tabular-nums">Total solve time</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead className="w-16 text-right">Rank</TableHead><TableHead>Participant</TableHead><TableHead className="text-right num">Score</TableHead><TableHead className="hidden sm:table-cell text-right num">Solved</TableHead><TableHead className="hidden md:table-cell text-right num">Total solve time</TableHead></TableRow></TableHeader>
               <TableBody>
                 {board.standings.map((s) => (
                   <TableRow key={s.participant_id} data-state={s.participant_id === me ? "selected" : undefined}>
-                    <TableCell className="font-semibold text-right tabular-nums">{s.rank <= 3 ? <Badge variant={s.rank === 1 ? "success" : "neutral"}>#{s.rank}</Badge> : `#${s.rank}`}</TableCell>
+                    <TableCell className="font-semibold text-right num">{s.rank <= 3 ? <Badge variant={s.rank === 1 ? "success" : "neutral"}>#{s.rank}</Badge> : `#${s.rank}`}</TableCell>
                     <TableCell className="font-medium">{s.name}{s.participant_id === me && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-deep">you</span>}</TableCell>
-                    <TableCell className="font-semibold text-right tabular-nums">{s.score}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-right tabular-nums">{s.solved}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right tabular-nums">{fmt(s.total_time_ms)}</TableCell>
+                    <TableCell className="font-semibold text-right num">{s.score}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-right num">{s.solved}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right num">{fmt(s.total_time_ms)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

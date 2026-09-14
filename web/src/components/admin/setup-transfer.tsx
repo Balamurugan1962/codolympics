@@ -215,7 +215,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
           {result.warnings.length > 0 && (
             <Alert variant="warning">
               <Icon.Alert />
-              <AlertTitle>Worth reading</AlertTitle>
+              <AlertTitle>Warnings</AlertTitle>
               <AlertDescription>
                 <ul className="ml-4 list-disc space-y-0.5">
                   {result.warnings.map((w) => (

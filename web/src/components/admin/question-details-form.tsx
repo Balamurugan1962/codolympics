@@ -105,7 +105,7 @@ export function HintsEditor({ hints, onChange }: { hints: QuestionDetails["hints
         <ol className="space-y-3">
           {hints.map((h, i) => (
             <li key={i} className="rounded-box border border-line bg-card">
-              <div className="flex items-center gap-3 border-b border-line bg-page/60 px-3.5 py-2">
+              <div className="flex items-center gap-3 border-b border-line bg-muted/60 px-3.5 py-2">
                 <span className="text-[12px] font-semibold text-muted-foreground">Hint {i + 1}</span>
                 <span className="text-[11.5px] text-faint">unlocks after hint {i}{i === 0 ? " — the first one anyone can buy" : ""}</span>
                 <div className="ml-auto flex items-center gap-1">

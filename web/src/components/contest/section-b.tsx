@@ -58,8 +58,8 @@ export function SectionB() {
             <div className="flex items-center justify-between border-b border-line px-4 py-3 text-[13px]"><span className="font-semibold">Solutions</span><span className="text-muted-foreground">{hackedIds.size} of {data.questions.length} hacked</span></div>
             <ol className="p-2">{data.questions.map((x, i) => (
               <li key={x.id}><button onClick={() => { setCurrent(i); setInput(""); }} aria-current={i === current ? "true" : undefined}
-                className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-brand-tint font-semibold text-ink" : "text-muted-foreground hover:bg-page hover:text-ink"}`}>
-                <span className={`h-2 w-2 shrink-0 rounded-full ${hackedIds.has(x.id) ? "bg-green" : "border border-line-2"}`} /><span className="truncate">{i + 1}. {x.title}</span><span className="ml-auto text-[11.5px] tabular-nums text-faint">{x.hack_points}</span></button></li>
+                className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-brand-tint font-semibold text-ink" : "text-muted-foreground hover:bg-muted hover:text-ink"}`}>
+                <span className={`h-2 w-2 shrink-0 rounded-full ${hackedIds.has(x.id) ? "bg-green" : "border border-line-2"}`} /><span className="truncate">{i + 1}. {x.title}</span><span className="ml-auto text-[11.5px] num text-faint">{x.hack_points}</span></button></li>
             ))}</ol>
             <div className="border-t border-line p-3">
               <div className="mb-2 flex items-center justify-center gap-1.5 text-[12px] text-muted-foreground"><Icon.Clock size={13} /><Countdown until={data.phase_ends_at} className="font-semibold text-ink" /> left</div>
@@ -90,7 +90,7 @@ export function SectionB() {
                     <li key={a.id} className="flex items-center gap-3 px-3 py-2 text-[13px]">
                       {a.state !== "done" ? <Badge variant="info">judging</Badge> : a.valid_input === false ? <Badge variant="warning">invalid input</Badge> : a.hacked === true ? <Badge variant="success">hacked</Badge> : a.hacked === false ? <Badge variant="destructive">did not break it</Badge> : <Badge variant="neutral">problem error · not counted</Badge>}
                       <span className="min-w-0 flex-1 truncate text-muted-foreground">{a.valid_input === false ? a.invalid_reason : ""}</span>
-                      <span className={`text-[12px] tabular-nums ${a.points_awarded > 0 ? "font-semibold text-green-dark" : a.points_awarded < 0 ? "text-red" : "text-faint"}`}>{a.points_awarded ? `${a.points_awarded > 0 ? "+" : ""}${a.points_awarded}` : ""}</span>
+                      <span className={`text-[12px] num ${a.points_awarded > 0 ? "font-semibold text-green-dark" : a.points_awarded < 0 ? "text-red" : "text-faint"}`}>{a.points_awarded ? `${a.points_awarded > 0 ? "+" : ""}${a.points_awarded}` : ""}</span>
                       <span className="text-[11.5px] text-faint">{new Date(a.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     </li>
                   ))}</ol>

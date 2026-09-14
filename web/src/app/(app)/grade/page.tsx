@@ -148,7 +148,7 @@ export default function GradePage() {
     return (
       <div className="p-8">
         <EmptyState icon={<Icon.Check size={20} />} title="Nothing to grade"
-          body="Written answers and reasoning appear here as soon as competitors submit them." />
+          body="Answers appear here as they are submitted." />
       </div>
     );
   }
@@ -165,7 +165,7 @@ export default function GradePage() {
           <div className="h-1 w-28 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
             <div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${pct}%` }} />
           </div>
-          <span className="text-[12.5px] tabular-nums text-muted-foreground">
+          <span className="text-[12.5px] num text-muted-foreground">
             {graded} of {data.total} graded
           </span>
         </div>
@@ -184,7 +184,7 @@ export default function GradePage() {
                   )}
                 >
                   <span className="max-w-[16ch] truncate">{g.question.title}</span>
-                  <span className="tabular-nums opacity-70">{left || "✓"}</span>
+                  <span className="num opacity-70">{left || "✓"}</span>
                 </button>
               );
             })}
@@ -269,13 +269,13 @@ function AnswerView({ q, item, index, total, label, state }: {
           {STATE[state].label}
         </Badge>
         {item.graded_by && <span className="text-[11.5px] text-faint">marked already</span>}
-        <span className="ml-auto text-[11.5px] tabular-nums text-faint">{index + 1} of {total}</span>
+        <span className="ml-auto text-[11.5px] num text-faint">{index + 1} of {total}</span>
       </div>
 
       <button
         onClick={() => setShowQuestion((v) => !v)}
         aria-expanded={showQuestion}
-        className="mt-3 flex w-full items-start gap-2 rounded-[5px] border border-line bg-page px-3 py-2 text-left transition-colors hover:border-line-2"
+        className="mt-3 flex w-full items-start gap-2 rounded-[5px] border border-line bg-muted px-3 py-2 text-left transition-colors hover:border-line-2"
       >
         <Icon.ChevronDown size={14} className={cn("mt-0.5 shrink-0 text-faint transition-transform", !showQuestion && "-rotate-90")} />
         <span className="min-w-0 flex-1">
@@ -287,7 +287,7 @@ function AnswerView({ q, item, index, total, label, state }: {
         </span>
       </button>
       {showQuestion && (
-        <div className="mt-2 rounded-[5px] border border-line bg-page px-3.5 py-3">
+        <div className="mt-2 rounded-[5px] border border-line bg-muted px-3.5 py-3">
           <Markdown className="prose-sm">{q.body_md}</Markdown>
         </div>
       )}
@@ -318,7 +318,7 @@ function AnswerView({ q, item, index, total, label, state }: {
 
       {q.grading !== "manual" && item.auto_score !== null && (
         <p className="mt-4 text-[12px] text-muted-foreground">
-          The answer scored <span className="font-semibold text-ink tabular-nums">{item.auto_score}</span> automatically. You are marking the
+          The answer scored <span className="font-semibold text-ink num">{item.auto_score}</span> automatically. You are marking the
           reasoning only.
         </p>
       )}
@@ -414,14 +414,14 @@ function GradeForm({ q, item, onSaved, onMove }: {
             <label className="min-w-0 flex-1">
               <span className="mb-1 block text-[11.5px] font-semibold text-muted-foreground">Answer · 0–{q.points}</span>
               <Input ref={first} type="number" min={0} max={q.points} inputMode="numeric" value={manual}
-                onChange={(e) => setManual(e.target.value)} className="h-8 text-[13px] tabular-nums" />
+                onChange={(e) => setManual(e.target.value)} className="h-8 text-[13px] num" />
             </label>
           )}
           {needsReason && (
             <label className="min-w-0 flex-1">
               <span className="mb-1 block text-[11.5px] font-semibold text-muted-foreground">Reasoning · 0–{q.explain_points}</span>
               <Input ref={needsAnswer ? undefined : first} type="number" min={0} max={q.explain_points} inputMode="numeric" value={explain}
-                onChange={(e) => setExplain(e.target.value)} className="h-8 text-[13px] tabular-nums" />
+                onChange={(e) => setExplain(e.target.value)} className="h-8 text-[13px] num" />
             </label>
           )}
         </div>

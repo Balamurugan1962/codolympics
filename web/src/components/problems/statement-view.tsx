@@ -47,7 +47,7 @@ export function SampleBox({ label, text, onCopied }: { label: string; text: stri
         {label}
         <button type="button" className="flex items-center gap-1 text-brand-deep hover:underline" onClick={() => { void navigator.clipboard?.writeText(text); onCopied?.(); }}><Icon.Copy size={12} /> Copy</button>
       </div>
-      <pre className="max-h-40 overflow-auto rounded-box border border-line bg-page p-2 text-[12px]">{text || <span className="text-faint">(empty)</span>}</pre>
+      <pre className="max-h-40 overflow-auto rounded-box border border-line bg-muted p-2 text-[12px]">{text || <span className="text-faint">(empty)</span>}</pre>
     </div>
   );
 }

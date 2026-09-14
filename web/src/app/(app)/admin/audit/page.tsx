@@ -36,7 +36,6 @@ export default function AuditPage() {
     <PageBody width="wide">
       <PageHeader
         title="Audit log"
-        description="Every override, grade and parameter change, with who did it and the reason they gave."
         actions={
           <Button variant="outline" asChild>
             <a href="/api/admin/export" download>

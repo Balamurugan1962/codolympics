@@ -114,7 +114,7 @@ export function CodingRound() {
             <EmptyState
               icon={<Icon.Gavel />}
               title="You don't own a question yet"
-              body="Questions are won at auction. Lose every bid and there is nothing to solve — bid with that in mind."
+              body="Questions are won at auction."
             />
           ) : (
             <ul className="divide-y">

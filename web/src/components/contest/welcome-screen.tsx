@@ -21,18 +21,18 @@ import { PHASE_LABEL } from "@/components/shell";
 
 /** Six lines, because six is what someone actually reads while waiting. */
 export const RULES: [string, string][] = [
-  ["Two sections, then an auction", "Puzzles and hacking decide who goes through. Finalists bid for the problems they want."],
-  ["Same money for everyone", "Every finalist starts the auction with an identical balance. Money is never score."],
-  ["Solving is all-or-nothing", "A solved problem earns its full score. Wrong submissions cost nothing."],
-  ["Hidden tests stay hidden", "You see the samples and which test failed — never its contents, at any price."],
-  ["One seat, one session", "Signing in elsewhere ends this one. Your work is saved on the server as you type."],
-  ["Nothing moves by itself", "Organisers start each section. This screen changes on its own — do not refresh."],
+  ["Two sections, then an auction", "Puzzles and hacking decide who goes through."],
+  ["Same money for everyone", "Identical starting balance. Money is never score."],
+  ["All or nothing", "A solved problem earns full score. Wrong submissions cost nothing."],
+  ["Hidden tests stay hidden", "You see which test failed, never what was in it."],
+  ["One seat, one session", "Signing in elsewhere ends this one. Work saves as you type."],
+  ["Nothing moves by itself", "Organisers open each section. This screen follows."],
 ];
 
 const STEPS: [string, string][] = [
-  ["Section A · Puzzles", "Answer in any order; change anything until it closes."],
+  ["Section A · Puzzles", "Answer in any order. Change anything until it closes."],
   ["Section B · Hacking", "Each given solution is wrong. Send an input that breaks it."],
-  ["Auction", "Bid for problems one at a time. Win one and only you may solve it."],
+  ["Auction", "Bid one at a time. Win one and only you can solve it."],
   ["Coding", "Solve what you own. Ties break on total solve time."],
 ];
 
@@ -47,7 +47,7 @@ function Clock() {
   }, []);
   // Rendered after mount: the server's clock is not the hall's.
   return (
-    <span className="text-[13px] font-semibold tabular-nums text-muted-foreground" suppressHydrationWarning>
+    <span className="text-[13px] font-semibold num text-muted-foreground" suppressHydrationWarning>
       {now ?? " "}
     </span>
   );
@@ -63,12 +63,9 @@ export function WelcomeScreen({ forwarding = false }: { forwarding?: boolean }) 
     <div className="mx-auto flex h-[calc(100vh-56px)] max-w-[640px] flex-col justify-center gap-7 px-6 py-8">
       <header>
         <Logo inverse={false} size={26} />
-        <h1 className="mt-4 text-[19px] font-semibold tracking-[-0.015em]">
+        <h1 className="mt-4 text-[17px] font-semibold tracking-[-0.012em]">
           {waiting && name ? `You're in, ${name}` : "How the day runs"}
         </h1>
-        <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-          Puzzles and hacking decide who goes through. Finalists bid for the problems they want, then solve them.
-        </p>
       </header>
 
       {/* The only live thing on the page, so the only thing wearing the accent. */}
@@ -82,12 +79,12 @@ export function WelcomeScreen({ forwarding = false }: { forwarding?: boolean }) 
           {waiting ? (
             <>
               <span className="font-semibold">Waiting for the organisers to start.</span>{" "}
-              <span className="text-muted-foreground">Nothing is required of you yet — do not refresh.</span>
+              <span className="text-muted-foreground">Don&apos;t refresh — this screen follows.</span>
             </>
           ) : (
             <>
               <span className="font-semibold">{PHASE_LABEL[phase] ?? phase} is open.</span>{" "}
-              <span className="text-muted-foreground">{forwarding ? "Taking you there…" : "Your contest screen is under Contest."}</span>
+              <span className="text-muted-foreground">{forwarding ? "Taking you there…" : "See Contest."}</span>
             </>
           )}
         </span>
@@ -111,7 +108,7 @@ export function WelcomeScreen({ forwarding = false }: { forwarding?: boolean }) 
       </ol>
 
       <section>
-        <h2 className="text-[11px] font-semibold tracking-[0.1em] text-faint uppercase">The rules that matter</h2>
+        <h2 className="text-[11px] font-semibold tracking-[0.08em] text-faint uppercase">Rules</h2>
         <ul className="mt-3 grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
           {RULES.map(([t, b]) => (
             <li key={t}>

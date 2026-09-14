@@ -97,7 +97,7 @@ export function NotSelected() {
       <Hold
         eyebrow="Phase 2 is running"
         title="You were not selected for Phase 2"
-        body="Bidding and submitting are not open to you. Your Phase 1 results stand, and you can still follow the contest to the end."
+        body="You can still follow the contest to the end."
       >
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button variant="outline" size="sm" asChild>
@@ -126,13 +126,13 @@ export function Ended() {
       <Hold
         eyebrow="The contest has ended"
         title="That's the contest"
-        body="Thank you for taking part. Nothing more will be judged; the final standings are below."
+        body="Nothing more will be judged. Final standings below."
       >
         <div className="flex flex-col items-center gap-5">
           {rank && (
             <div className="rounded-[5px] border border-line bg-card px-7 py-4">
               <div className="text-[11px] font-semibold tracking-[0.1em] text-faint uppercase">You finished</div>
-              <div className={cn("mt-1 text-[30px] leading-none font-semibold tracking-[-0.025em] tabular-nums", rank.rank <= 3 && "text-brand-deep")}>
+              <div className={cn("mt-1 text-[30px] leading-none font-semibold tracking-[-0.025em] num", rank.rank <= 3 && "text-brand-deep")}>
                 #{rank.rank}
               </div>
               <div className="mt-1.5 text-[12.5px] text-muted-foreground">
