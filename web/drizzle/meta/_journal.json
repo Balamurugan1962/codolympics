@@ -29,6 +29,13 @@
       "when": 1789385427669,
       "tag": "0003_auction_control",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789393060005,
+      "tag": "0004_auction_mode",
+      "breakpoints": true
     }
   ]
 }

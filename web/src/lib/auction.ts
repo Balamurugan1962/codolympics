@@ -42,9 +42,15 @@ export async function auctionSnapshot(round: number) {
   const open = await currentLot();
   const order = await db
     .select({ id: lot.id, questionId: lot.questionId, title: question.title, difficulty: question.difficulty,
-              score: question.score, basePrice: question.basePrice, state: lot.state, currentBid: lot.currentBid, order: lot.order })
+              score: question.score, basePrice: question.basePrice, state: lot.state, currentBid: lot.currentBid, order: lot.order,
+              // Who bought it, for the board. The price is already public the
+              // moment a lot closes, so the buyer is not a new disclosure —
+              // and offline it is the only record the room gets.
+              winnerId: ownership.participantId, pricePaid: ownership.pricePaid, winnerName: user.name })
     .from(lot)
     .innerJoin(question, eq(question.id, lot.questionId))
+    .leftJoin(ownership, and(eq(ownership.questionId, lot.questionId), isNull(ownership.voidedAt)))
+    .leftJoin(user, eq(user.id, ownership.participantId))
     .where(eq(lot.round, round))
     .orderBy(asc(lot.order));
 
@@ -62,6 +68,7 @@ export async function auctionSnapshot(round: number) {
     round,
     /* Participants see this too: a frozen countdown with no explanation reads
      * as a broken page, and the first thing they do is reload. */
+    mode: c.auctionMode,
     paused: c.auctionPausedAt !== null,
     paused_at: c.auctionPausedAt?.toISOString() ?? null,
     increment: c.bidIncrement,
@@ -85,7 +92,14 @@ export async function auctionSnapshot(round: number) {
           opened_at: open.lot.openedAt?.toISOString() ?? null,
         }
       : null,
-    order: order.map((o) => ({ ...o, base_price: o.basePrice, current_bid: o.currentBid })),
+    order: order.map((o) => ({
+      ...o,
+      base_price: o.basePrice,
+      current_bid: o.currentBid,
+      winner_id: o.winnerId,
+      winner_name: o.winnerName,
+      price_paid: o.pricePaid,
+    })),
     server_now: Date.now(),
   };
 }
@@ -122,6 +136,7 @@ export async function placeBid(participantId: string, lotId: number, amount: num
 
     const reject = (code: BidRejection, message: string) => errors.conflict(code, message);
     if (p.disqualifiedAt) throw reject("disqualified", "your account is disqualified");
+    if (c.auctionMode === "offline") throw reject("bidding_closed", "bidding for this contest happens in the room, not here");
     if (c.auctionPausedAt) throw reject("auction_paused", "the organisers have paused the auction");
     if (l.state !== "open") throw reject("bidding_closed", "bidding on this question has closed");
     if (l.currentBidderId === participantId) throw reject("already_highest", "you already hold the highest bid");
@@ -188,13 +203,17 @@ export async function openNextLot(round: number): Promise<boolean> {
       .for("update");
     if (!next) return false;
     const now = Date.now();
+    // Offline, the auctioneer decides when a lot is done, so it opens with no
+    // deadline at all — otherwise the scheduler would settle it as unsold from
+    // under a room that is still bidding.
+    const offline = c.auctionMode === "offline";
     await tx
       .update(lot)
       .set({
         state: "open",
         openedAt: new Date(now),
         // The opening window: no bid by then and the question goes unsold (US-B3-03).
-        noBidDeadline: new Date(now + c.openingWindowSeconds * 1000),
+        noBidDeadline: offline ? null : new Date(now + c.openingWindowSeconds * 1000),
         biddingEndsAt: null,
       })
       .where(eq(lot.id, next.id));
@@ -228,7 +247,7 @@ export async function closeLot(lotId: number, actor?: { id: string; reason: stri
 }
 
 /** Exactly the winning bid is deducted, and ownership becomes sole and final (US-B3-03). */
-async function award(tx: Tx, lotId: number, questionId: string, winnerId: string, price: number): Promise<void> {
+export async function award(tx: Tx, lotId: number, questionId: string, winnerId: string, price: number): Promise<void> {
   const [p] = await tx.select().from(participant).where(eq(participant.userId, winnerId)).for("update");
   const balanceAfter = p.balance - price; // CHECK (balance >= 0) is the backstop
   await tx.update(participant).set({ balance: balanceAfter }).where(eq(participant.userId, winnerId));
@@ -258,6 +277,12 @@ export async function tickAuction(): Promise<void> {
   if (c.phase !== "auction1" && c.phase !== "auction2") return;
   if (c.auctionPausedAt) return; // held by an administrator; resume shifts the deadlines
   const round = c.phase === "auction2" ? 2 : 1;
+  // Offline the app settles nothing: it opens the next lot when the previous
+  // one has been recorded, and otherwise waits for a person.
+  if (c.auctionMode === "offline") {
+    if (!(await currentLot())) await openNextLot(round);
+    return;
+  }
   const open = await currentLot();
   const now = Date.now();
 

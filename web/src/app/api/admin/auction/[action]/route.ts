@@ -4,6 +4,8 @@ import { body, errors, json, route } from "@/lib/api";
 import { closeLotNow } from "@/lib/auction";
 import {
   pauseAuction,
+  recordSale,
+  recordUnsold,
   reorderLots,
   restoreLot,
   resumeAuction,
@@ -67,6 +69,16 @@ export const POST = route<Ctx>(async (req, { params }) => {
     case "retract-bid": {
       const b = await body(req, z.object({ reason }));
       return json(await retractTopBid(viewer.id, b.reason));
+    }
+    case "record-sale": {
+      const b = await body(req, z.object({ reason, lot_id: z.number().int(), participant_id: z.string().min(1), price: z.number().int().min(0) }));
+      await recordSale(viewer.id, { lotId: b.lot_id, participantId: b.participant_id, price: b.price, reason: b.reason });
+      return json({ ok: true });
+    }
+    case "record-unsold": {
+      const b = await body(req, z.object({ reason, lot_id: z.number().int() }));
+      await recordUnsold(viewer.id, { lotId: b.lot_id, reason: b.reason });
+      return json({ ok: true });
     }
     case "take-back": {
       const b = await body(req, z.object({

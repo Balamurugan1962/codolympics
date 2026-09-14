@@ -27,6 +27,7 @@ import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
 type C = {
+  auctionMode: "online" | "offline";
   startingBalance: number;
   bidIncrement: number;
   countdownSeconds: number;
@@ -40,6 +41,11 @@ type C = {
   p1LeaderboardMode: string;
   leaderboardMode: string;
 };
+
+const AUCTION_STYLE = [
+  { value: "online", label: "Online — they bid from their seats" },
+  { value: "offline", label: "Offline — you record what the room does" },
+] as const;
 
 const VISIBILITY = [
   { value: "live", label: "Live", hint: "· everyone watches" },
@@ -103,6 +109,7 @@ export default function SettingsPage() {
     try {
       const saved = await api.patch<C>("/api/admin/contest", {
         reason,
+        auction_mode: c.auctionMode,
         starting_balance: c.startingBalance,
         bid_increment: c.bidIncrement,
         countdown_seconds: c.countdownSeconds,
@@ -187,13 +194,34 @@ export default function SettingsPage() {
           </SettingRow>
         </Section>
 
-        <Section title="Auction and rounds" description="Timing for Phase 2." padded={false}>
-          <SettingRow label="Opening window" description="No bid in this time and the question goes unsold.">
-            {numberField("openingWindowSeconds", "seconds")}
+        <Section title="Auction and rounds" description="How Phase 2 is run, and how long its rounds last." padded={false}>
+          <SettingRow
+            label="How the auction runs"
+            description={
+              c.auctionMode === "offline"
+                ? "Offline: the auctioneer runs the room and you record each sale. Participants watch the board but cannot bid."
+                : "Online: participants bid from their seats and the countdown settles each question."
+            }
+          >
+            <SimpleSelect
+              className="w-full"
+              size="default"
+              value={c.auctionMode}
+              onValueChange={(v) => set("auctionMode", v)}
+              options={AUCTION_STYLE}
+            />
           </SettingRow>
-          <SettingRow label="Bid countdown" description="Restarts on every bid, so bidding last never wins. Set 0 to close lots only by hand.">
-            {numberField("countdownSeconds", "seconds")}
-          </SettingRow>
+          {/* The clock settings only mean something when the clock decides. */}
+          {c.auctionMode === "online" && (
+            <>
+              <SettingRow label="Opening window" description="No bid in this time and the question goes unsold.">
+                {numberField("openingWindowSeconds", "seconds")}
+              </SettingRow>
+              <SettingRow label="Bid countdown" description="Restarts on every bid, so bidding last never wins. Set 0 to close lots only by hand.">
+                {numberField("countdownSeconds", "seconds")}
+              </SettingRow>
+            </>
+          )}
           <SettingRow label="Coding Round 1" description="The main solving round after the first auction.">
             {numberField("coding1Minutes", "minutes")}
           </SettingRow>

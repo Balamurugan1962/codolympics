@@ -27,6 +27,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { SimpleSelect } from "@/components/ui/select";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
@@ -54,12 +57,16 @@ type Lot = {
   price_paid: number | null;
 };
 
+type Balance = { id: string; name: string; balance: number; owned: number; disqualified: boolean };
+
 type Control = {
   round: number;
+  mode: "online" | "offline";
   paused_at: string | null;
   countdown_seconds: number;
   opening_window_seconds: number;
   lots: Lot[];
+  balances: Balance[];
 };
 
 const STATE: Record<Lot["state"], { label: string; tone: "success" | "destructive" | "warning" | "info" | "neutral" }> = {
@@ -75,6 +82,8 @@ export default function AuctionControlPage() {
   const { toast } = useToast();
   const [control, setControl] = useState<Control | null>(null);
   const [order, setOrder] = useState<number[] | null>(null);
+  const [winner, setWinner] = useState("");
+  const [price, setPrice] = useState("");
 
   const load = useCallback(async () => {
     setControl(await api.get<Control>("/api/admin/auction"));
@@ -98,6 +107,7 @@ export default function AuctionControlPage() {
   if (!control) return <PageSkeleton stats={4} rows={8} cols={5} />;
 
   const paused = Boolean(control.paused_at);
+  const offline = control.mode === "offline";
   const open = control.lots.find((l) => l.state === "open") ?? null;
   const pending = control.lots.filter((l) => l.state === "pending");
   const settled = control.lots.filter((l) => l.state !== "pending" && l.state !== "open");
@@ -126,7 +136,11 @@ export default function AuctionControlPage() {
     <PageBody width="wide">
       <PageHeader
         title="Auction control"
-        description={inAuction ? `Round ${control.round}. Everything here is audited.` : "No auction is running. Lots appear once you advance to an auction phase."}
+        description={
+          inAuction
+            ? `Round ${control.round} · ${offline ? "run in the room, recorded here" : "bidding from their seats"}. Everything here is audited.`
+            : "No auction is running. Lots appear once you advance to an auction phase."
+        }
         actions={
           inAuction ? (
             paused ? (
@@ -194,10 +208,26 @@ export default function AuctionControlPage() {
             title="On the block"
             description={open ? "What the room is bidding on right now." : "Nothing is open — the next lot opens by itself."}
           >
-            {!open || !live?.lot ? (
+            {!open ? (
               <p className="text-[13px] text-muted-foreground">
                 {paused ? "Held between lots. Resume to offer the next question." : "Between lots."}
               </p>
+            ) : offline ? (
+              /* Offline the app is the record, not the mechanism: the room has
+                 already decided, and this writes down what it decided. */
+              <OfflineLot
+                lot={open}
+                balances={control.balances}
+                winner={winner}
+                price={price}
+                onWinner={setWinner}
+                onPrice={setPrice}
+                onRecorded={() => { setWinner(""); setPrice(""); }}
+                act={act}
+                paused={paused}
+              />
+            ) : !live?.lot ? (
+              <p className="text-[13px] text-muted-foreground">Between lots.</p>
             ) : (
               <>
                 <Summary cols={4}>
@@ -281,6 +311,51 @@ export default function AuctionControlPage() {
               </>
             )}
           </Section>
+
+          {offline && (
+            <Section
+              title="Who can afford what"
+              description="Balances as they stand. A participant sees their own and nobody else's — this table is yours."
+              padded={false}
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Participant</TableHead>
+                    <TableHead className="w-28 text-right">Balance</TableHead>
+                    <TableHead className="w-24 text-right">Owns</TableHead>
+                    <TableHead className="w-40">Can take this lot</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {control.balances.map((b) => {
+                    const afford = open ? b.balance >= open.base_price : false;
+                    return (
+                      <TableRow key={b.id} className={cn(b.disqualified && "opacity-50")}>
+                        <TableCell className="font-medium">
+                          {b.name}
+                          {b.disqualified && <Badge variant="neutral" className="ml-2">disqualified</Badge>}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold tabular-nums">{b.balance.toLocaleString()}</TableCell>
+                        <TableCell className="text-right tabular-nums">{b.owned}</TableCell>
+                        <TableCell className="text-[12.5px] text-muted-foreground">
+                          {!open ? (
+                            <span className="text-faint">—</span>
+                          ) : b.disqualified ? (
+                            "no — disqualified"
+                          ) : afford ? (
+                            <span className="text-green-dark">yes, up to {b.balance.toLocaleString()}</span>
+                          ) : (
+                            <span className="text-amber">short by {(open.base_price - b.balance).toLocaleString()}</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Section>
+          )}
 
           <Section
             title="Still to come"
@@ -476,5 +551,130 @@ export default function AuctionControlPage() {
         </>
       )}
     </PageBody>
+  );
+}
+
+/**
+ * The open lot, offline: who won it and for how much.
+ *
+ * The checks the online auction enforces on every bid still hold here — a sale
+ * over somebody's balance, past the ownership cap, or below the published base
+ * price is refused rather than recorded. The room decides who wins; it does not
+ * get to decide that money exists. The form says so before you submit, so the
+ * refusal is not a surprise after the hammer has already come down.
+ */
+function OfflineLot({
+  lot,
+  balances,
+  winner,
+  price,
+  onWinner,
+  onPrice,
+  onRecorded,
+  act,
+  paused,
+}: {
+  lot: Lot;
+  balances: Balance[];
+  winner: string;
+  price: string;
+  onWinner: (v: string) => void;
+  onPrice: (v: string) => void;
+  onRecorded: () => void;
+  act: (action: string, payload: Record<string, unknown>, done: string) => Promise<void>;
+  paused: boolean;
+}) {
+  const eligible = balances.filter((b) => !b.disqualified);
+  const chosen = eligible.find((b) => b.id === winner) ?? null;
+  const asked = Number(price);
+  const typed = price.trim() !== "";
+  const valid = chosen !== null && typed && Number.isInteger(asked) && asked >= lot.base_price && asked <= chosen.balance;
+  const problem =
+    !chosen || !typed ? null
+    : !Number.isInteger(asked) ? "Enter a whole number."
+    : asked < lot.base_price ? `That is below the published base price of ${lot.base_price}.`
+    : asked > chosen.balance ? `${chosen.name} has only ${chosen.balance.toLocaleString()}.`
+    : null;
+
+  return (
+    <div className="space-y-4">
+      <Summary cols={3}>
+        <SummaryItem label="On the block">
+          <span className="block truncate text-[15px] font-semibold">{lot.title}</span>
+          <span className="font-mono text-[11px] text-faint">{lot.question_id}</span>
+        </SummaryItem>
+        <SummaryItem label="Base price">
+          <span className="text-[15px] font-semibold tabular-nums">{lot.base_price}</span>
+        </SummaryItem>
+        <SummaryItem label="Worth">
+          <span className="tabular-nums">{lot.score} points</span>
+        </SummaryItem>
+      </Summary>
+
+      <div className="grid gap-3 border-t pt-4 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-end">
+        <Field label="Who won it">
+          <SimpleSelect
+            className="w-full"
+            size="default"
+            value={winner}
+            onValueChange={onWinner}
+            placeholder="Pick the winning bidder"
+            options={eligible.map((b) => ({ value: b.id, label: `${b.name} — ${b.balance.toLocaleString()} left` }))}
+          />
+        </Field>
+        <Field label="Hammer price" hint={`min ${lot.base_price}`}>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={lot.base_price}
+            value={price}
+            placeholder={String(lot.base_price)}
+            onChange={(e) => onPrice(e.target.value)}
+          />
+        </Field>
+        <ReasonAction
+          label="Record the sale"
+          variant="default"
+          icon={<Icon.Gavel size={14} />}
+          disabled={paused || !valid}
+          title={chosen ? `Record ${lot.title} to ${chosen.name}` : "Record the sale"}
+          confirmLabel="Record it"
+          defaultReason={chosen ? `${chosen.name} won ${lot.title} at ${asked} in the room.` : "Recording the sale called in the room."}
+          description="This takes the money and hands the question over, exactly as a won bid would. The next question opens straight after."
+          onConfirm={async (reason) => {
+            await act("record-sale", { reason, lot_id: lot.id, participant_id: winner, price: asked }, "Sale recorded");
+            onRecorded();
+          }}
+        />
+      </div>
+
+      {problem && (
+        <Alert variant="warning">
+          <Icon.Alert />
+          <AlertDescription>{problem}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+        <ReasonAction
+          label="Nobody bid"
+          icon={<Icon.X size={14} />}
+          disabled={paused}
+          title={`Close ${lot.title} unsold`}
+          defaultReason={`No bids on ${lot.title} in the room.`}
+          description="Nothing is sold and no money moves. It can be assigned by hand later, or offered again in the second round."
+          onConfirm={async (reason) => act("record-unsold", { reason, lot_id: lot.id }, "Closed unsold")}
+        />
+        <ReasonAction
+          label="Withdraw"
+          variant="destructive"
+          icon={<Icon.Ban size={14} />}
+          title={`Take ${lot.title} off the block`}
+          defaultReason={`Withdrawing ${lot.title} mid-auction.`}
+          description="Nothing is sold and no money moves. The next question opens, and you can put this one back later."
+          onConfirm={async (reason) => act("withdraw", { reason, lot_id: lot.id }, "Question withdrawn")}
+        />
+      </div>
+    </div>
   );
 }
