@@ -408,6 +408,11 @@ function LiveAuction() {
       description={lot ? `Lot ${position} of ${a.order.length} · ${a.order.filter((o) => o.state === "closed").length} sold` : "Between lots"}
       actions={
         <>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/auction">
+              <Icon.Settings size={14} /> All controls
+            </Link>
+          </Button>
           <ReasonAction
             label="Close bidding"
             title="Close bidding on the open lot"

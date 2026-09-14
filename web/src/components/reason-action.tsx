@@ -16,7 +16,7 @@ import { errorMessage } from "@/lib/client";
 
 import { Alert, AlertDescription } from "./ui/alert";
 import { Button } from "./ui/button";
-import { Field } from "./ui/field";
+import { CheckField, Field } from "./ui/field";
 import { Input } from "./ui/input";
 import { Modal } from "./ui/modal";
 import { Textarea } from "./ui/textarea";
@@ -44,7 +44,12 @@ export function ReasonAction({
   variant?: Variant;
   size?: "xs" | "sm" | "default";
   icon?: React.ReactNode;
-  fields?: { name: string; label: string; type?: "text" | "number" | "password" | "textarea"; hint?: string; help?: string; defaultValue?: string }[];
+  /**
+   * Extra inputs collected in the same dialog as the reason. A checkbox reads
+   * back as "1" or "", so every field is a string and a caller never has to
+   * care which kind it asked for.
+   */
+  fields?: { name: string; label: string; type?: "text" | "number" | "password" | "textarea" | "checkbox"; hint?: string; help?: string; defaultValue?: string }[];
   disabled?: boolean;
   onConfirm: (reason: string, values: Record<string, string>) => Promise<void>;
 }) {
@@ -105,15 +110,25 @@ export function ReasonAction({
         }
       >
         <div className="space-y-4">
-          {fields.map((f) => (
-            <Field key={f.name} label={f.label} hint={f.hint} help={f.help}>
-              {f.type === "textarea" ? (
-                <Textarea rows={3} value={values[f.name]} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} />
-              ) : (
-                <Input type={f.type ?? "text"} value={values[f.name]} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} />
-              )}
-            </Field>
-          ))}
+          {fields.map((f) =>
+            f.type === "checkbox" ? (
+              <CheckField
+                key={f.name}
+                label={f.label}
+                help={f.help}
+                checked={values[f.name] === "1"}
+                onChange={(e) => setValues({ ...values, [f.name]: e.target.checked ? "1" : "" })}
+              />
+            ) : (
+              <Field key={f.name} label={f.label} hint={f.hint} help={f.help}>
+                {f.type === "textarea" ? (
+                  <Textarea rows={3} value={values[f.name]} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} />
+                ) : (
+                  <Input type={f.type} value={values[f.name]} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} />
+                )}
+              </Field>
+            ),
+          )}
           <Field
             label="Reason"
             hint="recorded in the audit log"

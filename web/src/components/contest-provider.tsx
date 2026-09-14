@@ -26,6 +26,9 @@ export type ContestState = {
 
 export type AuctionSnapshot = {
   round: number;
+  /** An administrator is holding the auction: the clock is stopped and bids are refused. */
+  paused: boolean;
+  paused_at: string | null;
   increment: number;
   countdown_seconds: number;
   opening_window_seconds: number;
