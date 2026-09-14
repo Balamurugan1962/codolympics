@@ -114,7 +114,7 @@ export function Segmented<T extends string>({
           value={o.value}
           className={cn(
             "rounded-sm border-0 font-semibold text-muted-foreground shadow-none",
-            "data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs data-[state=on]:ring-1 data-[state=on]:ring-border",
+            "data-[pressed]:bg-card data-[pressed]:text-foreground data-[pressed]:shadow-xs data-[pressed]:ring-1 data-[pressed]:ring-border",
             size === "sm" ? "h-6 min-w-0 px-2.5 text-[12px]" : "h-8 min-w-0 px-3 text-[13px]",
           )}
         >

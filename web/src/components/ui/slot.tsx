@@ -60,3 +60,18 @@ function Slot({ children, ...props }: React.ComponentProps<"span">) {
 }
 
 export { Slot, mergeProps };
+
+/**
+ * Bridges our `asChild` API onto Base UI's `render` prop.
+ *
+ * Spread onto a Base UI part: `{...asChildRender(asChild, children)}`. When
+ * `asChild` is set the child element becomes what the part renders as;
+ * otherwise the child is just its content.
+ */
+function asChildRender(asChild: boolean | undefined, children: React.ReactNode) {
+  return asChild && React.isValidElement(children)
+    ? { render: children as React.ReactElement<Record<string, unknown>> }
+    : { children };
+}
+
+export { asChildRender };
