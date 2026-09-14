@@ -3,7 +3,8 @@
 import * as React from "react"
 import { type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
-import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui"
+import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group"
+import { Toggle as TogglePrimitive } from "@base-ui/react/toggle"
 
 import { toggleVariants } from "@/components/ui/toggle"
 
@@ -17,20 +18,41 @@ const ToggleGroupContext = React.createContext<
   spacing: 0,
 })
 
+/**
+ * Base UI's ToggleGroup is always array-valued, with `toggleMultiple` deciding
+ * whether more than one can be pressed. Radix modelled single-select as a
+ * plain string and `type="single"`. Call sites keep the Radix shape and the
+ * translation happens here — a segmented control that has to think about
+ * arrays is a segmented control nobody wants to write twice.
+ */
 function ToggleGroup({
   className,
   variant,
   size,
   spacing = 0,
   children,
+  type = "single",
+  value,
+  onValueChange,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Root> &
+}: Omit<React.ComponentProps<typeof ToggleGroupPrimitive>, "value" | "onValueChange"> &
   VariantProps<typeof toggleVariants> & {
     spacing?: number
+    type?: "single" | "multiple"
+    value?: string | string[]
+    onValueChange?: (value: never) => void
   }) {
+  const multiple = type === "multiple"
+  const groupValue = value === undefined ? undefined : Array.isArray(value) ? value : value === "" ? [] : [value]
   return (
-    <ToggleGroupPrimitive.Root
+    <ToggleGroupPrimitive
       data-slot="toggle-group"
+      multiple={multiple}
+      value={groupValue}
+      onValueChange={(next) => {
+        const cb = onValueChange as ((v: string | string[]) => void) | undefined
+        cb?.(multiple ? next : ((next[next.length - 1] ?? "") as string))
+      }}
       data-variant={variant}
       data-size={size}
       data-spacing={spacing}
@@ -48,7 +70,7 @@ function ToggleGroup({
       <ToggleGroupContext.Provider value={{ variant, size, spacing }}>
         {children}
       </ToggleGroupContext.Provider>
-    </ToggleGroupPrimitive.Root>
+    </ToggleGroupPrimitive>
   )
 }
 
@@ -58,12 +80,12 @@ function ToggleGroupItem({
   variant,
   size,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Item> &
+}: React.ComponentProps<typeof TogglePrimitive> &
   VariantProps<typeof toggleVariants>) {
   const context = React.useContext(ToggleGroupContext)
 
   return (
-    <ToggleGroupPrimitive.Item
+    <TogglePrimitive
       data-slot="toggle-group-item"
       data-variant={context.variant || variant}
       data-size={context.size || size}
@@ -80,7 +102,7 @@ function ToggleGroupItem({
       {...props}
     >
       {children}
-    </ToggleGroupPrimitive.Item>
+    </TogglePrimitive>
   )
 }
 
