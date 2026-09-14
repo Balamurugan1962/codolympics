@@ -28,7 +28,7 @@ import { SimpleSelect } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Menu } from "@/components/ui/menu";
 import { Section, Toolbar } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
@@ -104,7 +104,7 @@ export function PuzzleList() {
   useEffect(() => { void load(); }, [load]);
   const act = useQuestionActions("puzzles", load);
 
-  if (!rows) return <CardSkeleton lines={8} />;
+  if (!rows) return <TableSkeleton rows={7} cols={5} />;
   const shown = rows.filter((r) => state === "all" || stateOf(r) === state).filter((r) => !filter || r.title.toLowerCase().includes(filter.toLowerCase()));
   const live = rows.filter((r) => stateOf(r) === "live");
   const points = live.reduce((s, r) => s + r.points + r.explainPoints, 0);
@@ -198,7 +198,7 @@ export function HackList() {
   useEffect(() => { void load(); }, [load]);
   const act = useQuestionActions("hacking", load);
 
-  if (!rows) return <CardSkeleton lines={8} />;
+  if (!rows) return <TableSkeleton rows={7} cols={5} />;
   const shown = rows.filter((r) => !filter || r.title.toLowerCase().includes(filter.toLowerCase()) || r.problemId.includes(filter));
   const live = rows.filter((r) => stateOf(r) === "live");
 
@@ -292,7 +292,7 @@ export function Review() {
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  if (!rows) return <CardSkeleton lines={8} />;
+  if (!rows) return <TableSkeleton rows={7} cols={5} />;
   if (rows.length === 0) return <Section padded={false}><EmptyState icon={<Icon.Users size={20} />} title="No participants yet" body="Standings appear once people have registered and Phase 1 has run." /></Section>;
 
   const provisional = rows.filter((r) => r.provisional).length;

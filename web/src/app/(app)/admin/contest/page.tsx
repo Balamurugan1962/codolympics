@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { SimpleSelect } from "@/components/ui/select";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { FieldsSkeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
@@ -65,7 +65,7 @@ export default function SettingsPage() {
     return (
       <PageBody>
         <PageHeader title="Settings" />
-        <CardSkeleton lines={10} />
+        <FieldsSkeleton rows={8} />
       </PageBody>
     );
   }

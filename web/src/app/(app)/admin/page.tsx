@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, TableSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { Stepper } from "@/components/ui/stepper";
 import { Summary, SummaryItem } from "@/components/ui/summary";
@@ -457,24 +457,36 @@ function LiveAuction() {
   );
 }
 
-/** The dashboard's own shape, greyed out. Nothing claims a value it does not have yet. */
+/**
+ * The dashboard's own shape, greyed out. Nothing claims a value it does not
+ * have yet — this screen showing "0 registered" and "judge down" for a second
+ * before the real numbers land is worse than showing nothing.
+ */
 function DashboardSkeleton() {
   return (
-    <div className="space-y-5" aria-busy>
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <Skeleton className="h-4 w-36" />
-          <Skeleton className="mt-1 h-3 w-72" />
-        </CardHeader>
-        <div className="border-b bg-muted/30 px-5 py-3.5">
-          <Skeleton className="h-4 w-full max-w-2xl" />
+    <div className="space-y-6" role="status" aria-label="Loading" aria-busy>
+      <div aria-hidden>
+        <div className="flex items-center gap-3 border-b pb-1.5">
+          <Skeleton className="h-2.5 w-28" />
+          <Skeleton className="h-2.5 w-48" />
+          <Skeleton className="ml-auto h-2.5 w-16" />
         </div>
-        <div className="flex gap-2 px-5 py-4">
+        {/* The nine-step rail, which is the first thing an organiser looks at. */}
+        <div className="flex flex-wrap items-center gap-2 py-3.5">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Skeleton className="size-4 rounded-full" />
+              <Skeleton className="h-2.5 w-16" />
+              {i < 8 && <Skeleton className="h-px w-5" />}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 pt-1">
           <Skeleton className="h-9 w-44" />
           <Skeleton className="h-9 w-32" />
         </div>
-      </Card>
-      <Skeleton className="h-56 w-full rounded-md" />
+      </div>
+      <TableSkeleton rows={6} cols={4} />
     </div>
   );
 }

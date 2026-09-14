@@ -14,7 +14,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckField, SearchInput } from "@/components/ui/field";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { PageSkeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
 
@@ -86,7 +86,7 @@ export default function SubmissionsPage() {
       />
 
       {!rows ? (
-        <CardSkeleton lines={8} />
+        <PageSkeleton rows={9} cols={5} />
       ) : (
         <Section padded={false}>
           <Toolbar actions={<CheckField label="Internal errors only" checked={onlyIE} onChange={(e) => setOnlyIE(e.target.checked)} />}>
@@ -174,7 +174,7 @@ export default function SubmissionsPage() {
         description={open ? `${open.title} · ${open.language} · ${new Date(open.created_at).toLocaleString()}` : undefined}
       >
         {!detail ? (
-          <CardSkeleton lines={8} />
+          <PageSkeleton rows={9} cols={5} />
         ) : (
           <div className="space-y-4">
             <Section title="Judgements" description="Newest first. A rejudge keeps the superseded verdict for the record." padded={false}>

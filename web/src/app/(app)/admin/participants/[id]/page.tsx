@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { ListSkeleton, TextSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { Summary, SummaryItem } from "@/components/ui/summary";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -127,8 +127,8 @@ export default function ParticipantPage() {
   if (!d) {
     return (
       <PageBody width="wide">
-        <CardSkeleton lines={3} className="mb-5" />
-        <CardSkeleton lines={10} />
+        <TextSkeleton lines={3} className="mb-5" />
+        <ListSkeleton rows={8} />
       </PageBody>
     );
   }

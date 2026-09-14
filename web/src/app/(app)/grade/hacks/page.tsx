@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SearchInput } from "@/components/ui/field";
 import { SimpleSelect } from "@/components/ui/select";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
 
@@ -32,7 +32,7 @@ export default function HacksPage() {
   return (
     <PageBody width="wide" className="animate-fade-in">
       <PageHeader title="Hack attempts" description="Verdicts here are never shown to participants." />
-      {!rows ? <CardSkeleton lines={8} /> : rows.length === 0 ? <EmptyState icon={<Icon.Bug size={20} />} title="No hack attempts yet" body="Attempts appear here as soon as Section B opens." /> : (
+      {!rows ? <TableSkeleton rows={8} cols={5} /> : rows.length === 0 ? <EmptyState icon={<Icon.Bug size={20} />} title="No hack attempts yet" body="Attempts appear here as soon as Section B opens." /> : (
         <Section padded={false}>
           <Toolbar actions={<span className="text-[12px] text-muted-foreground">{shown.length} of {rows.length}</span>}>
             <SearchInput className="w-64" placeholder="Filter by participant or solution" value={filter} onChange={(e) => setFilter(e.target.value)} />

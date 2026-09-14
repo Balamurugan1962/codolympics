@@ -10,7 +10,7 @@ import { Icon } from "@/components/icons";
 import { StatusDot } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { TextSkeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/client";
 
 export default function EditHackPage() {
@@ -24,7 +24,7 @@ export default function EditHackPage() {
   useEffect(() => { void load(); }, [load]);
 
   const crumb = <Link href="/admin/phase1?tab=hacking" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Phase 1 · Section B</Link>;
-  if (hack === undefined) return <PageBody width="wide"><PageHeader breadcrumb={crumb} title="Hacking question" /><CardSkeleton lines={10} /></PageBody>;
+  if (hack === undefined) return <PageBody width="wide"><PageHeader breadcrumb={crumb} title="Hacking question" /><TextSkeleton lines={8} /></PageBody>;
   if (hack === null) return <PageBody width="wide"><PageHeader breadcrumb={crumb} title="Question not found" /><Section padded={false}><EmptyState icon={<Icon.Bug size={20} />} title="No hacking question with that id" /></Section></PageBody>;
   const s = stateOf(hack);
   return (

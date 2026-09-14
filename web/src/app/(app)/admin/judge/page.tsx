@@ -16,7 +16,7 @@ import { Icon } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow, StatSkeleton } from "@/components/ui/stat";
 import { Summary, SummaryItem } from "@/components/ui/summary";
 import { api } from "@/lib/client";
@@ -67,7 +67,7 @@ export default function JudgePage() {
               <StatSkeleton key={i} />
             ))}
           </StatRow>
-          <CardSkeleton lines={5} />
+          <TableSkeleton rows={5} cols={4} />
         </div>
       ) : (
         <div className="space-y-5">

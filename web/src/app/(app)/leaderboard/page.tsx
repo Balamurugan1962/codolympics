@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
 
@@ -27,7 +27,7 @@ export default function LeaderboardPage() {
   return (
     <PageBody className="animate-fade-in">
       <PageHeader title="Leaderboard" description="Ties: lower solve time, then Phase 1 rank." />
-      {!board ? <CardSkeleton lines={6} /> : board.mode === "hidden" ? (
+      {!board ? <TableSkeleton rows={8} cols={5} /> : board.mode === "hidden" ? (
         <EmptyState icon={<Icon.Eye size={20} />} title="Standings are hidden" body="The organisers turned it off for this contest." />
       ) : (
         <div className="space-y-3">
