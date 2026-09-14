@@ -27,8 +27,31 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+/**
+ * Where focus goes when the dialog closes.
+ *
+ * Base UI returns focus to its own Trigger. Almost every dialog here is
+ * controlled by React state and opened by an ordinary button somewhere else —
+ * there is no Trigger to return to, so focus would land on the body and a
+ * keyboard user would be dumped at the top of the page after confirming
+ * something. Radix tracked the previously focused element for this; Base UI
+ * takes it as `finalFocus`, so the element is captured on the render where
+ * `open` flips true, which is still before focus is moved into the popup.
+ */
+const ReturnFocus = React.createContext<React.RefObject<HTMLElement | null> | null>(null);
+
+function Dialog({ open, ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  const returnTo = React.useRef<HTMLElement | null>(null);
+  const wasOpen = React.useRef(false);
+  if (open && !wasOpen.current && typeof document !== "undefined") {
+    returnTo.current = document.activeElement as HTMLElement | null;
+  }
+  wasOpen.current = Boolean(open);
+  return (
+    <ReturnFocus.Provider value={returnTo}>
+      <DialogPrimitive.Root data-slot="dialog" open={open} {...props} />
+    </ReturnFocus.Provider>
+  );
 }
 
 function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
@@ -64,11 +87,13 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Popup> & {
   showCloseButton?: boolean;
 }) {
+  const returnTo = React.useContext(ReturnFocus);
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
+        finalFocus={returnTo ?? undefined}
         className={cn(
           "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-md border bg-background p-6 shadow-lg duration-200 outline-none data-[closed]:animate-out data-[closed]:fade-out-0 data-[closed]:zoom-out-95 data-[open]:animate-in data-[open]:fade-in-0 data-[open]:zoom-in-95 sm:max-w-lg",
           className,
