@@ -35,12 +35,12 @@ export default function ResultsPage() {
           </StatRow>
           <Section title="Section A · Logical puzzles" padded={false}>
             <Table>
-              <TableHeader><TableRow><TableHead>Question</TableHead><TableHead className="text-right num">Answer</TableHead><TableHead className="hidden sm:table-cell text-right num">Reasoning</TableHead><TableHead className="hidden md:table-cell">Evaluator&apos;s note</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Question</TableHead><TableHead className="text-right tabular-nums">Answer</TableHead><TableHead className="hidden sm:table-cell text-right tabular-nums">Reasoning</TableHead><TableHead className="hidden md:table-cell">Evaluator&apos;s note</TableHead></TableRow></TableHeader>
               <TableBody>{data.puzzles.map((p) => (
                 <TableRow key={p.question_id}>
                   <TableCell className="font-medium">{p.title}{p.voided && <Badge variant="neutral" className="ml-2">voided</Badge>}</TableCell>
-                  <TableCell className="text-right num">{p.grading === "manual" ? (p.manual_score ?? pending) : (p.auto_score ?? (p.pending ? pending : 0))} <span className="text-faint">/ {p.points}</span></TableCell>
-                  <TableCell className="hidden sm:table-cell text-right num">{p.explain_points ? <>{p.explain_score ?? pending} <span className="text-faint">/ {p.explain_points}</span></> : <span className="text-faint">—</span>}</TableCell>
+                  <TableCell className="text-right tabular-nums">{p.grading === "manual" ? (p.manual_score ?? pending) : (p.auto_score ?? (p.pending ? pending : 0))} <span className="text-faint">/ {p.points}</span></TableCell>
+                  <TableCell className="hidden sm:table-cell text-right tabular-nums">{p.explain_points ? <>{p.explain_score ?? pending} <span className="text-faint">/ {p.explain_points}</span></> : <span className="text-faint">—</span>}</TableCell>
                   <TableCell className="hidden text-muted-foreground md:table-cell">{p.comment ?? ""}</TableCell>
                 </TableRow>
               ))}</TableBody>

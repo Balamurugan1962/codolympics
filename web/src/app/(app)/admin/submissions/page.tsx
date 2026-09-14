@@ -130,7 +130,7 @@ export default function SubmissionsPage() {
                     data-state={open?.id === s.id ? "selected" : undefined}
                     className={s.judgement.verdict === "IE" ? "bg-red-tint/40" : ""}
                   >
-                    <TableCell className="text-right text-faint num">{s.id}</TableCell>
+                    <TableCell className="text-right text-faint tabular-nums">{s.id}</TableCell>
                     <TableCell className="hidden whitespace-nowrap text-muted-foreground sm:table-cell">
                       {new Date(s.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </TableCell>
@@ -145,7 +145,7 @@ export default function SubmissionsPage() {
                         {s.judgement.attempt > 1 && <Badge variant="info">rejudged ×{s.judgement.attempt - 1}</Badge>}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden text-right num md:table-cell">
+                    <TableCell className="hidden text-right tabular-nums md:table-cell">
                       {s.judgement.passed ?? "—"}
                       <span className="text-faint">/{s.judgement.total ?? "—"}</span>
                       {s.judgement.firstFail !== null && <span className="text-faint"> @{s.judgement.firstFail}</span>}

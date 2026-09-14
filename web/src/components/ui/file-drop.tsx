@@ -38,7 +38,7 @@ export function FileDrop({
 
   if (file) {
     return (
-      <div className="flex items-center gap-3 rounded-md border bg-card px-3.5 py-3">
+      <div className="flex items-center gap-3 rounded-md border bg-card shadow-xs px-3.5 py-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-brand-tint text-brand-deep">
           <Icon.Check size={16} strokeWidth={3} />
         </span>

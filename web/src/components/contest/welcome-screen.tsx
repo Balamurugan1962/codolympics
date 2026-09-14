@@ -46,7 +46,7 @@ function Clock() {
   }, []);
   // Rendered after mount: the server's clock is not the hall's.
   return (
-    <span className="text-[13px] font-semibold num text-muted-foreground" suppressHydrationWarning>
+    <span className="text-[13px] font-semibold tabular-nums text-muted-foreground" suppressHydrationWarning>
       {now ?? " "}
     </span>
   );

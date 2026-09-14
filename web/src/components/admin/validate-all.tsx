@@ -105,10 +105,10 @@ export function ValidateAllButton({ onDone }: { onDone: () => Promise<void> }) {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-right num">
+                    <TableCell className="text-right tabular-nums">
                       {r.skipped ? "—" : `${r.passed ?? 0}/${r.testcases ?? 0}`}
                     </TableCell>
-                    <TableCell className="text-right num">
+                    <TableCell className="text-right tabular-nums">
                       {r.max_time_ms !== null ? `${r.max_time_ms.toFixed(0)} ms` : "—"}
                     </TableCell>
                   </TableRow>

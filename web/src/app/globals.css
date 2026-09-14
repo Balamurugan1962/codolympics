@@ -18,25 +18,7 @@
 /*
  * Codolympics design system.
  *
- * An instrument panel, not a dashboard. Four decisions carry the whole look,
- * and everything else follows from them:
- *
- *   1. Rules, not boxes. The page is one white surface. Things are separated
- *      by hairlines and small labels, not by white cards floating on grey. A
- *      card is for something that genuinely detaches — a dialog, a menu.
- *
- *   2. Numbers are monospace. Every figure that can change — a score, a rank,
- *      a balance, a time, a test count, a problem id — is mono and tabular,
- *      and prose is not. Columns line up, digits stop jittering as they tick,
- *      and the split is the one thing on screen that says what this is for.
- *
- *   3. Labels, not headings with paragraphs. An 11px letterspaced label names
- *      a region. If a region needs a paragraph explaining it, the region is
- *      wrong.
- *
- *   4. Square. 4px on controls, 0 where something spans the full width. Round
- *      corners are for objects you pick up.
- *
+ * Two layers of tokens, both pointing at the same palette:
  * Two layers of tokens, both pointing at the same palette:
  *
  *   1. The shadcn/ui semantic set (--background, --primary, --border, …). Every
@@ -94,14 +76,13 @@
 :root {
   --radius: 0.375rem;
 
-  /* Surfaces. The page is white and the greys are wells cut into it, rather
-     than the page being grey and the content floating on it in cards. */
-  --background: #ffffff;
-  --foreground: #10151c;
+  /* Surfaces */
+  --background: #f7f8fa;
+  --foreground: #0e141e;
   --card: #ffffff;
-  --card-foreground: #10151c;
+  --card-foreground: #0e141e;
   --popover: #ffffff;
-  --popover-foreground: #10151c;
+  --popover-foreground: #0e141e;
 
   /* Action — the brand accent */
   --primary: #6366f1;
@@ -110,8 +91,8 @@
   --secondary-foreground: #0e141e;
 
   /* Quiet */
-  --muted: #f4f5f7;
-  --muted-foreground: #58616c;
+  --muted: #f1f3f5;
+  --muted-foreground: #5b6672;
   --accent: #eef2ff;
   --accent-foreground: #4338ca;
 
@@ -120,10 +101,9 @@
   --destructive: #b42318;
   --destructive-foreground: #ffffff;
 
-  /* Lines. The hairline does the work cards used to do, so it is the most
-     load-bearing colour here. */
-  --border: #e4e7ea;
-  --input: #d2d7dd;
+  /* Lines */
+  --border: #e3e6ea;
+  --input: #d3d8de;
   --ring: #6366f1;
 
   /* Charts, in the order they get used */
@@ -144,11 +124,11 @@
   --sidebar-ring: #818cf8;
 
   /* Brand tokens shadcn has no name for */
-  --navy: #10151c;
-  --navy-2: #1d2733;
-  --ink: #10151c;
-  --faint: #79838e;
-  --line-2: #ccd1d7;
+  --navy: #0e141e;
+  --navy-2: #1c2b3a;
+  --ink: #0e141e;
+  --faint: #7d8792;
+  --line-2: #c9cfd6;
   /* The brand: actions, selection, focus and the chrome.
      --brand        flat fills, rings, active states, progress
      --brand-dark   hover and pressed
@@ -280,22 +260,6 @@
   th,
   td {
     font-variant-numeric: tabular-nums;
-  }
-}
-
-@layer components {
-  /*
-   * A figure that can change: a score, a rank, a balance, a time, a count.
-   *
-   * Monospace and tabular, so columns align and digits do not shuffle as they
-   * tick. Set a hair smaller than the prose beside it because mono runs wider
-   * at the same point size and would otherwise shout.
-   */
-  .num {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    font-size: 0.94em;
-    letter-spacing: -0.01em;
   }
 }
 

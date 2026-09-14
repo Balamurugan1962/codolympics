@@ -59,9 +59,9 @@ export function useStandings(pollMs = 10_000) {
 /** 1st, 2nd and 3rd are worth spotting at a glance; the rest are just numbers. */
 function Rank({ rank }: { rank: number }) {
   if (rank === 0) return <span className="text-faint">—</span>;
-  if (rank > 3) return <span className="num">#{rank}</span>;
+  if (rank > 3) return <span className="tabular-nums">#{rank}</span>;
   return (
-    <Badge variant={rank === 1 ? "default" : "neutral"} className="num">
+    <Badge variant={rank === 1 ? "default" : "neutral"} className="tabular-nums">
       #{rank}
     </Badge>
   );
@@ -118,7 +118,7 @@ export function Phase1Standings({ rows, compact = false }: { rows: P1Row[] | nul
                 {r.advanced === true && <Badge variant="success" className="ml-2">advanced</Badge>}
                 {r.advanced === false && <Badge variant="neutral" className="ml-2">not selected</Badge>}
               </TableCell>
-              <TableCell className={cn("text-right font-semibold num", r.points === 0 && "text-faint")}>
+              <TableCell className={cn("text-right font-semibold tabular-nums", r.points === 0 && "text-faint")}>
                 {r.points}
                 {r.provisional && <span className="ml-1 text-[11px] font-normal text-amber">*</span>}
               </TableCell>
@@ -201,15 +201,15 @@ export function Phase2Standings({ rows, compact = false }: { rows: P2Row[] | nul
                   {r.name}
                 </Link>
               </TableCell>
-              <TableCell className={cn("text-right font-semibold num", r.score === 0 && "text-faint")}>{r.score}</TableCell>
-              <TableCell className={cn("text-right num", r.solved === 0 && "text-faint")}>{r.solved}</TableCell>
+              <TableCell className={cn("text-right font-semibold tabular-nums", r.score === 0 && "text-faint")}>{r.score}</TableCell>
+              <TableCell className={cn("text-right tabular-nums", r.solved === 0 && "text-faint")}>{r.solved}</TableCell>
               {!compact && (
-                <TableCell className="hidden text-right num sm:table-cell">
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">
                   {r.solved ? duration(r.total_time_ms) : <span className="text-faint">—</span>}
                 </TableCell>
               )}
               {!compact && (
-                <TableCell className="hidden text-right num md:table-cell">
+                <TableCell className="hidden text-right tabular-nums md:table-cell">
                   {r.phase1_rank ? `#${r.phase1_rank}` : <span className="text-faint">—</span>}
                 </TableCell>
               )}

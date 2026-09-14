@@ -88,7 +88,7 @@ export function ReorderList<T>({
               <Icon.Grip size={16} />
             </span>
 
-            <span className="w-6 shrink-0 text-right text-[12px] font-semibold text-faint num">{i + 1}</span>
+            <span className="w-6 shrink-0 text-right text-[12px] font-semibold text-faint tabular-nums">{i + 1}</span>
 
             <div
               tabIndex={0}

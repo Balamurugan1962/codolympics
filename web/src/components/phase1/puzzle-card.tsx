@@ -122,7 +122,7 @@ export function SequenceInput({ items, value, disabled, onChange }: { items: str
     <ol className="space-y-1.5">
       {order.map((idx, pos) => (
         <li key={idx} className="flex items-center gap-2 rounded-box border border-line bg-card px-3 py-2 text-[13px]">
-          <span className="w-5 font-semibold num text-faint">{pos + 1}.</span>
+          <span className="w-5 font-semibold tabular-nums text-faint">{pos + 1}.</span>
           <span className="min-w-0 flex-1">{items[idx]}</span>
           <button type="button" disabled={disabled || pos === 0} onClick={() => move(pos, -1)} className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="Move up">↑</button>
           <button type="button" disabled={disabled || pos === order.length - 1} onClick={() => move(pos, 1)} className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="Move down">↓</button>

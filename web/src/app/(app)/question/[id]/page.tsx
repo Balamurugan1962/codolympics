@@ -331,7 +331,7 @@ function ResultPanel({ j, stage, stalled, unreachable, sampleCount, open, onTogg
             <span className={cn("font-semibold", tone?.text ?? "text-white/80")}>{j.cancelled ? "Cancelled" : (tone?.label ?? j.verdict ?? "Pending")}</span>
           </>
         )}
-        <span className="ml-auto text-[11.5px] num text-white/45">
+        <span className="ml-auto text-[11.5px] tabular-nums text-white/45">
           {!running && j.verdict !== "CE" && j.total ? `${j.passed}/${j.total} tests` : ""}
           {!running && j.max_time_ms ? ` · ${j.max_time_ms.toFixed(0)} ms` : ""}
         </span>

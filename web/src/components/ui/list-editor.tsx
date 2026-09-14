@@ -37,7 +37,7 @@ export function StringListEditor({
     <div className="space-y-2">
       {items.map((v, i) => (
         <div key={i} className="flex items-center gap-1.5">
-          {numbered && <span className="w-5 shrink-0 text-right text-[12px] font-semibold text-faint num">{i + 1}.</span>}
+          {numbered && <span className="w-5 shrink-0 text-right text-[12px] font-semibold text-faint tabular-nums">{i + 1}.</span>}
           <Input
             value={v}
             disabled={disabled}

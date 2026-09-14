@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils";
  * page settles once into the placeholder and then jumps again into a layout
  * that looks nothing like it, which reads as a glitch rather than as loading.
  *
- * So these mirror the real components — same heights, same column rhythm, same
- * hairlines — and each page uses the one matching what it renders.
+ * So these mirror the real components — same card, same header band, same row
+ * heights and column rhythm — and each page uses the one matching what it
+ * renders.
  *
  * One `role="status"` on the wrapper and nothing readable inside: a screen
  * reader should hear "loading", not count forty empty boxes.
@@ -42,10 +43,10 @@ const CELL = ["w-16", "w-12", "w-14", "w-10", "w-16", "w-12"];
  * A table that has not arrived: the header rule, then rows at the real row
  * height, with a wide first column and narrow figures after it.
  */
-function TableSkeleton({ rows = 6, cols = 5, firstWide = true }: { rows?: number; cols?: number; firstWide?: boolean }) {
+function TableSkeleton({ rows = 6, cols = 5, firstWide = true, bare = false }: { rows?: number; cols?: number; firstWide?: boolean; bare?: boolean }) {
   return (
-    <Loading>
-      <div className="flex h-8 items-center gap-3 border-b">
+    <Loading className={bare ? undefined : "overflow-hidden rounded-lg border bg-card shadow-xs"}>
+      <div className="flex h-9 items-center gap-3 border-b bg-muted/60 px-4">
         <div className="min-w-0 flex-[2]">
           <Skeleton className={cn("h-2", firstWide ? "w-24" : "w-12")} />
         </div>
@@ -59,7 +60,7 @@ function TableSkeleton({ rows = 6, cols = 5, firstWide = true }: { rows?: number
         ))}
       </div>
       {Array.from({ length: rows }).map((_, r) => (
-        <div key={r} className="flex h-10 items-center gap-3 border-b">
+        <div key={r} className="flex h-11 items-center gap-3 border-b px-4 last:border-0">
           <div className="min-w-0 flex-[2]">{c0(r, firstWide)}</div>
           {Array.from({ length: Math.max(0, cols - 1) }).map((_, c) => (
             <div key={c} className="flex flex-1 justify-end">
@@ -83,7 +84,7 @@ function c0(r: number, wide: boolean) {
   );
 }
 
-/** The ruled readout strip above a table. */
+/** The readout tiles above a table, before the numbers land. */
 function StatStripSkeleton({ cols = 4 }: { cols?: number }) {
   const map: Record<number, string> = {
     2: "sm:grid-cols-2",
@@ -92,12 +93,12 @@ function StatStripSkeleton({ cols = 4 }: { cols?: number }) {
     5: "sm:grid-cols-2 lg:grid-cols-5",
   };
   return (
-    <Loading className={cn("grid grid-cols-2 divide-x divide-y border-b sm:divide-y-0", map[cols] ?? map[4])}>
+    <Loading className={cn("grid grid-cols-2 gap-3", map[cols] ?? map[4])}>
       {Array.from({ length: cols }).map((_, i) => (
-        <div key={i} className="px-4 py-2.5 first:pl-0">
-          <Skeleton className="h-2.5 w-20" />
-          <Skeleton className="mt-2 h-4 w-12" />
-          <Skeleton className="mt-2 h-2.5 w-24" />
+        <div key={i} className="rounded-lg border bg-card px-4 py-3.5 shadow-xs">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="mt-3 h-6 w-16" />
+          <Skeleton className="mt-2.5 h-2.5 w-28" />
         </div>
       ))}
     </Loading>
@@ -107,9 +108,9 @@ function StatStripSkeleton({ cols = 4 }: { cols?: number }) {
 /** Hairline rows of prose: announcements, an audit trail, a result list. */
 function ListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <Loading className="border-t">
+    <Loading className="overflow-hidden rounded-lg border bg-card px-5 shadow-xs">
       {Array.from({ length: rows }).map((_, r) => (
-        <div key={r} className="flex items-start gap-3 border-b py-3">
+        <div key={r} className="flex items-start gap-3 border-b py-3.5 last:border-0">
           <Skeleton className="mt-0.5 size-3.5 shrink-0 rounded-full" />
           <div className="min-w-0 flex-1 space-y-1.5">
             <Skeleton className={cn("h-2.5", r % 2 ? "w-2/5" : "w-1/3")} />
@@ -125,9 +126,9 @@ function ListSkeleton({ rows = 6 }: { rows?: number }) {
 /** Settings: a label and its explanation on the left, a control on the right. */
 function FieldsSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <Loading className="border-t">
+    <Loading className="overflow-hidden rounded-lg border bg-card px-5 shadow-xs">
       {Array.from({ length: rows }).map((_, r) => (
-        <div key={r} className="flex items-center gap-6 border-b py-3.5">
+        <div key={r} className="flex items-center gap-6 border-b py-4 last:border-0">
           <div className="min-w-0 flex-1 space-y-1.5">
             <Skeleton className={cn("h-2.5", r % 2 ? "w-40" : "w-32")} />
             <Skeleton className={cn("h-2", r % 3 ? "w-3/5" : "w-2/5")} />
@@ -158,14 +159,16 @@ function PageSkeleton({ stats = 0, rows = 7, cols = 5, toolbar = true }: { stats
   return (
     <div className="space-y-5">
       {stats > 0 && <StatStripSkeleton cols={stats} />}
-      {toolbar && (
-        <Loading className="flex items-center gap-2">
-          <Skeleton className="h-9 w-full max-w-[22rem]" />
-          <Skeleton className="h-9 w-40" />
-          <Skeleton className="ml-auto h-2.5 w-12" />
-        </Loading>
-      )}
-      <TableSkeleton rows={rows} cols={cols} />
+      <div className="overflow-hidden rounded-lg border bg-card shadow-xs">
+        {toolbar && (
+          <Loading className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
+            <Skeleton className="h-9 w-full max-w-[18rem]" />
+            <Skeleton className="h-9 w-40" />
+            <Skeleton className="ml-auto h-2.5 w-12" />
+          </Loading>
+        )}
+        <TableSkeleton rows={rows} cols={cols} bare />
+      </div>
     </div>
   );
 }
