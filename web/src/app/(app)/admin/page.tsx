@@ -108,7 +108,7 @@ export default function AdminDashboard() {
 
           <Section
             title="Contest control"
-            description={`Step ${idx + 1} of ${PHASE_STEPS.length}. Only you advance the contest; nothing moves on its own.`}
+            description="Only you advance the contest; nothing moves on its own."
             actions={
               c.phase_ends_at ? (
                 <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
@@ -119,7 +119,7 @@ export default function AdminDashboard() {
             }
             padded={false}
           >
-            <div className="border-b bg-muted/30 px-5 py-3">
+            <div className="border-b bg-muted/30 px-5 py-4">
               <Stepper steps={PHASE_STEPS} current={phase} />
             </div>
 
