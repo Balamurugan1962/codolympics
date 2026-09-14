@@ -367,7 +367,7 @@ function PuzzleItem({ q }: { q: Dossier["phase1"]["puzzles"][number] }) {
             !q.answered
               ? "border border-line-2 bg-card text-faint"
               : pending
-                ? "bg-violet-tint text-violet ring-1 ring-violet/30"
+                ? "bg-blue-tint text-blue ring-1 ring-blue/30"
                 : (q.awarded ?? 0) >= total
                   ? "bg-green text-white"
                   : (q.awarded ?? 0) > 0

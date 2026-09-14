@@ -6,7 +6,7 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 /*
- * Semibold, square-ish, and quiet until they need to be loud: one blue primary
+ * Semibold, square-ish, and quiet until they need to be loud: one violet primary
  * per view, outlines for everything else. Flat — no drop shadows. A shadow on
  * a button is decoration, and the fill already carries the emphasis.
  *
