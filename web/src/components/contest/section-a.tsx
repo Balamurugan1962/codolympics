@@ -14,7 +14,7 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Kbd } from "@/components/ui/kbd";
 import { PageBody } from "@/components/ui/page";
-import { ContestLoading } from "@/components/contest/waiting";
+import { ContestSkeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
@@ -42,7 +42,7 @@ export function SectionA() {
   }, [go]);
 
   if (error) return <PageBody><EmptyState icon={<Icon.Puzzle size={20} />} title="Section A is not open" body={error} /></PageBody>;
-  if (!data) return <ContestLoading />;
+  if (!data) return <ContestSkeleton rail={7} />;
   const finished = Boolean(state?.me?.p1_puzzles_finished);
   const locked = !data.open || finished;
   const q = data.questions[current];
@@ -55,7 +55,34 @@ export function SectionA() {
   }
 
   return (
-    <PageBody width="wide" className="animate-fade-in pb-24">
+    <PageBody width="wide" className="animate-fade-in pb-20">
+      {/* Finishing is irreversible and happens once; moving between questions
+          happens constantly. They used to sit side by side in the bar below,
+          which is how somebody finishes the section meaning to go to question
+          five. The finish lives up here now, away from the hand. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold tracking-[0.06em] text-faint uppercase">Section A · Puzzles</div>
+          <div className="mt-0.5 text-[13px] text-muted-foreground">
+            <span className="font-semibold text-foreground tabular-nums">{answered.size}</span> of{" "}
+            <span className="tabular-nums">{total}</span> answered
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+            <Icon.Clock size={14} />
+            <Countdown until={data.phase_ends_at} className="font-semibold text-ink" />
+          </span>
+          {finished ? (
+            <Badge variant="success">Finished</Badge>
+          ) : (
+            <Button size="sm" disabled={locked} onClick={() => setFinishOpen(true)}>
+              <Icon.Flag size={14} /> Submit &amp; finish
+            </Button>
+          )}
+        </div>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-28 lg:self-start">
           <div className="rounded-box border border-line bg-card">
@@ -88,11 +115,14 @@ export function SectionA() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1440px] items-center gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
-          <Button variant="outline" size="sm" onClick={() => go(-1)} disabled={current === 0}><Icon.ChevronLeft size={14} /> Previous</Button>
-          <Button variant="outline" size="sm" onClick={() => go(1)} disabled={current >= total - 1}>Next <Icon.ChevronRight size={14} /></Button>
+          <span className="text-[12.5px] text-muted-foreground tabular-nums">
+            Question <span className="font-semibold text-foreground">{current + 1}</span> of {total}
+          </span>
           <span className="hidden text-[11.5px] text-faint sm:inline"><Kbd>←</Kbd> <Kbd>→</Kbd> to move</span>
-          <span className="ml-auto flex items-center gap-1.5 text-[13px] text-muted-foreground"><Icon.Clock size={14} /><Countdown until={data.phase_ends_at} className="font-semibold text-ink" /></span>
-          {finished ? <Badge variant="success">Finished</Badge> : <Button size="sm" disabled={locked} onClick={() => setFinishOpen(true)}><Icon.Flag size={14} /> Submit &amp; finish</Button>}
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => go(-1)} disabled={current === 0}><Icon.ChevronLeft size={14} /> Previous</Button>
+            <Button variant="outline" size="sm" onClick={() => go(1)} disabled={current >= total - 1}>Next <Icon.ChevronRight size={14} /></Button>
+          </div>
         </div>
       </div>
 

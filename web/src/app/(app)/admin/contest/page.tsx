@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { SimpleSelect } from "@/components/ui/select";
-import { FieldsSkeleton } from "@/components/ui/skeleton";
+import { SectionSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
@@ -65,7 +65,25 @@ export default function SettingsPage() {
     return (
       <PageBody>
         <PageHeader title="Settings" />
-        <FieldsSkeleton rows={8} />
+        {/* Three titled panels of setting rows, which is what lands — not one
+            undivided list of eight. */}
+        <div className="space-y-5">
+          {[3, 3, 4].map((rows, i) => (
+            <SectionSkeleton key={i}>
+              <div className="px-5">
+                {Array.from({ length: rows }).map((_, r) => (
+                  <div key={r} className="flex items-center gap-6 border-b py-4 last:border-0">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <Skeleton className={r % 2 ? "h-2.5 w-40" : "h-2.5 w-32"} />
+                      <Skeleton className={r % 3 ? "h-2 w-3/5" : "h-2 w-2/5"} />
+                    </div>
+                    <Skeleton className="h-8 w-32 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </SectionSkeleton>
+          ))}
+        </div>
       </PageBody>
     );
   }
