@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/icons";
+import { Pagination, usePaged } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SearchInput } from "@/components/ui/field";
@@ -31,6 +32,7 @@ export default function AuditPage() {
       (e.target ?? "").toLowerCase().includes(q) ||
       e.reason.toLowerCase().includes(q),
   );
+  const paged = usePaged(shown, { param: "page" });
 
   return (
     <PageBody width="wide">
@@ -57,9 +59,7 @@ export default function AuditPage() {
               onChange={(e) => setFilter(e.target.value)}
               onClear={() => setFilter("")}
             />
-            <span className="ml-auto text-[12px] text-muted-foreground">
-              {shown.length} of {rows.length}
-            </span>
+
           </Toolbar>
           {shown.length === 0 ? (
             <EmptyState
@@ -68,7 +68,8 @@ export default function AuditPage() {
               body={rows.length === 0 ? "Entries appear as soon as anything is changed." : undefined}
             />
           ) : (
-            <Table>
+            <>
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="hidden sm:table-cell">Time</TableHead>
@@ -80,7 +81,7 @@ export default function AuditPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {shown.map((e) => (
+                {paged.rows.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell className="hidden whitespace-nowrap text-muted-foreground sm:table-cell">
                       {new Date(e.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
@@ -103,6 +104,8 @@ export default function AuditPage() {
                 ))}
               </TableBody>
             </Table>
+              <Pagination paged={paged} unit="entries" />
+            </>
           )}
         </Section>
       )}

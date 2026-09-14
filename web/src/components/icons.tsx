@@ -10,7 +10,7 @@
  */
 import {
   Activity, AlarmClock, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Ban, Bell, BookOpen, Bug, Calendar,
-  Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsUpDown, CircleAlert, CircleCheck,
+  Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight, ChevronsUpDown, CircleAlert, CircleCheck,
   CircleHelp, CircleX, ClipboardList, Clock, Code, Coins, Copy, Cpu, Database, Dot, Download, Ellipsis, ExternalLink,
   Eye, EyeOff, FileCode, FileText, Filter, Flag, FolderOpen, Gavel, GraduationCap, GripVertical, Hash, Inbox, Info,
   Key, Layers, LayoutGrid, Lightbulb, Link2, List, ListChecks, LoaderCircle, Lock, LogOut, Maximize2, Medal, Megaphone,
@@ -76,6 +76,8 @@ export const Icon = {
   ChevronRight: at(ChevronRight),
   ChevronDown: at(ChevronDown),
   ChevronUp: at(ChevronUp),
+  ChevronsLeft: at(ChevronsLeft),
+  ChevronsRight: at(ChevronsRight),
   ChevronsUpDown: at(ChevronsUpDown),
   ArrowLeft: at(ArrowLeft),
   ArrowRight: at(ArrowRight),

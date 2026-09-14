@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/icons";
+import { Pagination, usePaged } from "@/components/ui/pagination";
 import { Badge, VerdictBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
@@ -74,6 +75,7 @@ export default function SubmissionsPage() {
       (!filter || r.name.toLowerCase().includes(filter.toLowerCase()) || r.question_id.includes(filter.toLowerCase())) &&
       (!onlyIE || r.judgement.verdict === "IE"),
   );
+  const paged = usePaged(shown, { param: "page" });
   const ieCount = all.filter((r) => r.judgement.verdict === "IE").length;
 
   return (
@@ -105,7 +107,8 @@ export default function SubmissionsPage() {
               body={all.length === 0 ? "Submissions appear here as soon as the coding rounds begin." : "Try a different filter."}
             />
           ) : (
-            <Table>
+            <>
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-14 text-right">#</TableHead>
@@ -121,7 +124,7 @@ export default function SubmissionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {shown.map((s) => (
+                {paged.rows.map((s) => (
                   <TableRow
                     key={s.id}
                     data-state={open?.id === s.id ? "selected" : undefined}
@@ -162,6 +165,8 @@ export default function SubmissionsPage() {
                 ))}
               </TableBody>
             </Table>
+              <Pagination paged={paged} unit="submissions" />
+            </>
           )}
         </Section>
       )}
