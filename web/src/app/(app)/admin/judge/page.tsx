@@ -152,7 +152,11 @@ export default function JudgePage() {
               value={down ? "Down" : "Healthy"}
               tone={down ? "destructive" : "success"}
               icon={<Icon.Server size={13} />}
-              hint={feed.judge ? `${feed.judge.busy} of ${feed.judge.capacity} slots busy` : "not answering"}
+              hint={
+                feed.judge
+                  ? `sandbox ${feed.judge.go_judge} · ${feed.judge.problems} package${feed.judge.problems === 1 ? "" : "s"} · ${feed.judge.busy}/${feed.judge.capacity} slots`
+                  : "not answering"
+              }
             />
             <Stat
               label="In flight"
@@ -185,11 +189,14 @@ export default function JudgePage() {
 
           {running.length === 0 ? (
             /* An idle queue is the normal state between rounds, and it does not
-             * deserve a card with a picture in it. One line, and the page moves
-             * on to what the judge has actually done. */
+             * deserve a card with a picture in it. One line — and when nothing
+             * has ever been sent, this is the page's only empty message rather
+             * than the first of two. */
             <div className="flex items-center gap-2 rounded-lg border bg-card px-4 py-3 text-[12.5px] text-muted-foreground shadow-xs">
               <Icon.CircleCheck size={14} className="text-green" />
-              {all.length === 0 ? "Nothing has been sent to the judge yet." : "Nothing is waiting on the judge right now."}
+              {all.length === 0
+                ? "Nothing has been sent to the judge yet. Requests appear here the moment a round opens."
+                : "Nothing is waiting on the judge right now."}
             </div>
           ) : (
           <Section
@@ -257,9 +264,15 @@ export default function JudgePage() {
 
           <Section
             title="Finished"
-            description="Everything the judge has answered, newest first. Open one for the code, the input and the jury detail."
+            description={
+              all.length === 0
+                ? "Nothing answered yet."
+                : "Everything the judge has answered, newest first. Open one for the code, the input and the jury detail."
+            }
             padded={false}
           >
+            {/* Nothing to filter until something has been judged. */}
+            {all.length > 0 && (
             <Toolbar
               actions={
                 <div className="flex items-center gap-1 rounded-md border bg-card p-0.5">
@@ -288,13 +301,16 @@ export default function JudgePage() {
                 onClear={() => setFilter("")}
               />
             </Toolbar>
+            )}
 
             {settled.length === 0 ? (
-              <EmptyState
-                icon={<Icon.Gavel />}
-                title={all.length === 0 ? "The judge has not been asked for anything yet" : "Nothing matches"}
-                body={all.length === 0 ? "Requests appear here as soon as a round opens." : "Try a different filter."}
-              />
+              all.length === 0 ? (
+                <p className="px-5 py-6 text-[12.5px] text-muted-foreground">
+                  Answered requests are listed here, newest first — open one for the code, the input and the jury detail.
+                </p>
+              ) : (
+                <EmptyState icon={<Icon.Gavel />} title="Nothing matches" body="Try a different filter." />
+              )
             ) : (
               <>
                 <Table>
@@ -329,16 +345,6 @@ export default function JudgePage() {
                 <Pagination paged={paged} unit="requests" className="px-4" />
               </>
             )}
-          </Section>
-
-          <Section title="What the judge reports about itself" description="Straight from its health endpoint.">
-            <Summary cols={3}>
-              <SummaryItem label="Sandbox">{feed.judge?.go_judge ?? <span className="text-faint">unreachable</span>}</SummaryItem>
-              <SummaryItem label="Packages on disk">{feed.judge?.problems ?? <span className="text-faint">—</span>}</SummaryItem>
-              <SummaryItem label="Concurrency">
-                {feed.judge ? `${feed.judge.busy} running of ${feed.judge.capacity}` : <span className="text-faint">—</span>}
-              </SummaryItem>
-            </Summary>
           </Section>
         </div>
       )}

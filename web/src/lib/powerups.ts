@@ -129,7 +129,16 @@ export async function assertNotBlackedOut(participantId: string): Promise<void> 
 // Reading the marketplace
 // ---------------------------------------------------------------------------
 
+/**
+ * Everything on sale.
+ *
+ * Seeds the defaults if the table is empty rather than relying on the server
+ * having been restarted since the feature shipped — an empty marketplace that
+ * needs a restart to appear is indistinguishable from a broken one, and the
+ * check is a single indexed row read.
+ */
 export async function catalogue() {
+  await ensurePowerups();
   return db.select().from(powerup).orderBy(asc(powerup.sortOrder), asc(powerup.id));
 }
 
