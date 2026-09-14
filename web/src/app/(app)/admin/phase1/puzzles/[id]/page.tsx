@@ -10,7 +10,7 @@ import { Icon } from "@/components/icons";
 import { StatusDot } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { TextSkeleton } from "@/components/ui/skeleton";
+import { DetailSkeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/client";
 
 export default function EditPuzzlePage() {
@@ -24,7 +24,7 @@ export default function EditPuzzlePage() {
   useEffect(() => { void load(); }, [load]);
 
   const crumb = <Link href="/admin/phase1" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Phase 1 · Section A</Link>;
-  if (puzzle === undefined) return <PageBody width="wide"><PageHeader breadcrumb={crumb} title="Puzzle" /><TextSkeleton lines={8} /></PageBody>;
+  if (puzzle === undefined) return <PageBody width="wide"><DetailSkeleton tabs={2} /></PageBody>;
   if (puzzle === null) return <PageBody width="wide"><PageHeader breadcrumb={crumb} title="Puzzle not found" /><Section padded={false}><EmptyState icon={<Icon.Puzzle size={20} />} title="No puzzle with that id" body="It may have been deleted." /></Section></PageBody>;
   const s = stateOf(puzzle);
   return (

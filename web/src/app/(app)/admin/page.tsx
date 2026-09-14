@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { Skeleton, TableSkeleton } from "@/components/ui/skeleton";
+import { SectionSkeleton, Skeleton, StepperSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { Stepper } from "@/components/ui/stepper";
 import { Summary, SummaryItem } from "@/components/ui/summary";
@@ -65,7 +65,17 @@ export default function AdminDashboard() {
     return () => clearInterval(t);
   }, [load, bump]);
 
-  if (!state) return null;
+  // The header is real from the first paint and the body waits in the shape it
+  // will take. Returning null here left the screen blank until /api/state came
+  // back, which on a cold load reads as a broken page rather than a loading one.
+  if (!state || !loaded) {
+    return (
+      <PageBody width="wide">
+        <PageHeader title="Dashboard" />
+        <DashboardSkeleton />
+      </PageBody>
+    );
+  }
   const c = state.contest;
   const canControl = state.viewer.role === "admin";
   const phase = c.phase;
@@ -85,10 +95,7 @@ export default function AdminDashboard() {
         }
       />
 
-      {!loaded ? (
-        <DashboardSkeleton />
-      ) : (
-        <div className="space-y-5">
+      <div className="space-y-5">
           {(judgeDown || errors > 0) && (
             <Alert variant={judgeDown ? "destructive" : "warning"}>
               <Icon.Alert />
@@ -228,8 +235,7 @@ export default function AdminDashboard() {
           {["auction1", "coding1", "auction2", "final", "ended"].includes(phase) && (
             <StandingsCard phase="phase2" rows1={boards?.phase1 ?? null} rows2={boards?.phase2 ?? null} />
           )}
-        </div>
-      )}
+      </div>
     </PageBody>
   );
 }
@@ -466,32 +472,32 @@ function LiveAuction() {
  * The dashboard's own shape, greyed out. Nothing claims a value it does not
  * have yet — this screen showing "0 registered" and "judge down" for a second
  * before the real numbers land is worse than showing nothing.
+ *
+ * It mirrors Contest control exactly: the card, the tinted band holding the
+ * phase track, then the row of actions. The track was still drawn as nine
+ * chips here long after Stepper became a line with ticks, so the page settled
+ * into one layout and then jumped into another.
  */
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6" role="status" aria-label="Loading" aria-busy>
-      <div aria-hidden>
-        <div className="flex items-center gap-3 border-b pb-1.5">
-          <Skeleton className="h-2.5 w-28" />
-          <Skeleton className="h-2.5 w-48" />
-          <Skeleton className="ml-auto h-2.5 w-16" />
+    <div className="space-y-5" role="status" aria-label="Loading" aria-busy>
+      <div className="overflow-hidden rounded-lg border bg-card shadow-xs" aria-hidden>
+        <div className="border-b px-5 py-4">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="mt-2 h-2.5 w-72" />
         </div>
-        {/* The nine-step rail, which is the first thing an organiser looks at. */}
-        <div className="flex flex-wrap items-center gap-2 py-3.5">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Skeleton className="size-4 rounded-full" />
-              <Skeleton className="h-2.5 w-16" />
-              {i < 8 && <Skeleton className="h-px w-5" />}
-            </div>
-          ))}
+        <div className="border-b bg-muted/30 px-5 py-4">
+          <StepperSkeleton />
         </div>
-        <div className="flex gap-2 pt-1">
-          <Skeleton className="h-9 w-44" />
-          <Skeleton className="h-9 w-32" />
+        <div className="space-y-3 px-5 py-4">
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-9 w-44" />
+            <Skeleton className="h-9 w-32" />
+          </div>
+          <Skeleton className="h-2.5 w-80 max-w-full" />
         </div>
       </div>
-      <TableSkeleton rows={6} cols={4} />
+      <SectionSkeleton lines={3} />
     </div>
   );
 }

@@ -123,34 +123,6 @@ function ListSkeleton({ rows = 6 }: { rows?: number }) {
   );
 }
 
-/** Settings: a label and its explanation on the left, a control on the right. */
-function FieldsSkeleton({ rows = 6 }: { rows?: number }) {
-  return (
-    <Loading className="overflow-hidden rounded-lg border bg-card px-5 shadow-xs">
-      {Array.from({ length: rows }).map((_, r) => (
-        <div key={r} className="flex items-center gap-6 border-b py-4 last:border-0">
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <Skeleton className={cn("h-2.5", r % 2 ? "w-40" : "w-32")} />
-            <Skeleton className={cn("h-2", r % 3 ? "w-3/5" : "w-2/5")} />
-          </div>
-          <Skeleton className="h-8 w-32 shrink-0" />
-        </div>
-      ))}
-    </Loading>
-  );
-}
-
-/** A block of prose or a detail pane, where no stronger shape is known. */
-function TextSkeleton({ lines = 4, className }: { lines?: number; className?: string }) {
-  return (
-    <Loading className={className}>
-      {Array.from({ length: lines }).map((_, i) => (
-        <Skeleton key={i} className={cn("mb-2.5 h-2.5", i === lines - 1 ? "w-2/5" : i % 2 ? "w-4/5" : "w-full")} />
-      ))}
-    </Loading>
-  );
-}
-
 /**
  * What most administration screens are: an optional readout strip, the filter
  * bar, and a table. One component so every list page waits the same way.
@@ -173,4 +145,169 @@ function PageSkeleton({ stats = 0, rows = 7, cols = 5, toolbar = true }: { stats
   );
 }
 
-export { Skeleton, TableSkeleton, StatStripSkeleton, ListSkeleton, FieldsSkeleton, TextSkeleton, PageSkeleton };
+/**
+ * A titled card with nothing in it yet. The band, the title and the one line of
+ * description are real structure — they are in the same place when the content
+ * lands — so only the body is left to the caller.
+ */
+function SectionSkeleton({ children, lines = 2, className }: { children?: React.ReactNode; lines?: number; className?: string }) {
+  return (
+    <Loading className={cn("overflow-hidden rounded-lg border bg-card shadow-xs", className)}>
+      <div className="border-b px-5 py-4">
+        <Skeleton className="h-3 w-40" />
+        <Skeleton className="mt-2 h-2.5 w-64" />
+      </div>
+      {children ?? (
+        <div className="space-y-2.5 p-5">
+          {Array.from({ length: lines }).map((_, i) => (
+            <Skeleton key={i} className={cn("h-2.5", i % 2 ? "w-3/5" : "w-4/5")} />
+          ))}
+        </div>
+      )}
+    </Loading>
+  );
+}
+
+/**
+ * The phase track, which is the first thing an organiser looks at and so the
+ * first thing that must not move when it arrives: equal-width ticks on a line,
+ * labels underneath, exactly as Stepper draws them.
+ */
+function StepperSkeleton({ steps = 9 }: { steps?: number }) {
+  return (
+    <div className="flex items-start" aria-hidden>
+      {Array.from({ length: steps }).map((_, i) => (
+        <div key={i} className="relative flex min-w-0 flex-1 flex-col items-center gap-1.5">
+          {i > 0 && <span className="absolute top-[7px] right-1/2 left-0 h-px bg-border" />}
+          {i < steps - 1 && <span className="absolute top-[7px] right-0 left-1/2 h-px bg-border" />}
+          <Skeleton className="relative z-10 size-[15px] rounded-full" />
+          <Skeleton className="h-2 w-12" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The label-over-value grid that heads a detail pane. */
+function SummarySkeleton({ items = 6, cols = 3 }: { items?: number; cols?: 2 | 3 | 4 }) {
+  const grid = { 2: "sm:grid-cols-2", 3: "sm:grid-cols-3", 4: "sm:grid-cols-2 lg:grid-cols-4" }[cols];
+  return (
+    <div className={cn("grid grid-cols-2 gap-x-6 gap-y-4", grid)} aria-hidden>
+      {Array.from({ length: items }).map((_, i) => (
+        <div key={i}>
+          <Skeleton className="h-2 w-16" />
+          <Skeleton className="mt-1.5 h-3 w-24" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A record behind tabs: the title, the tab strip, then whatever the first tab
+ * holds. Used by the problem, puzzle, hacking-question and participant pages,
+ * which all open on a tab and used to wait as four bars of fake prose.
+ */
+function DetailSkeleton({ tabs = 3, stats = 0, children }: { tabs?: number; stats?: number; children?: React.ReactNode }) {
+  return (
+    <Loading>
+      <div className="mb-6">
+        <Skeleton className="h-2.5 w-28" />
+        <Skeleton className="mt-3 h-6 w-72" />
+        <Skeleton className="mt-2.5 h-2.5 w-96 max-w-full" />
+      </div>
+      {stats > 0 && (
+        <div className={cn("mb-5 grid grid-cols-2 gap-3", stats >= 4 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3")}>
+          {Array.from({ length: stats }).map((_, i) => (
+            <div key={i} className="rounded-lg border bg-card px-4 py-3.5 shadow-xs">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="mt-3 h-6 w-16" />
+              <Skeleton className="mt-2.5 h-2.5 w-24" />
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mb-5 flex items-center gap-6 border-b pb-2.5">
+        {Array.from({ length: tabs }).map((_, i) => (
+          <Skeleton key={i} className={cn("h-2.5", i === 0 ? "w-20" : i === 1 ? "w-28" : "w-16")} />
+        ))}
+      </div>
+      {children ?? <SectionSkeleton lines={3} />}
+    </Loading>
+  );
+}
+
+/**
+ * The competitor's one-question-at-a-time screens: the rail of questions on the
+ * left, the question card on the right. Section A and Section B both wait this
+ * way, instead of a spinner in the middle of an empty page.
+ */
+function ContestSkeleton({ rail = 7, code = false }: { rail?: number; code?: boolean }) {
+  return (
+    <Loading className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <Skeleton className="h-2 w-28" />
+          <Skeleton className="mt-1.5 h-2.5 w-24" />
+        </div>
+        <Skeleton className="h-8 w-36" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="overflow-hidden rounded-lg border bg-card shadow-xs">
+          <div className="border-b px-4 py-3">
+            <Skeleton className="h-2.5 w-20" />
+            <Skeleton className="mt-2.5 h-1.5 w-full rounded" />
+          </div>
+          <div className="space-y-1 p-2">
+            {Array.from({ length: rail }).map((_, i) => (
+              <div key={i} className="flex items-center gap-2.5 px-3 py-2">
+                <Skeleton className="size-2 shrink-0 rounded-full" />
+                <Skeleton className={cn("h-2.5", i % 3 === 0 ? "w-32" : i % 3 === 1 ? "w-24" : "w-28")} />
+                <Skeleton className="ml-auto h-2 w-5" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border bg-card shadow-xs">
+          <div className="border-b px-5 py-4">
+            <Skeleton className="h-2 w-36" />
+            <Skeleton className="mt-2 h-4 w-56" />
+          </div>
+          {code ? (
+            <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+              <div className="space-y-2.5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className={cn("h-2.5", i % 2 ? "w-3/5" : "w-full")} />
+                ))}
+              </div>
+              <Skeleton className="h-[min(62vh,700px)] rounded-md bg-navy/80" />
+            </div>
+          ) : (
+            <div className="space-y-3 p-5">
+              <Skeleton className="h-2.5 w-4/5" />
+              <Skeleton className="h-2.5 w-3/5" />
+              <div className="mt-5 space-y-2.5 rounded-md border bg-muted/40 p-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-9 w-full rounded-md bg-card" />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </Loading>
+  );
+}
+
+export {
+  Skeleton,
+  TableSkeleton,
+  StatStripSkeleton,
+  ListSkeleton,
+  PageSkeleton,
+  SectionSkeleton,
+  StepperSkeleton,
+  SummarySkeleton,
+  DetailSkeleton,
+  ContestSkeleton,
+};
