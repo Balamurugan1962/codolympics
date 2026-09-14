@@ -7,8 +7,15 @@ import { cn } from "@/lib/utils";
 /*
  * Status chips. The colours are the contest's vocabulary and are used the same
  * way everywhere: green means done or correct, red means wrong or stopped,
- * amber needs attention, blue means active or in progress, violet marks
- * something a human must still judge, and grey is a plain label.
+ * amber needs attention, blue means *pending*, and grey is a plain label.
+ *
+ * `info` and `review` are the same blue on purpose. One is a machine still
+ * working and the other is a person who has yet to decide, and at a glance
+ * both mean the same thing to whoever is looking: not finished. They keep
+ * separate names so the call sites still say which kind of waiting it is.
+ *
+ * Violet is not in this list. Violet is the accent, and a status chip is never
+ * the accent — otherwise "awaiting grading" looks like something you clicked.
  *
  * Grey is the default on purpose. A chip that classifies rather than reports —
  * a version number, a problem kind — takes `neutral`, because if everything is
@@ -27,8 +34,8 @@ const badgeVariants = cva(
         success: "border-green/20 bg-green-tint text-green-dark",
         destructive: "border-red/20 bg-red-tint text-red",
         warning: "border-amber-bg/30 bg-amber-tint text-amber",
-        info: "border-brand/25 bg-brand-tint text-brand-deep",
-        review: "border-violet/20 bg-violet-tint text-violet",
+        info: "border-blue/20 bg-blue-tint text-blue",
+        review: "border-blue/20 bg-blue-tint text-blue",
         neutral: "border-border bg-muted text-muted-foreground",
         outline: "border-line-2 bg-transparent text-muted-foreground",
         navy: "border-transparent bg-navy text-white",
@@ -67,8 +74,8 @@ function StatusDot({
     success: "bg-green",
     destructive: "bg-red",
     warning: "bg-amber-bg",
-    info: "bg-brand",
-    review: "bg-violet",
+    info: "bg-blue",
+    review: "bg-blue",
     neutral: "bg-line-2",
   }[tone];
   return (
