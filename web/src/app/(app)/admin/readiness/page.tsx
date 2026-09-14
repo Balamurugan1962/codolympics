@@ -93,23 +93,18 @@ export default function ReadinessPage() {
       ) : (
         <div className="space-y-5">
           <Card className={cn("overflow-hidden", allClear && "border-green/40")}>
-            <div className={cn("flex flex-wrap items-center gap-4 px-5 py-4", allClear ? "bg-green-tint" : "bg-muted/40")}>
-              <span
-                className={cn(
-                  "flex size-11 shrink-0 items-center justify-center rounded-full",
-                  allClear ? "bg-green text-white" : "bg-amber-tint text-amber ring-1 ring-amber-bg/40",
-                )}
-              >
-                {allClear ? <Icon.Check size={20} strokeWidth={3} /> : <Icon.Alert size={18} />}
+            <div className={cn("flex flex-wrap items-center gap-3 px-4 py-3", allClear ? "bg-green-tint" : "bg-amber-tint/50")}>
+              <span className={cn("shrink-0", allClear ? "text-green-dark" : "text-amber")}>
+                {allClear ? <Icon.Check size={16} strokeWidth={3} /> : <Icon.Alert size={16} />}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="text-[15px] font-semibold">
+                <div className="text-[13.5px] font-semibold">
                   {allClear ? "Ready to run" : `${outstanding} thing${outstanding === 1 ? "" : "s"} left to fix`}
                 </div>
                 <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
                   {allClear
-                    ? "Every check passes. You can open registration and start Phase 1."
-                    : "None of these stops you experimenting — they stop the contest being fair."}
+                    ? "Every check passes. Open registration and start Phase 1."
+                    : "None of these block experimenting. They block a fair contest."}
                 </p>
               </div>
               <div className="w-full sm:w-52">

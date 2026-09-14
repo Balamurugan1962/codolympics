@@ -16,7 +16,6 @@ import { useEffect, useState } from "react";
 
 import { useContest } from "@/components/contest-provider";
 import { Countdown } from "@/components/countdown";
-import { Logo } from "@/components/logo";
 import { PHASE_LABEL } from "@/components/shell";
 
 /** Six lines, because six is what someone actually reads while waiting. */
@@ -60,16 +59,15 @@ export function WelcomeScreen({ forwarding = false }: { forwarding?: boolean }) 
   const name = state?.viewer.name?.split(" ")[0] ?? "";
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-56px)] max-w-[640px] flex-col justify-center gap-7 px-6 py-8">
-      <header>
-        <Logo inverse={false} size={26} />
-        <h1 className="mt-4 text-[17px] font-semibold tracking-[-0.012em]">
-          {waiting && name ? `You're in, ${name}` : "How the day runs"}
-        </h1>
-      </header>
+    <div className="mx-auto flex h-[calc(100vh-56px)] max-w-[620px] flex-col justify-center gap-6 px-6 py-8">
+      {/* No mark here: the chrome above already carries it, and a logo twice on
+          one screen is a logo nobody looks at. */}
+      <h1 className="text-[17px] font-semibold tracking-[-0.012em]">
+        {waiting && name ? `You're in, ${name}` : "How the day runs"}
+      </h1>
 
       {/* The only live thing on the page, so the only thing wearing the accent. */}
-      <div className="flex items-center gap-2.5 rounded-[5px] border border-line bg-card px-3.5 py-2.5" aria-live="polite">
+      <div className="flex items-center gap-2.5 border-y border-line py-2.5" aria-live="polite">
         <span
           className={
             waiting ? "size-1.5 shrink-0 animate-pulse rounded-full bg-brand" : "size-1.5 shrink-0 rounded-full bg-green"
