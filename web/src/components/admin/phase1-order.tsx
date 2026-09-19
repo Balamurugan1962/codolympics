@@ -20,7 +20,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/input";
 import { Section } from "@/components/ui/page";
 import { ReorderList } from "@/components/ui/reorder-list";
 import { ListSkeleton } from "@/components/ui/skeleton";
@@ -33,7 +32,6 @@ export function OrderPanel({ section }: { section: "puzzles" | "hacking" }) {
   const { toast } = useToast();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [order, setOrder] = useState<Row[]>([]);
-  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -58,9 +56,9 @@ export function OrderPanel({ section }: { section: "puzzles" | "hacking" }) {
   async function save() {
     setBusy(true);
     try {
-      await api.post(`/api/admin/phase1/${section}/order`, { ids: order.map((r) => r.id), reason: reason.trim() });
+      const label = section === "puzzles" ? "Section A" : "Section B";
+      await api.post(`/api/admin/phase1/${section}/order`, { ids: order.map((r) => r.id), reason: `${label} order changed.` });
       toast({ title: "Order saved", tone: "success" });
-      setReason("");
       await load();
     } catch (err) {
       toast({ title: "Not saved", description: errorMessage(err), tone: "error" });
@@ -89,16 +87,10 @@ export function OrderPanel({ section }: { section: "puzzles" | "hacking" }) {
             <span className="mr-auto flex items-center gap-1.5 text-[12.5px] font-semibold">
               <Icon.Alert size={14} className="text-amber" /> Unsaved order
             </span>
-            <Input
-              className="max-w-xs"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Reason — recorded in the audit log"
-            />
             <Button variant="outline" onClick={() => setOrder(rows)} disabled={busy}>
               Discard
             </Button>
-            <Button onClick={save} loading={busy} disabled={reason.trim().length < 3}>
+            <Button onClick={save} loading={busy}>
               Save order
             </Button>
           </>

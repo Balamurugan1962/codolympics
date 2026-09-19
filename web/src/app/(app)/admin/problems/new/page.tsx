@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { FileDrop } from "@/components/ui/file-drop";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { Checklist, Summary, SummaryItem } from "@/components/ui/summary";
 import { useToast } from "@/components/ui/toast";
@@ -40,7 +39,7 @@ export default function NewProblemPage() {
   const [inspection, setInspection] = useState<PackageInspection | null>(null);
   const [inspecting, setInspecting] = useState(false);
   const [details, setDetails] = useState<QuestionDetails>(EMPTY_DETAILS);
-  const [reason, setReason] = useState("");
+
   const [step, setStep] = useState(0);
   const [reached, setReached] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -108,9 +107,10 @@ export default function NewProblemPage() {
     if (!file) return;
     setBusy(true); setError(null);
     try {
-      const form = new FormData(); form.set("id", id.trim()); form.set("reason", reason.trim()); form.set("package", file);
+      const written = `Created the problem ${id.trim()} from ${file.name}.`;
+      const form = new FormData(); form.set("id", id.trim()); form.set("reason", written); form.set("package", file);
       const r = await api.post<{ version: string }>("/api/admin/problems", form);
-      if (!hackOnly) await api.post("/api/admin/questions", { id: id.trim(), reason: reason.trim(), ...details });
+      if (!hackOnly) await api.post("/api/admin/questions", { id: id.trim(), reason: written, ...details });
       toast({ title: `${id.trim()} uploaded as ${r.version}`, description: "Next: validate the package, then publish it.", tone: "success", duration: 7000 });
       router.push(`/admin/problems/${encodeURIComponent(id.trim())}`);
     } catch (err) { setError(errorMessage(err)); setBusy(false); }
@@ -140,7 +140,7 @@ export default function NewProblemPage() {
             <div className="ml-auto flex items-center gap-2">
               <Link href="/admin/problems"><Button variant="ghost" disabled={busy}>Cancel</Button></Link>
               {last
-                ? <Button onClick={create} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3}><Icon.Upload size={14} /> {known ? `Upload as ${nextVersion(known)}` : "Create problem"}</Button>
+                ? <Button onClick={create} loading={busy} disabled={allIssues.length > 0}><Icon.Upload size={14} /> {known ? `Upload as ${nextVersion(known)}` : "Create problem"}</Button>
                 : <Button onClick={next} disabled={inspecting}>Continue <Icon.ChevronRight size={14} /></Button>}
             </div>
           </>
@@ -227,12 +227,7 @@ export default function NewProblemPage() {
               </Section>
             )}
 
-            <Section title="Create" description="Recorded in the audit log with your reason.">
-              {error && <div className="mb-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
-              <Field label="Reason" help="e.g. initial upload, or what changed in this version.">
-                <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Initial upload for the contest set" />
-              </Field>
-            </Section>
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
           </>
         )}
       </WizardLayout>

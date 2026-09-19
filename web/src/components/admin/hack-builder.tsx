@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Icon } from "../icons";
 import { HackQuestionView } from "../phase1/hack-view";
+import { ActionButton } from "../action-button";
 import { ReasonAction } from "../reason-action";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { StatusDot } from "../ui/badge";
@@ -66,7 +67,6 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
   const [f, setF] = useState<Form>(initial);
   const [problems, setProblems] = useState<JudgeProblem[] | null>(null);
   const [languages, setLanguages] = useState<{ key: string; name: string }[]>([]);
-  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // After a reload the saved values replace the form -- unless the author has unsaved edits, which are kept.
@@ -103,11 +103,11 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
   async function save() {
     setBusy(true); setError(null);
     try {
-      const payload = { ...f, title: f.title.trim(), reason: reason.trim() };
+      const payload = { ...f, title: f.title.trim(), reason: `${existing ? "Edited" : "Created"} the hacking question “${f.title.trim()}”.` };
       if (existing) {
         await api.patch(`/api/admin/phase1/hacking/${existing.id}`, payload);
         toast({ title: "Saved", description: existing.ready || existing.published ? "Readiness was reset — prove a breaking input again before it goes live." : undefined, tone: "success" });
-        setReason(""); await onSaved?.();
+        await onSaved?.();
       } else {
         const r = await api.post<{ id: number }>("/api/admin/phase1/hacking", payload);
         toast({ title: "Hacking question created", description: "Next: prove a breaking input, then publish.", tone: "success" });
@@ -142,14 +142,13 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {existing && dirty && (
               <>
-                <Input className="w-56" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for the change" aria-label="Reason" />
                 <Button variant="ghost" onClick={() => setF(initial)} disabled={busy}>Discard</Button>
-                <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3}><Icon.Check size={14} /> Save changes</Button>
+                <Button onClick={save} loading={busy} disabled={allIssues.length > 0}><Icon.Check size={14} /> Save changes</Button>
               </>
             )}
             {!existing && <Link href="/admin/phase1?tab=hacking"><Button variant="ghost" disabled={busy}>Cancel</Button></Link>}
             {key === "preview" && !existing
-              ? <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3}><Icon.Plus size={14} /> Create question</Button>
+              ? <Button onClick={save} loading={busy} disabled={allIssues.length > 0}><Icon.Plus size={14} /> Create question</Button>
               : step < steps.length - 1 && <Button onClick={() => go(step + 1)} disabled={busy}>Continue <Icon.ChevronRight size={14} /></Button>}
           </div>
         </>
@@ -249,13 +248,7 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
               <SummaryItem label="Source">{f.given_source.split("\n").length} lines</SummaryItem>
             </Summary>
           </Section>
-          {!existing && (
-            <Section title="Create" description="Recorded in the audit log with your reason.">
-              {error && <div className="mb-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
-              <Field label="Reason"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Section B question 2" /></Field>
-            </Section>
-          )}
-          {existing && error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+          {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         </>
       )}
 
@@ -343,8 +336,8 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
       <Section title="Publish" description={hack.published ? "Live. Unpublishing hides it; attempts already judged are kept." : "Once published, participants see it as soon as Section B opens."}>
         <div className="flex flex-wrap items-center gap-2">
           {hack.published
-            ? <ReasonAction label="Unpublish" title="Unpublish this question?" description="It disappears from Section B. Judged attempts are kept." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/unpublish`, { reason }); toast({ title: "Unpublished", tone: "success" }); await onChanged?.(); }} />
-            : <ReasonAction label="Publish" variant="default" size="default" disabled={!hack.ready || hack.voided} title="Publish this question?" defaultReason="Verified and ready for Section B." description="Participants see it when Section B is open. A breaking input is proven." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await onChanged?.(); }} />}
+            ? <ActionButton label="Unpublish" confirm={{ title: "Unpublish this question?", body: "It disappears from Section B. Judged attempts are kept." }} onAct={async () => { await api.post(`/api/admin/phase1/hacking/${hack.id}/unpublish`, { reason: `Unpublished “${hack.title}”.` }); toast({ title: "Unpublished", tone: "success" }); await onChanged?.(); }} />
+            : <ActionButton label="Publish" variant="default" size="default" disabled={!hack.ready || hack.voided} onAct={async () => { await api.post(`/api/admin/phase1/hacking/${hack.id}/publish`, { reason: `Published “${hack.title}” to Section B.` }); toast({ title: "Published", description: "Participants see it when Section B is open.", tone: "success" }); await onChanged?.(); }} />}
           {!hack.ready && !hack.published && <span className="text-[12px] text-muted-foreground">Publishing unlocks once a breaking input is proven.</span>}
           <span className="flex-1" />
           {!hack.voided && <ReasonAction label="Void" variant="destructive" title="Void this question?" description="It scores for nobody and every total is recomputed. This cannot be undone." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await onChanged?.(); }} />}

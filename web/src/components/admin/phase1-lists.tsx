@@ -62,29 +62,81 @@ function useQuestionActions(section: "puzzles" | "hacking", reload: () => Promis
 
 type Pending = { kind: "publish" | "unpublish" | "void" | "remove"; id: number; title: string };
 
+/**
+ * Confirm one action on one question.
+ *
+ * Only voiding asks for a reason. It is the one action here that reaches
+ * outside this page — the question stops scoring for whoever owns it and every
+ * total is recomputed — so somebody will ask why. Publishing, unpublishing and
+ * deleting a draft are the ordinary work of getting a section ready; they are
+ * still written to the audit log, with the reason written for you.
+ */
+const COPY: Record<Pending["kind"], { title: (t: string) => string; body: string; label: string; danger: boolean; reason: (t: string) => string | null }> = {
+  publish: {
+    title: (t) => `Publish “${t}”?`,
+    body: "Participants see it as soon as the section opens. It has passed its self-test.",
+    label: "Publish",
+    danger: false,
+    reason: (t) => `Published “${t}”.`,
+  },
+  unpublish: {
+    title: (t) => `Unpublish “${t}”?`,
+    body: "It disappears from the section. Answers already saved are kept.",
+    label: "Unpublish",
+    danger: false,
+    reason: (t) => `Unpublished “${t}”.`,
+  },
+  void: {
+    title: (t) => `Void “${t}”?`,
+    body: "It scores for nobody and every total is recomputed. This cannot be undone.",
+    label: "Void",
+    danger: true,
+    reason: () => null, // asked for
+  },
+  remove: {
+    title: (t) => `Delete “${t}”?`,
+    body: "Only drafts can be deleted. This cannot be undone.",
+    label: "Delete",
+    danger: true,
+    reason: (t) => `Deleted the draft “${t}”.`,
+  },
+};
+
 function ActionDialog({ pending, onClose, run }: { pending: Pending | null; onClose: () => void; run: (kind: Pending["kind"], id: number, reason: string) => Promise<void> }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { setReason(""); setError(null); }, [pending]);
   if (!pending) return null;
-  const copy = {
-    publish: { title: `Publish “${pending.title}”?`, body: "Participants see it as soon as the section opens. It has passed its self-test.", label: "Publish", danger: false },
-    unpublish: { title: `Unpublish “${pending.title}”?`, body: "It disappears from the section. Answers already saved are kept.", label: "Unpublish", danger: false },
-    void: { title: `Void “${pending.title}”?`, body: "It scores for nobody and every total is recomputed. This cannot be undone.", label: "Void", danger: true },
-    remove: { title: `Delete “${pending.title}”?`, body: "Only drafts can be deleted. This cannot be undone.", label: "Delete", danger: true },
-  }[pending.kind];
+  const copy = COPY[pending.kind];
+  const written = copy.reason(pending.title);
+
+  async function confirm() {
+    if (!pending) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await run(pending.kind, pending.id, written ?? reason.trim());
+      onClose();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <Modal open onClose={onClose} title={copy.title}>
-      <p className="mb-4 text-[13px] text-muted-foreground">{copy.body}</p>
-      <Field label="Reason" help="Recorded in the audit log.">
-        <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
-      </Field>
+    <Modal open onClose={onClose} title={copy.title(pending.title)}>
+      <p className={written ? "text-[13px] text-muted-foreground" : "mb-4 text-[13px] text-muted-foreground"}>{copy.body}</p>
+      {!written && (
+        <Field label="Reason" help="Recorded in the audit log, and shown to the owner.">
+          <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
+        </Field>
+      )}
       {error && <div className="mt-3"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button variant={copy.danger ? "destructive" : "default"} loading={busy} disabled={reason.trim().length < 3}
-          onClick={async () => { setBusy(true); setError(null); try { await run(pending.kind, pending.id, reason.trim()); onClose(); } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); } }}>
+        <Button variant={copy.danger ? "destructive" : "default"} loading={busy} disabled={!written && reason.trim().length < 3} onClick={confirm}>
           {copy.label}
         </Button>
       </div>

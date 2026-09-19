@@ -130,16 +130,16 @@ function NoPackage({ id, onChange }: { id: string; onChange: () => void }) {
 function UploadVersion({ id, onChange, next }: { id: string; onChange: () => void; next?: string }) {
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
-  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   async function upload() {
     if (!file) return;
     setBusy(true);
-    const form = new FormData(); form.set("id", id); form.set("reason", reason.trim()); form.set("package", file);
+    const form = new FormData(); form.set("id", id); form.set("reason", note.trim() || `Uploaded ${file.name}.`); form.set("package", file);
     try {
       const r = await api.post<{ version: string }>("/api/admin/problems", form);
       toast({ title: `Uploaded as ${r.version}`, description: "Validate it, then publish.", tone: "success" });
-      setFile(null); setReason(""); onChange();
+      setFile(null); setNote(""); onChange();
     } catch (err) { toast({ title: "Upload failed", description: errorMessage(err), tone: "error" }); } finally { setBusy(false); }
   }
   return (
@@ -147,10 +147,10 @@ function UploadVersion({ id, onChange, next }: { id: string; onChange: () => voi
       <FileDrop file={file} onFile={setFile} label={next ? `Drop a zip to add ${next}` : "Drop the package zip here, or browse"} hint="problem.json and tests/ at the root" />
       {file && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <Field label="Reason" className="flex-1" help="What changed in this version. Goes into the audit log.">
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. fixed testcase 7's answer" />
+          <Field label="What changed" className="flex-1" hint="optional" help="Goes into the audit log. Left blank, the log records the file name.">
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. fixed testcase 7's answer" />
           </Field>
-          <Button onClick={upload} loading={busy} disabled={reason.trim().length < 3}><Icon.Upload size={14} /> Upload</Button>
+          <Button onClick={upload} loading={busy}><Icon.Upload size={14} /> Upload</Button>
         </div>
       )}
     </div>
@@ -308,14 +308,13 @@ function Details({ id, question, testcases, onChange }: { id: string; question: 
     ? { title: question.title, difficulty: question.difficulty as QuestionDetails["difficulty"], score: question.score, base_price: question.basePrice, auction_order: question.auctionOrder, statement_md: question.statementMd, sample_count: question.sampleCount, hints: question.hints.map((h) => ({ price: h.price, body_md: h.bodyMd })) }
     : EMPTY_DETAILS;
   const [d, setD] = useState<QuestionDetails>(initial);
-  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const dirty = JSON.stringify(d) !== JSON.stringify(initial);
   const issues = [...detailsIssues(d, testcases), ...hintIssues(d.hints)];
 
   async function save() {
     setBusy(true);
-    try { await api.post("/api/admin/questions", { id, reason: reason.trim(), ...d }); toast({ title: "Details saved", tone: "success" }); setReason(""); onChange(); }
+    try { await api.post("/api/admin/questions", { id, reason: `${question ? "Edited" : "Wrote"} the contest details for ${id}.`, ...d }); toast({ title: "Details saved", tone: "success" }); onChange(); }
     catch (err) { toast({ title: "Not saved", description: errorMessage(err), tone: "error" }); } finally { setBusy(false); }
   }
 
@@ -342,9 +341,8 @@ function Details({ id, question, testcases, onChange }: { id: string; question: 
             <span className="text-[13px] font-semibold">{question ? "Unsaved changes" : "Save the details"}</span>
             {issues.length > 0 && <span className="text-[12px] text-red">{issues[0]}</span>}
             <div className="flex flex-1 items-center gap-2 sm:justify-end">
-              <Input className="sm:max-w-xs" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason — recorded in the audit log" />
               {question && <Button variant="ghost" onClick={() => setD(initial)}>Discard</Button>}
-              <Button onClick={save} loading={busy} disabled={reason.trim().length < 3 || issues.length > 0}><Icon.Check size={14} /> Save</Button>
+              <Button onClick={save} loading={busy} disabled={issues.length > 0}><Icon.Check size={14} /> Save</Button>
             </div>
           </div>
         </div>

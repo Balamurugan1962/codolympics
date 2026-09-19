@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Icon } from "../icons";
 import { AnswerInput, PuzzleCard, SequenceInput, defaultAnswer, type PuzzleView } from "../phase1/puzzle-card";
+import { ActionButton } from "../action-button";
 import { ReasonAction } from "../reason-action";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Badge, StatusDot } from "../ui/badge";
@@ -155,7 +156,6 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
   const { toast } = useToast();
   const initial = useMemo(() => (existing ? fromPuzzle(existing) : EMPTY), [existing]);
   const [f, setF] = useState<Form>(initial);
-  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reached, setReached] = useState(existing ? 4 : 0);
@@ -192,11 +192,11 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
     setBusy(true); setError(null);
     try {
       if (existing) {
-        await api.patch(`/api/admin/phase1/puzzles/${existing.id}`, toPayload(f, reason.trim()));
+        await api.patch(`/api/admin/phase1/puzzles/${existing.id}`, toPayload(f, `Edited the puzzle “${f.title.trim()}”.`));
         toast({ title: "Saved", description: existing.ready || existing.published ? "Readiness was reset — run the self-test again before it goes live." : undefined, tone: "success" });
-        setReason(""); await onSaved?.();
+        await onSaved?.();
       } else {
-        const r = await api.post<{ id: number }>("/api/admin/phase1/puzzles", toPayload(f, reason.trim()));
+        const r = await api.post<{ id: number }>("/api/admin/phase1/puzzles", toPayload(f, `Created the puzzle “${f.title.trim()}”.`));
         toast({ title: "Puzzle created", description: "Next: run the self-test, then publish.", tone: "success" });
         router.push(`/admin/phase1/puzzles/${r.id}?step=verify`);
       }
@@ -229,14 +229,13 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {existing && dirty && (
               <>
-                <Input className="w-56" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for the change" aria-label="Reason" />
                 <Button variant="ghost" onClick={() => setF(initial)} disabled={busy}>Discard</Button>
-                <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3}><Icon.Check size={14} /> Save changes</Button>
+                <Button onClick={save} loading={busy} disabled={allIssues.length > 0}><Icon.Check size={14} /> Save changes</Button>
               </>
             )}
             {!existing && <Link href="/admin/phase1"><Button variant="ghost" disabled={busy}>Cancel</Button></Link>}
             {key === "preview" && !existing
-              ? <Button onClick={save} loading={busy} disabled={allIssues.length > 0 || reason.trim().length < 3}><Icon.Plus size={14} /> Create puzzle</Button>
+              ? <Button onClick={save} loading={busy} disabled={allIssues.length > 0}><Icon.Plus size={14} /> Create puzzle</Button>
               : step < steps.length - 1 && <Button onClick={next} disabled={busy}>Continue <Icon.ChevronRight size={14} /></Button>}
           </div>
         </>
@@ -439,13 +438,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
               {f.grading === "manual" && <SummaryItem label="Model answer" span><span className="line-clamp-2 whitespace-pre-wrap">{f.model_answer}</span></SummaryItem>}
             </Summary>
           </Section>
-          {!existing && (
-            <Section title="Create" description="Recorded in the audit log with your reason.">
-              {error && <div className="mb-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}
-              <Field label="Reason"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Section A question set, puzzle 3" /></Field>
-            </Section>
-          )}
-          {existing && error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+          {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         </>
       )}
 
@@ -559,12 +552,12 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
       <Section title="Publish" description={puzzle.published ? "Live. Unpublishing hides it; answers already saved are kept." : "Once published, participants see it as soon as Section A opens."}>
         <div className="flex flex-wrap items-center gap-2">
           {puzzle.published
-            ? <ReasonAction label="Unpublish" title="Unpublish this puzzle?" description="It disappears from Section A. Saved answers are kept." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/unpublish`, { reason }); toast({ title: "Unpublished", tone: "success" }); await onChanged?.(); }} />
-            : <ReasonAction label="Publish" variant="default" size="default" disabled={!puzzle.ready || puzzle.voided} title="Publish this puzzle?" defaultReason="Self-test passes; ready for Section A." description="Participants see it when Section A is open. It has passed its self-test." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/publish`, { reason }); toast({ title: "Published", tone: "success" }); await onChanged?.(); }} />}
+            ? <ActionButton label="Unpublish" confirm={{ title: "Unpublish this puzzle?", body: "It disappears from Section A. Saved answers are kept." }} onAct={async () => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/unpublish`, { reason: `Unpublished “${puzzle.title}”.` }); toast({ title: "Unpublished", tone: "success" }); await onChanged?.(); }} />
+            : <ActionButton label="Publish" variant="default" size="default" disabled={!puzzle.ready || puzzle.voided} onAct={async () => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/publish`, { reason: `Published “${puzzle.title}” to Section A.` }); toast({ title: "Published", description: "Participants see it when Section A is open.", tone: "success" }); await onChanged?.(); }} />}
           {!puzzle.ready && !puzzle.published && <span className="text-[12px] text-muted-foreground">Publishing unlocks when the self-test passes.</span>}
           <span className="flex-1" />
           {!puzzle.voided && <ReasonAction label="Void" variant="destructive" title="Void this puzzle?" description="It scores for nobody and every total is recomputed. This cannot be undone." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await onChanged?.(); }} />}
-          {!puzzle.published && <ReasonAction label="Delete" variant="destructive" title="Delete this puzzle?" description="Only drafts can be deleted. This cannot be undone." onConfirm={async (reason) => { await api.del(`/api/admin/phase1/puzzles/${puzzle.id}`, { reason }); toast({ title: "Deleted", tone: "success" }); router.push("/admin/phase1"); }} />}
+          {!puzzle.published && <ActionButton label="Delete" variant="destructive" confirm={{ title: "Delete this puzzle?", body: "Only drafts can be deleted. This cannot be undone.", label: "Delete" }} onAct={async () => { await api.del(`/api/admin/phase1/puzzles/${puzzle.id}`, { reason: `Deleted the draft “${puzzle.title}”.` }); toast({ title: "Deleted", tone: "success" }); router.push("/admin/phase1"); }} />}
         </div>
         {state === "void" && <p className="mt-3 text-[12.5px] text-muted-foreground">This puzzle is void.</p>}
       </Section>

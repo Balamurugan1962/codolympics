@@ -95,7 +95,7 @@ export function TransferActions({ section, onImported }: { section: Section; onI
 function ImportDialog({ section, onClose, onImported }: { section: Section; onClose: () => void; onImported: () => Promise<void> }) {
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
-  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -107,7 +107,7 @@ function ImportDialog({ section, onClose, onImported }: { section: Section; onCl
     try {
       const form = new FormData();
       form.set("package", file);
-      form.set("reason", reason.trim());
+      form.set("reason", note.trim() || `Imported the question zip ${file.name}.`);
       const r = await api.post<ImportResult>(`/api/admin/phase1/${section}/import`, form);
       setResult(r);
       toast({
@@ -144,7 +144,7 @@ function ImportDialog({ section, onClose, onImported }: { section: Section; onCl
             <Button variant="outline" onClick={onClose} disabled={busy}>
               Cancel
             </Button>
-            <Button onClick={run} loading={busy} disabled={!file || reason.trim().length < 3}>
+            <Button onClick={run} loading={busy} disabled={!file}>
               <Icon.Upload size={14} /> Import
             </Button>
           </>
@@ -210,8 +210,8 @@ function ImportDialog({ section, onClose, onImported }: { section: Section; onCl
             label="Drop a question zip here, or browse"
             hint="question.json at the root, or a puzzles/ and hacking/ set"
           />
-          <Field label="Reason" required help="Recorded in the audit log against every question this creates.">
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. importing the set written last week" />
+          <Field label="Note" hint="optional" help="Goes into the audit log against every question this creates. Left blank, the log records the file name.">
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. the set written last week" />
           </Field>
           {error && (
             <Alert variant="destructive">
