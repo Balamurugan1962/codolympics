@@ -41,3 +41,7 @@ judge/.venv/
 
 # run.sh state
 .run/
+
+# Locally installed agent skills (tool cache, not project source)
+.agents/
+.claude/
