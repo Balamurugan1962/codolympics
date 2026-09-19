@@ -3,7 +3,7 @@
 /** Section B: read the flawed code, craft an input that breaks it. */
 import { useCallback, useEffect, useState } from "react";
 
-import { useContest } from "@/components/contest-provider";
+import { useContest, useEngineEvent } from "@/components/contest-provider";
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
 import { HackQuestionView, type HackView } from "@/components/phase1/hack-view";
@@ -21,7 +21,7 @@ type Attempt = { id: number; question_id: number; state: string; valid_input: bo
 type Data = { open: boolean; phase_ends_at: string | null; questions: HackView[]; attempts: Attempt[] };
 
 export function SectionB() {
-  const { state, lastEvent, refresh } = useContest();
+  const { state, refresh } = useContest();
   const { toast } = useToast();
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export function SectionB() {
 
   const load = useCallback(async () => { try { setData(await api.get<Data>("/api/phase1/hacking")); } catch (err) { setError(errorMessage(err)); } }, []);
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { if (lastEvent?.name === "hack") void load(); }, [lastEvent, load]);
+  useEngineEvent("hack", load);
 
   if (error) return <PageBody><EmptyState icon={<Icon.Bug size={20} />} title="Section B is not open" body={error} /></PageBody>;
   if (!data) return <ContestSkeleton rail={3} code />;

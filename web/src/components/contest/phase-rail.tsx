@@ -19,21 +19,27 @@ import { cn } from "@/lib/utils";
 /** The day as a competitor was taught it, not the nine phases the engine tracks. */
 const STEPS = ["Puzzles", "Hacking", "Auction", "Coding", "Result"] as const;
 
-/** Which step a phase belongs to, and the one line of what to do in it. */
-const WHERE: Record<string, { step: number; todo: string }> = {
-  registration: { step: 0, todo: "Waiting for the organisers to start" },
-  p1_puzzles: { step: 1, todo: "Answer the puzzles — change anything until it closes" },
-  p1_hacking: { step: 2, todo: "Break the given solutions with a test input" },
-  review: { step: 2, todo: "Marking in progress — nothing to do" },
-  auction1: { step: 3, todo: "Bid for the questions you want to solve" },
-  coding1: { step: 4, todo: "Solve the questions you own" },
-  auction2: { step: 3, todo: "Bid for what is left, or keep solving" },
-  final: { step: 4, todo: "Last round — solve what you own" },
-  ended: { step: 5, todo: "The contest is over" },
+/**
+ * Which step a phase belongs to, what has just started, and the one line of
+ * what to do in it.
+ *
+ * `started` is the sentence a competitor is told the moment the phase opens, on
+ * screen and in the toast, so both say the same thing.
+ */
+export const WHERE: Record<string, { step: number; started: string; todo: string }> = {
+  registration: { step: 0, started: "Registration is open", todo: "Waiting for the organisers to start" },
+  p1_puzzles: { step: 1, started: "Section A has started: the puzzles", todo: "Answer the puzzles. Change any answer until it closes" },
+  p1_hacking: { step: 2, started: "Section B has started: hacking", todo: "Break the given solutions with a test input" },
+  review: { step: 2, started: "Section B is over", todo: "Marking in progress. Nothing to do" },
+  auction1: { step: 3, started: "Auction 1 has started", todo: "Bid for the questions you want to solve" },
+  coding1: { step: 4, started: "Coding round 1 has started", todo: "Solve the questions you own" },
+  auction2: { step: 3, started: "Auction 2 has started", todo: "Bid for what is left, or keep solving" },
+  final: { step: 4, started: "The final round has started", todo: "Last round. Solve what you own" },
+  ended: { step: 5, started: "The contest has ended", todo: "The contest is over" },
 };
 
 export function PhaseRail({ phase, endsAt }: { phase: string; endsAt: string | null }) {
-  const here = WHERE[phase] ?? { step: 0, todo: "" };
+  const here = WHERE[phase] ?? { step: 0, started: "", todo: "" };
   return (
     <div className="border-b bg-card">
       <div className="mx-auto flex h-10 max-w-[1600px] items-center gap-4 px-4 sm:px-6">

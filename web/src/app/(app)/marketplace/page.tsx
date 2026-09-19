@@ -16,7 +16,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 
-import { useContest } from "@/components/contest-provider";
+import { useContest, useEngineEvent } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +60,7 @@ const newRequestId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `r${Date.now()}${Math.random().toString(36).slice(2)}`;
 
 export default function MarketplacePage() {
-  const { refresh, lastEvent } = useContest();
+  const { refresh } = useContest();
   const { toast } = useToast();
   const [market, setMarket] = useState<Market | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
@@ -77,9 +77,7 @@ export default function MarketplacePage() {
     void load();
   }, [load]);
   // Somebody's shield went up, a balance moved, an attack landed.
-  useEffect(() => {
-    if (["powerup", "balance", "phase"].includes(lastEvent?.name ?? "")) void load();
-  }, [lastEvent, load]);
+  useEngineEvent(["powerup", "balance", "phase"], load);
 
   async function buy(item: Item) {
     setBusy(item.id);

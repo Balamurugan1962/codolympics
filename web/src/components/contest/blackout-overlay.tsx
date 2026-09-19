@@ -17,7 +17,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useContest } from "@/components/contest-provider";
+import { useContest, useEngineEvent } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { api } from "@/lib/client";
 
@@ -27,7 +27,7 @@ type State = { active: boolean; ends_at: string | null; count: number; by: strin
 const IDLE_MS = 15_000;
 
 export function BlackoutOverlay() {
-  const { state, lastEvent, serverNow } = useContest();
+  const { state, serverNow } = useContest();
   const [live, setLive] = useState<State | null>(null);
   const checking = useRef(false);
   const [, tick] = useState(0);
@@ -51,9 +51,7 @@ export function BlackoutOverlay() {
   }, []);
 
   // Pushed the instant one lands or is absorbed.
-  useEffect(() => {
-    if (lastEvent?.name === "powerup") void check();
-  }, [lastEvent, check]);
+  useEngineEvent("powerup", check);
 
   // A second hand for the countdown, and a heartbeat while it is up.
   useEffect(() => {

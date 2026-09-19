@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { StandingsCard, useStandings, type P1Row } from "@/components/admin/standings";
-import { useContest } from "@/components/contest-provider";
+import { useContest, useEngineEvent } from "@/components/contest-provider";
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
 import { ActionButton } from "@/components/action-button";
@@ -40,7 +40,7 @@ type Participant = { id: string; name: string; username: string | null; balance:
 type Queue = { ungraded: number; total: number };
 
 export default function AdminDashboard() {
-  const { state, refresh, lastEvent } = useContest();
+  const { state, refresh } = useContest();
   const { toast } = useToast();
   const { data: boards } = useStandings();
   const [health, setHealth] = useState<Health | null>(null);
@@ -59,12 +59,12 @@ export default function AdminDashboard() {
     setReady(r);
     setLoaded(true);
   }, []);
-  const bump = lastEvent?.name === "phase" ? lastEvent.at : 0;
   useEffect(() => {
     void load();
     const t = setInterval(load, 5000);
     return () => clearInterval(t);
-  }, [load, bump]);
+  }, [load]);
+  useEngineEvent("phase", load);
 
   // The header is real from the first paint and the body waits in the shape it
   // will take. Returning null here left the screen blank until /api/state came

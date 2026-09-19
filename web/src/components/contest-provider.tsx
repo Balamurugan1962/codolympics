@@ -5,10 +5,16 @@
  *
  * About once a second the page asks `/api/poll?after=<cursor>` for the events
  * since the last one it saw. They are the same events the engine used to push
- * over SSE, so everything downstream -- `lastEvent`, the auction snapshot, the
- * toasts -- behaves exactly as before. The cursor starts at the `event_cursor`
- * the initial state was read at, so nothing between that read and the first
- * poll is missed.
+ * over SSE. The cursor starts at the `event_cursor` the initial state was read
+ * at, so nothing between that read and the first poll is missed.
+ *
+ * Events are delivered to components by subscription (`useEngineEvent`), never
+ * as a piece of rendered state. A rendered "last event" loses any event that
+ * arrives in the same batch as another: a finished hack publishes `hack` and
+ * then `leaderboard`, React collapsed both into one render, and Section B only
+ * ever saw `leaderboard` -- so a verdict sat at "judging" until the page was
+ * reloaded. A subscription runs once per event, whatever React does with the
+ * renders that follow.
  *
  * Local state is never trusted after a gap: if a poll fails, or the engine says
  * events were pruned while this tab was away, the whole state is re-read.
@@ -60,7 +66,8 @@ export type AuctionSnapshot = {
   server_now: number;
 };
 
-type EngineEvent = { id: number; name: string; data: Record<string, unknown> };
+export type EngineEvent = { id: number; name: string; data: Record<string, unknown> };
+type Listener = (event: EngineEvent) => void;
 type Poll = { events: EngineEvent[]; cursor: number; reset: boolean; server_now: number };
 
 const POLL_MS = 1_000;
@@ -78,7 +85,8 @@ type Ctx = {
   connection: Connection;
   serverNow: () => number;
   refresh: () => Promise<void>;
-  lastEvent: { name: string; data: unknown; at: number } | null;
+  /** Call for every event until the returned function is called. Use `useEngineEvent`. */
+  subscribe: (listener: Listener) => () => void;
 };
 
 const ContestContext = createContext<Ctx | null>(null);
@@ -86,9 +94,15 @@ const ContestContext = createContext<Ctx | null>(null);
 export function ContestProvider({ initial, children }: { initial: ContestState; children: React.ReactNode }) {
   const [state, setState] = useState<ContestState | null>(initial);
   const [connection, setConnection] = useState<Connection>("connecting");
-  const [lastEvent, setLastEvent] = useState<Ctx["lastEvent"]>(null);
   const offset = useRef(initial.contest.server_now - Date.now());
-  const lastAt = useRef(0);
+  const listeners = useRef(new Set<Listener>());
+
+  const subscribe = useCallback((listener: Listener) => {
+    listeners.current.add(listener);
+    return () => {
+      listeners.current.delete(listener);
+    };
+  }, []);
 
   const noteServerNow = (serverNow: unknown) => {
     if (typeof serverNow === "number") offset.current = serverNow - Date.now();
@@ -117,9 +131,14 @@ export function ContestProvider({ initial, children }: { initial: ContestState; 
   const apply = useCallback((event: EngineEvent) => {
     const { name, data } = event;
     noteServerNow(data.server_now);
-    // `at` marks each event as new to the components watching it, so it must never repeat.
-    lastAt.current = Math.max(Date.now(), lastAt.current + 1);
-    setLastEvent({ name, data, at: lastAt.current });
+    // Every listener hears every event, before any re-render decides anything.
+    for (const listener of listeners.current) {
+      try {
+        listener(event);
+      } catch {
+        // One screen's handler must not stop the others, or the poll loop.
+      }
+    }
     if (name === "auction") setState((s) => (s ? { ...s, auction: data as unknown as AuctionSnapshot } : s));
     else if (name === "phase") setState((s) => (s ? { ...s, contest: data as unknown as ContestState["contest"] } : s));
     else if (name === "balance" && typeof data.balance === "number") {
@@ -136,9 +155,9 @@ export function ContestProvider({ initial, children }: { initial: ContestState; 
   useEventPolling(initial.event_cursor, { apply, refresh, setConnection, noteServerNow });
 
   const value = useMemo<Ctx>(() => ({
-    state, connection, refresh, lastEvent,
+    state, connection, refresh, subscribe,
     serverNow: () => Date.now() + offset.current,
-  }), [state, connection, refresh, lastEvent]);
+  }), [state, connection, refresh, subscribe]);
 
   return <ContestContext.Provider value={value}>{children}</ContestContext.Provider>;
 }
@@ -170,12 +189,7 @@ function useEventPolling(startCursor: number, { apply, refresh, setConnection, n
       if (poll.reset || failures > 0) await refresh();
       failures = 0;
       setConnection("open");
-      for (const event of poll.events) {
-        apply(event);
-        // One render per event, as a stream delivered them: components watch
-        // `lastEvent`, and events applied together would only show them the last.
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }
+      for (const event of poll.events) apply(event);
       cursor = poll.cursor;
     };
 
@@ -205,4 +219,23 @@ export function useContest(): Ctx {
   const ctx = useContext(ContestContext);
   if (!ctx) throw new Error("useContest must be used inside ContestProvider");
   return ctx;
+}
+
+/**
+ * Run `handler` for each named event, for as long as the component is mounted.
+ *
+ * Pass "*" to hear everything. The handler may change on every render without
+ * resubscribing, so it can close over fresh props and state.
+ */
+export function useEngineEvent(names: string | readonly string[], handler: (event: EngineEvent) => void): void {
+  const { subscribe } = useContest();
+  const latest = useRef(handler);
+  latest.current = handler;
+  const key = Array.isArray(names) ? names.join(",") : (names as string);
+  useEffect(() => {
+    const wanted = key.split(",");
+    return subscribe((event) => {
+      if (wanted.includes("*") || wanted.includes(event.name)) latest.current(event);
+    });
+  }, [subscribe, key]);
 }

@@ -19,9 +19,9 @@ import { cn } from "@/lib/utils";
 
 import { AnnouncementOverlay } from "./announcement-overlay";
 import { BlackoutOverlay } from "./contest/blackout-overlay";
-import { PhaseRail } from "./contest/phase-rail";
+import { PhaseRail, WHERE } from "./contest/phase-rail";
 import { ContestLoading } from "./contest/waiting";
-import { useContest } from "./contest-provider";
+import { useContest, useEngineEvent } from "./contest-provider";
 import { Icon } from "./icons";
 import { plainText } from "./local-time";
 import { Logo, Mark } from "./logo";
@@ -268,26 +268,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
 /** Turns live events into feedback the participant actually notices. */
 function LiveToasts() {
-  const { state, lastEvent } = useContest();
+  const { state } = useContest();
   const { toast } = useToast();
   const prevBidder = useRef<string | null | undefined>(undefined);
-  const seen = useRef(0);
 
-  useEffect(() => {
-    // The provider re-renders for reasons other than a new event; `at` is the
-    // event's own timestamp, so each one is announced exactly once.
-    if (!lastEvent || lastEvent.at === seen.current) return;
-    seen.current = lastEvent.at;
-
+  useEngineEvent("*", (event) => {
     const me = state?.viewer.id;
-    const d = lastEvent.data as Record<string, unknown>;
-    switch (lastEvent.name) {
+    const d = event.data as Record<string, unknown>;
+    switch (event.name) {
       case "auction": {
         const lot = (d.lot as { current_bidder_id: string | null; current_bid: number | null; title: string } | null) ?? null;
         const now = lot?.current_bidder_id ?? null;
         // Only the moment of losing the lead is worth interrupting for.
         if (prevBidder.current === me && now && now !== me) {
-          toast({ title: "You've been outbid", description: `${lot?.title} is now at ${lot?.current_bid}.`, tone: "warning" });
+          toast({ title: "You have been outbid", description: `${lot?.title} is now at ${lot?.current_bid}.`, tone: "warning" });
         }
         prevBidder.current = lot ? now : undefined;
         break;
@@ -303,17 +297,26 @@ function LiveToasts() {
         }
         break;
       case "hack":
-        if (d.state === "done") toast({ title: "Hack attempt judged", description: "See the result on the hacking page.", tone: "info" });
+        if (d.state === "done") toast({ title: "Your hack attempt has been judged", description: "The result is on the question you attempted.", tone: "info" });
         break;
       case "notify":
         // Markdown in a toast shows its asterisks, so it is flattened first.
         toast({ title: "For you", description: plainText(String(d.body ?? "")).slice(0, 140), tone: "info", duration: 9000 });
         break;
-      case "phase":
-        toast({ title: `Now: ${PHASE_LABEL[String(d.phase)] ?? d.phase}`, tone: "info" });
+      case "phase": {
+        // "Now: Registration" told a competitor nothing. Say what started and
+        // what they are meant to do, in the words the rail above already uses.
+        const here = WHERE[String(d.phase)];
+        toast({
+          title: here?.started ?? `Now: ${PHASE_LABEL[String(d.phase)] ?? d.phase}`,
+          description: here?.todo,
+          tone: "info",
+          duration: 9000,
+        });
         break;
+      }
     }
-  }, [lastEvent, state?.viewer.id, toast]);
+  });
 
   return null;
 }
