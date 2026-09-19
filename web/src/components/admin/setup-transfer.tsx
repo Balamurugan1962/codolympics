@@ -120,7 +120,7 @@ export function SetupTransfer() {
 function ImportDialog({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
-  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Summary | null>(null);
@@ -132,7 +132,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
     try {
       const form = new FormData();
       form.set("package", file);
-      form.set("reason", reason.trim());
+      form.set("reason", note.trim() || `Imported the setup zip ${file.name}.`);
       const r = await api.post<Summary>("/api/admin/setup", form);
       setResult(r);
       toast({
@@ -172,7 +172,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
             <Button variant="outline" onClick={onClose} disabled={busy}>
               Cancel
             </Button>
-            <Button onClick={run} loading={busy} disabled={!file || reason.trim().length < 3}>
+            <Button onClick={run} loading={busy} disabled={!file}>
               <Icon.Upload size={14} /> Import
             </Button>
           </>
@@ -236,8 +236,8 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
               importing a zip should never lock you out.
             </AlertDescription>
           </Alert>
-          <Field label="Reason" required help="Recorded in the audit log against every change this makes.">
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. restoring yesterday's setup for the real contest" />
+          <Field label="Note" hint="optional" help="Goes into the audit log against every change this makes. Left blank, the log records the file name.">
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. restoring yesterday's setup for the real contest" />
           </Field>
           {error && (
             <Alert variant="destructive">

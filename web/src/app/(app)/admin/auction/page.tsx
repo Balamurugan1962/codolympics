@@ -13,16 +13,22 @@
  * and what is already settled. Each of the three answers a different question,
  * so each gets its own actions rather than one menu of everything.
  *
- * Every action asks for a reason, because every action here writes to the audit
- * log in the same transaction as the change.
+ * Everything here is written to the audit log in the same transaction as the
+ * change. Only retracting a bid and taking a question back from its owner stop
+ * to ask why: they take something away from a named person. The rest — closing,
+ * the timers, the order, recording what the room already decided — is the
+ * ordinary work of running a round, and the log keeps the reason written for
+ * you, because a text box between "the projector died" and stopping the clock
+ * is thirty people waiting.
  */
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
+import { ActionButton } from "@/components/action-button";
 import { ReasonAction } from "@/components/reason-action";
-import { useContest } from "@/components/contest-provider";
+import { useContest, type AuctionSnapshot } from "@/components/contest-provider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -144,23 +150,19 @@ export default function AuctionControlPage() {
         actions={
           inAuction ? (
             paused ? (
-              <ReasonAction
+              <ActionButton
                 label="Resume"
                 variant="default"
-                title="Resume the auction"
                 icon={<Icon.Play size={14} />}
-                defaultReason="Resuming the auction."
-                description="Every lot deadline moves forward by exactly how long the auction was held, so whatever time was left on the clock is still there."
-                onConfirm={async (reason) => act("resume", { reason }, "Auction resumed")}
+                title="Every deadline moves forward by how long the auction was held, so the time left on the clock is still there"
+                onAct={() => act("resume", { reason: "Auction resumed." }, "Auction resumed")}
               />
             ) : (
-              <ReasonAction
+              <ActionButton
                 label="Pause"
-                title="Pause the auction"
                 icon={<Icon.Pause size={14} />}
-                defaultReason="Pausing the auction."
-                description="The clock stops where it is, bids are refused, and nothing settles until you resume. Participants are told the organisers have paused it."
-                onConfirm={async (reason) => act("pause", { reason }, "Auction paused")}
+                title="The clock stops, bids are refused, and nothing settles until you resume"
+                onAct={() => act("pause", { reason: "Auction paused." }, "Auction paused")}
               />
             )
           ) : null
@@ -229,86 +231,7 @@ export default function AuctionControlPage() {
             ) : !live?.lot ? (
               <p className="text-[13px] text-muted-foreground">Between lots.</p>
             ) : (
-              <>
-                <Summary cols={4}>
-                  <SummaryItem label="Question">
-                    <span className="block truncate text-[15px] font-semibold">{live.lot.title}</span>
-                    <span className="font-mono text-[11px] text-faint">{live.lot.question_id}</span>
-                  </SummaryItem>
-                  <SummaryItem label="Highest bid">
-                    <span className="text-[15px] font-semibold tabular-nums">{live.lot.current_bid ?? "—"}</span>{" "}
-                    <span className="text-muted-foreground">{live.lot.current_bidder_name ? `by ${live.lot.current_bidder_name}` : "no bids"}</span>
-                  </SummaryItem>
-                  <SummaryItem label={live.lot.current_bid !== null ? "Closes in" : "Opens for"}>
-                    <span className="text-[15px] font-semibold">
-                      {paused ? (
-                        <span className="text-amber">held</span>
-                      ) : live.lot.bidding_ends_at || live.lot.no_bid_deadline ? (
-                        <Countdown until={live.lot.current_bid !== null ? live.lot.bidding_ends_at : live.lot.no_bid_deadline} />
-                      ) : (
-                        <span className="text-muted-foreground">no timer</span>
-                      )}
-                    </span>
-                  </SummaryItem>
-                  <SummaryItem label="Next legal bid">
-                    <span className="tabular-nums">{live.lot.next_bid}</span>
-                  </SummaryItem>
-                </Summary>
-
-                <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
-                  <ReasonAction
-                    label="Close bidding"
-                    variant="default"
-                    icon={<Icon.Gavel size={14} />}
-                    title="Close bidding on this question"
-                    defaultReason={`Closing bidding on ${live.lot.title} by hand.`}
-                    description="The highest bidder wins it immediately. With no bids it goes unsold."
-                    onConfirm={async (reason) => act("close", { reason }, "Lot closed")}
-                  />
-                  <ReasonAction
-                    label="Retract top bid"
-                    icon={<Icon.Undo size={14} />}
-                    disabled={live.lot.current_bid === null}
-                    title="Retract the highest bid"
-                    defaultReason="Retracting a bid placed by mistake."
-                    description="The bid is removed and the question goes back to whoever held it before, with the countdown restarted. No balance moves — bidding never debits, only winning does."
-                    onConfirm={async (reason) => act("retract-bid", { reason }, "Bid retracted")}
-                  />
-                  <ReasonAction
-                    label="Add 30s"
-                    icon={<Icon.Timer size={14} />}
-                    title="Add thirty seconds"
-                    defaultReason="Giving the room more time to decide."
-                    description="Pushes the current deadline out by thirty seconds. Nothing else changes."
-                    onConfirm={async (reason) => act("timer", { reason, mode: "adjust", seconds: 30 }, "Thirty seconds added")}
-                  />
-                  <ReasonAction
-                    label="Restart timer"
-                    icon={<Icon.Refresh size={14} />}
-                    title="Restart the countdown"
-                    defaultReason="Restarting the countdown on this question."
-                    description={`Puts a full ${live.lot.current_bid !== null ? control.countdown_seconds : control.opening_window_seconds} seconds back on the clock. This is also how a disabled timer is turned back on.`}
-                    onConfirm={async (reason) => act("timer", { reason, mode: "restart" }, "Timer restarted")}
-                  />
-                  <ReasonAction
-                    label="Stop the timer"
-                    icon={<Icon.Pause size={14} />}
-                    title="Run this lot to a manual close"
-                    defaultReason={`Running ${live.lot.title} to a manual close.`}
-                    description="Bidding stays open until you close it by hand. Restart the timer to undo this."
-                    onConfirm={async (reason) => act("timer", { reason, mode: "off" }, "Timer stopped")}
-                  />
-                  <ReasonAction
-                    label="Withdraw"
-                    variant="destructive"
-                    icon={<Icon.Ban size={14} />}
-                    title="Take this question off the block"
-                    defaultReason={`Withdrawing ${live.lot.title} mid-auction.`}
-                    description="Nothing is sold and no money moves. The bids so far are kept for the record, and the next question opens. You can put it back later."
-                    onConfirm={async (reason) => act("withdraw", { reason, lot_id: open.id }, "Question withdrawn")}
-                  />
-                </div>
-              </>
+              <LiveLot lot={live.lot} lotId={open.id} control={control} paused={paused} act={act} />
             )}
           </Section>
 
@@ -367,14 +290,12 @@ export default function AuctionControlPage() {
                   <Button variant="ghost" size="sm" onClick={() => setOrder(null)}>
                     Discard
                   </Button>
-                  <ReasonAction
+                  <ActionButton
                     label="Save order"
                     variant="default"
                     icon={<Icon.Save size={14} />}
-                    title="Save the new running order"
-                    defaultReason="Reordering the questions still to be offered."
-                    description="Only questions that have not been offered move. Everything already settled keeps its place in the record."
-                    onConfirm={async (reason) => act("reorder", { reason, round: control!.round, lot_ids: queue }, "Order saved")}
+                    title="Only questions that have not been offered move"
+                    onAct={() => act("reorder", { reason: "Reordered the questions still to be offered.", round: control!.round, lot_ids: queue }, "Order saved")}
                   />
                 </div>
               ) : null
@@ -428,14 +349,16 @@ export default function AuctionControlPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <ReasonAction
+                          <ActionButton
                             label="Withdraw"
                             size="xs"
                             icon={<Icon.Ban size={12} />}
-                            title={`Take ${l.title} off the block`}
-                            defaultReason={`Withdrawing ${l.title} before it is offered.`}
-                            description="It will not be offered this round. Nothing is sold and no money moves; you can put it back below."
-                            onConfirm={async (reason) => act("withdraw", { reason, lot_id: l.id }, "Question withdrawn")}
+                            confirm={{
+                              title: `Take ${l.title} off the block?`,
+                              body: "It will not be offered this round. Nothing is sold and no coins move; you can put it back from Settled.",
+                              label: "Withdraw",
+                            }}
+                            onAct={() => act("withdraw", { reason: `Withdrew ${l.title} before it was offered.`, lot_id: l.id }, "Question withdrawn")}
                           />
                         </TableCell>
                       </TableRow>
@@ -490,14 +413,12 @@ export default function AuctionControlPage() {
                       <TableCell className="text-right tabular-nums">{l.price_paid ?? <span className="text-faint">—</span>}</TableCell>
                       <TableCell>
                         {l.state === "withdrawn" ? (
-                          <ReasonAction
+                          <ActionButton
                             label="Put back"
                             size="xs"
                             icon={<Icon.Undo size={12} />}
-                            title={`Put ${l.title} back on the block`}
-                            defaultReason={`Putting ${l.title} back into the round.`}
-                            description="It goes to the end of the queue and will be offered again."
-                            onConfirm={async (reason) => act("restore", { reason, lot_id: l.id }, "Question put back")}
+                            title="It goes to the end of the queue and will be offered again"
+                            onAct={() => act("restore", { reason: `Put ${l.title} back into the round.`, lot_id: l.id }, "Question put back")}
                           />
                         ) : l.owner_id ? (
                           <ReasonAction
@@ -563,6 +484,110 @@ export default function AuctionControlPage() {
  * get to decide that money exists. The form says so before you submit, so the
  * refusal is not a surprise after the hammer has already come down.
  */
+/**
+ * The lot on the block, and everything that can be done to it while it is.
+ *
+ * Only retracting a bid asks for a reason: it takes something away from a named
+ * person, who will ask. Closing, the timers and withdrawing are the ordinary
+ * levers of running a round, and the log records them with the reason written
+ * for you — a text box between "the projector died" and stopping the clock is
+ * thirty people waiting.
+ */
+function LiveLot({
+  lot,
+  lotId,
+  control,
+  paused,
+  act,
+}: {
+  lot: NonNullable<AuctionSnapshot["lot"]>;
+  lotId: number;
+  control: Control;
+  paused: boolean;
+  act: (action: string, payload: Record<string, unknown>, done: string) => Promise<void>;
+}) {
+  return (
+    <>
+      <Summary cols={4}>
+        <SummaryItem label="Question">
+          <span className="block truncate text-[15px] font-semibold">{lot.title}</span>
+          <span className="font-mono text-[11px] text-faint">{lot.question_id}</span>
+        </SummaryItem>
+        <SummaryItem label="Highest bid">
+          <span className="text-[15px] font-semibold tabular-nums">{lot.current_bid ?? "—"}</span>{" "}
+          <span className="text-muted-foreground">{lot.current_bidder_name ? `by ${lot.current_bidder_name}` : "no bids"}</span>
+        </SummaryItem>
+        <SummaryItem label={lot.current_bid !== null ? "Closes in" : "Opens for"}>
+          <span className="text-[15px] font-semibold">
+            {paused ? (
+              <span className="text-amber">held</span>
+            ) : lot.bidding_ends_at || lot.no_bid_deadline ? (
+              <Countdown until={lot.current_bid !== null ? lot.bidding_ends_at : lot.no_bid_deadline} />
+            ) : (
+              <span className="text-muted-foreground">no timer</span>
+            )}
+          </span>
+        </SummaryItem>
+        <SummaryItem label="Next legal bid">
+          <span className="tabular-nums">{lot.next_bid}</span>
+        </SummaryItem>
+      </Summary>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
+        <ActionButton
+          label="Close bidding"
+          variant="default"
+          icon={<Icon.Gavel size={14} />}
+          confirm={{
+            title: `Close bidding on ${lot.title}?`,
+            body: "The highest bidder wins it immediately. With no bids it goes unsold.",
+            label: "Close bidding",
+          }}
+          onAct={() => act("close", { reason: `Closed bidding on ${lot.title} by hand.` }, "Lot closed")}
+        />
+        <ReasonAction
+          label="Retract top bid"
+          icon={<Icon.Undo size={14} />}
+          disabled={lot.current_bid === null}
+          title="Retract the highest bid"
+          defaultReason="Retracting a bid placed by mistake."
+          description="The bid is removed and the question goes back to whoever held it before, with the countdown restarted. No balance moves — bidding never debits, only winning does."
+          onConfirm={async (reason) => act("retract-bid", { reason }, "Bid retracted")}
+        />
+        <ActionButton
+          label="Add 30s"
+          icon={<Icon.Timer size={14} />}
+          title="Pushes the deadline out by thirty seconds"
+          onAct={() => act("timer", { reason: "Gave the room thirty more seconds.", mode: "adjust", seconds: 30 }, "Thirty seconds added")}
+        />
+        <ActionButton
+          label="Restart timer"
+          icon={<Icon.Refresh size={14} />}
+          title={`Puts a full ${lot.current_bid !== null ? control.countdown_seconds : control.opening_window_seconds} seconds back on the clock, and turns a stopped timer back on`}
+          onAct={() => act("timer", { reason: `Restarted the countdown on ${lot.title}.`, mode: "restart" }, "Timer restarted")}
+        />
+        <ActionButton
+          label="Stop the timer"
+          icon={<Icon.Pause size={14} />}
+          title="Bidding stays open until you close it by hand; restart the timer to undo this"
+          onAct={() => act("timer", { reason: `Running ${lot.title} to a manual close.`, mode: "off" }, "Timer stopped")}
+        />
+        <ActionButton
+          label="Withdraw"
+          variant="destructive"
+          icon={<Icon.Ban size={14} />}
+          confirm={{
+            title: `Take ${lot.title} off the block?`,
+            body: "Nothing is sold and no coins move. The bids so far are kept for the record, the next question opens, and you can put it back later.",
+            label: "Withdraw",
+          }}
+          onAct={() => act("withdraw", { reason: `Withdrew ${lot.title} mid-auction.`, lot_id: lotId }, "Question withdrawn")}
+        />
+      </div>
+    </>
+  );
+}
+
 function OfflineLot({
   lot,
   balances,
@@ -632,17 +657,22 @@ function OfflineLot({
             onChange={(e) => onPrice(e.target.value)}
           />
         </Field>
-        <ReasonAction
+        <ActionButton
           label="Record the sale"
           variant="default"
           icon={<Icon.Gavel size={14} />}
           disabled={paused || !valid}
-          title={chosen ? `Record ${lot.title} to ${chosen.name}` : "Record the sale"}
-          confirmLabel="Record it"
-          defaultReason={chosen ? `${chosen.name} won ${lot.title} at ${asked} in the room.` : "Recording the sale called in the room."}
-          description="This takes the money and hands the question over, exactly as a won bid would. The next question opens straight after."
-          onConfirm={async (reason) => {
-            await act("record-sale", { reason, lot_id: lot.id, participant_id: winner, price: asked }, "Sale recorded");
+          confirm={{
+            title: chosen ? `Record ${lot.title} to ${chosen.name} at ${asked}?` : "Record the sale",
+            body: "This charges the coins and hands the question over, exactly as a won bid would. The next question opens straight after.",
+            label: "Record it",
+          }}
+          onAct={async () => {
+            await act(
+              "record-sale",
+              { reason: `${chosen?.name ?? winner} won ${lot.title} at ${asked} in the room.`, lot_id: lot.id, participant_id: winner, price: asked },
+              "Sale recorded",
+            );
             onRecorded();
           }}
         />
@@ -656,23 +686,27 @@ function OfflineLot({
       )}
 
       <div className="flex flex-wrap items-center gap-2 border-t pt-4">
-        <ReasonAction
+        <ActionButton
           label="Nobody bid"
           icon={<Icon.X size={14} />}
           disabled={paused}
-          title={`Close ${lot.title} unsold`}
-          defaultReason={`No bids on ${lot.title} in the room.`}
-          description="Nothing is sold and no money moves. It can be assigned by hand later, or offered again in the second round."
-          onConfirm={async (reason) => act("record-unsold", { reason, lot_id: lot.id }, "Closed unsold")}
+          confirm={{
+            title: `Close ${lot.title} unsold?`,
+            body: "Nothing is sold and no coins move. It can be assigned by hand later, or offered again in the second round.",
+            label: "Close it unsold",
+          }}
+          onAct={() => act("record-unsold", { reason: `No bids on ${lot.title} in the room.`, lot_id: lot.id }, "Closed unsold")}
         />
-        <ReasonAction
+        <ActionButton
           label="Withdraw"
           variant="destructive"
           icon={<Icon.Ban size={14} />}
-          title={`Take ${lot.title} off the block`}
-          defaultReason={`Withdrawing ${lot.title} mid-auction.`}
-          description="Nothing is sold and no money moves. The next question opens, and you can put this one back later."
-          onConfirm={async (reason) => act("withdraw", { reason, lot_id: lot.id }, "Question withdrawn")}
+          confirm={{
+            title: `Take ${lot.title} off the block?`,
+            body: "Nothing is sold and no coins move. The next question opens, and you can put this one back later.",
+            label: "Withdraw",
+          }}
+          onAct={() => act("withdraw", { reason: `Withdrew ${lot.title} mid-auction.`, lot_id: lot.id }, "Question withdrawn")}
         />
       </div>
     </div>

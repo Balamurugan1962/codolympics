@@ -23,7 +23,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Icon } from "@/components/icons";
-import { ReasonAction } from "@/components/reason-action";
+import { ActionButton } from "@/components/action-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -133,7 +133,7 @@ export function PowerupList() {
 
 // ---------------------------------------------------------------------------
 
-/** One powerup's settings. Nothing saves until you say so, with a reason. */
+/** One powerup's settings. Nothing saves until you press Save. */
 export function PowerupDetail({ id }: { id: number }) {
   const { toast } = useToast();
   const { rows, load } = useLoadPowerups();
@@ -168,13 +168,13 @@ export function PowerupDetail({ id }: { id: number }) {
   }
 
   const edit = (patch: Partial<Powerup>) => setDraft((d) => ({ ...d, ...patch }));
-  const valueOf = <K extends keyof Powerup>(k: K): Powerup[K] => (draft[k] ?? row[k]) as Powerup[K];
   const dirty = Object.keys(draft).length > 0;
+  const on = draft.enabled ?? row.enabled;
 
   const name = row.name;
-  async function save(reason: string) {
+  async function save() {
     await api.patch("/api/admin/powerups", {
-      reason,
+      reason: `Adjusted ${name} for this contest.`,
       id,
       name: draft.name,
       description: draft.description,
@@ -190,7 +190,6 @@ export function PowerupDetail({ id }: { id: number }) {
     await load();
   }
 
-  const on = valueOf("enabled");
   return (
     <div className="space-y-5">
       <PageHeader
@@ -201,22 +200,18 @@ export function PowerupDetail({ id }: { id: number }) {
             {on ? <Badge variant="success">on sale</Badge> : <Badge variant="neutral">off</Badge>}
           </>
         }
-        description={KIND_BLURB[row.kind] + " Nothing saves until you say so, with a reason."}
+        description={KIND_BLURB[row.kind] + " Nothing saves until you press Save."}
         info="Changes govern the next purchase and the next use. A blackout already sitting on somebody keeps the duration it landed with, so shortening this never cuts a block short and lengthening it never extends one."
         actions={
-          <ReasonAction
+          <ActionButton
             label={on ? "Take off sale" : "Put on sale"}
-            size="sm"
             icon={on ? <Icon.Pause size={14} /> : <Icon.Play size={14} />}
-            title={`${on ? "Take" : "Put"} ${row.name} ${on ? "off" : "on"} sale`}
-            defaultReason={`${on ? "Withdrawing" : "Offering"} ${row.name}.`}
-            description={
-              on
-                ? "It disappears from the marketplace and cannot be used. Anything already held stays held."
-                : "It appears in the marketplace at its current price."
-            }
-            onConfirm={async (reason) => {
-              await api.patch("/api/admin/powerups", { reason, id, enabled: !on });
+            onAct={async () => {
+              await api.patch("/api/admin/powerups", {
+                reason: on ? `Took ${row.name} off sale.` : `Put ${row.name} on sale.`,
+                id,
+                enabled: !on,
+              });
               await load();
             }}
           />
@@ -224,53 +219,7 @@ export function PowerupDetail({ id }: { id: number }) {
       />
 
       <Section>
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Name">
-              <Input value={valueOf("name")} onChange={(e) => edit({ name: e.target.value })} />
-            </Field>
-            <Field label="Price" hint="coins">
-              <Input type="number" min={0} value={valueOf("price")} onChange={(e) => edit({ price: Number(e.target.value) })} />
-            </Field>
-          </div>
-
-          <Field label="Description" help="Shown in the marketplace exactly as written.">
-            <Textarea rows={2} value={valueOf("description")} onChange={(e) => edit({ description: e.target.value })} />
-          </Field>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            {row.kind === "blackout" && (
-              <NumberField
-                label="Duration"
-                hint="seconds"
-                min={1}
-                max={3600}
-                value={valueOf("durationSeconds")}
-                onChange={(v) => edit({ durationSeconds: v })}
-              />
-            )}
-            <NumberField label="Hold at most" hint="blank for no limit" value={valueOf("maxHeld")} onChange={(v) => edit({ maxHeld: v })} />
-            <NumberField
-              label="Buy at most"
-              hint="whole contest"
-              value={valueOf("maxPurchases")}
-              onChange={(v) => edit({ maxPurchases: v })}
-            />
-          </div>
-
-          <Field
-            label="Usable during"
-            help="Buying is governed by the marketplace switch in Settings; this is where it may be used."
-          >
-            <PhasePicker
-              picked={valueOf("usablePhases") ?? []}
-              onToggle={(key) => {
-                const cur = valueOf("usablePhases") ?? [];
-                edit({ usablePhases: cur.includes(key) ? cur.filter((p) => p !== key) : [...cur, key] });
-              }}
-            />
-          </Field>
-        </div>
+        <PowerupFields row={row} draft={draft} onEdit={edit} />
       </Section>
 
       {dirty && (
@@ -278,17 +227,63 @@ export function PowerupDetail({ id }: { id: number }) {
           <Button variant="ghost" onClick={() => setDraft({})}>
             Discard
           </Button>
-          <ReasonAction
-            label="Save changes"
-            variant="default"
-            icon={<Icon.Save size={14} />}
-            title={`Save ${row.name}`}
-            defaultReason={`Adjusting ${row.name} for this contest.`}
-            description="Applies to the next purchase and the next use. Blackouts already running are untouched."
-            onConfirm={save}
-          />
+          <ActionButton label="Save changes" variant="default" icon={<Icon.Save size={14} />} onAct={save} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** Everything an organiser can set on a powerup, in one form. */
+function PowerupFields({ row, draft, onEdit }: { row: Powerup; draft: Partial<Powerup>; onEdit: (patch: Partial<Powerup>) => void }) {
+  const valueOf = <K extends keyof Powerup>(k: K): Powerup[K] => (draft[k] ?? row[k]) as Powerup[K];
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Name">
+          <Input value={valueOf("name")} onChange={(e) => onEdit({ name: e.target.value })} />
+        </Field>
+        <Field label="Price" hint="coins">
+          <Input type="number" min={0} value={valueOf("price")} onChange={(e) => onEdit({ price: Number(e.target.value) })} />
+        </Field>
+      </div>
+
+      <Field label="Description" help="Shown in the marketplace exactly as written.">
+        <Textarea rows={2} value={valueOf("description")} onChange={(e) => onEdit({ description: e.target.value })} />
+      </Field>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        {row.kind === "blackout" && (
+          <NumberField
+            label="Duration"
+            hint="seconds"
+            min={1}
+            max={3600}
+            value={valueOf("durationSeconds")}
+            onChange={(v) => onEdit({ durationSeconds: v })}
+          />
+        )}
+        <NumberField label="Hold at most" hint="blank for no limit" value={valueOf("maxHeld")} onChange={(v) => onEdit({ maxHeld: v })} />
+        <NumberField
+          label="Buy at most"
+          hint="whole contest"
+          value={valueOf("maxPurchases")}
+          onChange={(v) => onEdit({ maxPurchases: v })}
+        />
+      </div>
+
+      <Field
+        label="Usable during"
+        help="Buying is governed by the marketplace switch in Settings; this is where it may be used."
+      >
+        <PhasePicker
+          picked={valueOf("usablePhases") ?? []}
+          onToggle={(key) => {
+            const cur = valueOf("usablePhases") ?? [];
+            onEdit({ usablePhases: cur.includes(key) ? cur.filter((p) => p !== key) : [...cur, key] });
+          }}
+        />
+      </Field>
     </div>
   );
 }

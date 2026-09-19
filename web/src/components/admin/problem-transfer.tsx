@@ -70,7 +70,7 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [id, setId] = useState("");
-  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
@@ -82,7 +82,7 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
     try {
       const form = new FormData();
       form.set("package", file);
-      form.set("reason", reason.trim());
+      form.set("reason", note.trim() || `Imported the problem zip ${file.name}.`);
       if (id.trim()) form.set("id", id.trim());
       const r = await api.post<Result>("/api/admin/problems/import", form);
       setResult(r);
@@ -120,7 +120,7 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
             <Button variant="outline" onClick={onClose} disabled={busy}>
               Cancel
             </Button>
-            <Button onClick={run} loading={busy} disabled={!file || reason.trim().length < 3}>
+            <Button onClick={run} loading={busy} disabled={!file}>
               <Icon.Upload size={14} /> Import
             </Button>
           </>
@@ -180,8 +180,8 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
           >
             <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="e.g. two-sum" className="font-mono sm:w-64" />
           </Field>
-          <Field label="Reason" required help="Recorded in the audit log against the upload and the details.">
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. importing the set written last week" />
+          <Field label="Note" hint="optional" help="Goes into the audit log against the upload and the details. Left blank, the log records the file name.">
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. the set written last week" />
           </Field>
           {error && (
             <Alert variant="destructive">

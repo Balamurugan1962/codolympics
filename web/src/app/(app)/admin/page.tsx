@@ -17,6 +17,7 @@ import { StandingsCard, useStandings, type P1Row } from "@/components/admin/stan
 import { useContest } from "@/components/contest-provider";
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
+import { ActionButton } from "@/components/action-button";
 import { ReasonAction } from "@/components/reason-action";
 import { PHASE_LABEL, PHASE_STEPS } from "@/components/shell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -424,15 +425,17 @@ function LiveAuction() {
               <Icon.Settings size={14} /> All controls
             </Link>
           </Button>
-          <ReasonAction
+          <ActionButton
             label="Close bidding"
-            title="Close bidding on the open lot"
             disabled={!lot}
             icon={<Icon.Gavel size={14} />}
-            defaultReason={lot ? `Closing bidding on ${lot.title} by hand.` : "Closing bidding by hand."}
-            description="The highest bidder wins it immediately. If there are no bids it goes unsold."
-            onConfirm={async (reason) => {
-              await api.post("/api/admin/lots/close", { reason });
+            confirm={{
+              title: lot ? `Close bidding on ${lot.title}?` : "Close bidding on the open lot?",
+              body: "The highest bidder wins it immediately. If there are no bids it goes unsold.",
+              label: "Close bidding",
+            }}
+            onAct={async () => {
+              await api.post("/api/admin/lots/close", { reason: lot ? `Closed bidding on ${lot.title} by hand.` : "Closed bidding by hand." });
               toast({ title: "Lot closed", tone: "success" });
             }}
           />
@@ -441,55 +444,47 @@ function LiveAuction() {
               how a timer stays off for the rest of a round. */}
           {!offline &&
             (timerOn ? (
-              <ReasonAction
+              <ActionButton
                 label="Stop the timer"
-                title="Run this lot to a manual close"
                 disabled={!lot}
                 icon={<Icon.Pause size={14} />}
-                defaultReason={lot ? `Running ${lot.title} to a manual close.` : "Running this lot to a manual close."}
-                description="Bidding then stays open until you close it by hand. You can start it again from here."
-                onConfirm={async (reason) => {
-                  await api.post("/api/admin/auction/timer", { reason, mode: "off" });
+                title="Bidding then stays open until you close it by hand; you can start it again from here"
+                onAct={async () => {
+                  await api.post("/api/admin/auction/timer", { reason: lot ? `Running ${lot.title} to a manual close.` : "Running this lot to a manual close.", mode: "off" });
                   toast({ title: "Timer stopped", description: "This lot now closes only by hand.", tone: "success" });
                 }}
               />
             ) : (
-              <ReasonAction
+              <ActionButton
                 label="Restart timer"
-                title="Put the countdown back on this lot"
                 disabled={!lot}
                 icon={<Icon.Play size={14} />}
-                defaultReason={lot ? `Putting the clock back on ${lot.title}.` : "Putting the clock back on."}
-                description="A full countdown starts now, and the lot settles on its own again."
-                onConfirm={async (reason) => {
-                  await api.post("/api/admin/auction/timer", { reason, mode: "restart" });
+                title="A full countdown starts now, and the lot settles on its own again"
+                onAct={async () => {
+                  await api.post("/api/admin/auction/timer", { reason: lot ? `Put the clock back on ${lot.title}.` : "Put the clock back on.", mode: "restart" });
                   toast({ title: "Timer restarted", tone: "success" });
                 }}
               />
             ))}
 
           {a.paused ? (
-            <ReasonAction
+            <ActionButton
               label="Resume"
               variant="default"
-              title="Resume the auction"
               icon={<Icon.Play size={14} />}
-              defaultReason="Resuming the auction."
-              description="Every deadline moves forward by exactly how long it was held, so whatever time was left is still there."
-              onConfirm={async (reason) => {
-                await api.post("/api/admin/auction/resume", { reason });
+              title="Every deadline moves forward by exactly how long it was held, so whatever time was left is still there"
+              onAct={async () => {
+                await api.post("/api/admin/auction/resume", { reason: "Auction resumed." });
                 toast({ title: "Auction resumed", tone: "success" });
               }}
             />
           ) : (
-            <ReasonAction
+            <ActionButton
               label="Pause"
-              title="Pause the auction"
               icon={<Icon.Pause size={14} />}
-              defaultReason="Pausing the auction."
-              description="The clock stops where it is, bids are refused, and nothing settles until you resume."
-              onConfirm={async (reason) => {
-                await api.post("/api/admin/auction/pause", { reason });
+              title="The clock stops where it is, bids are refused, and nothing settles until you resume"
+              onAct={async () => {
+                await api.post("/api/admin/auction/pause", { reason: "Auction paused." });
                 toast({ title: "Auction paused", tone: "success" });
               }}
             />

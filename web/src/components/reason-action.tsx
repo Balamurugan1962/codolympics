@@ -1,14 +1,19 @@
 "use client";
 
 /**
- * An administrator action that requires a reason before it is applied
+ * An administrator action that stops to ask why before it is applied
  * (US-F9-00). The reason goes into the audit log in the same transaction as
  * the change, so the log can never disagree with what happened.
  *
+ * Reserved for the actions where someone will ask: moving the contest on,
+ * changing its settings, and anything that moves coins or points, takes a
+ * question away from its owner, or changes who can sign in. Routine, reversible
+ * work uses {@link ActionButton}, which writes the reason itself — every action
+ * is logged either way, and a box that must be filled in forty times a day is
+ * how a required field turns into "asdf".
+ *
  * `defaultReason` prefills the box with the reason that is true nine times out
- * of ten, selected so the first keystroke replaces it. Typing "advancing the
- * phase" forty times is how a required field turns into "asdf", which is worse
- * for the log than a sensible default the author can overwrite.
+ * of ten, selected so the first keystroke replaces it.
  */
 import { useState } from "react";
 

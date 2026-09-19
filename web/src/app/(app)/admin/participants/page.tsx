@@ -1,8 +1,11 @@
 "use client";
 
 /**
- * The participant roster. Every repair is one menu away and every one asks for
- * a reason before it happens, which is what lands in the audit log.
+ * The participant roster. Every repair is one menu away, and each one asks for
+ * a reason before it happens — these are the actions that move coins, rename
+ * somebody, take them out of the contest or reset the password they are sitting
+ * in front of, so the log needs to say why, in someone's own words. Creating an
+ * account does not ask: the log already says who was created, by whom, when.
  */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -250,7 +253,7 @@ function suggestPassword(): string {
 function CreateParticipantDialog({ onClose, onDone }: { onClose: () => void; onDone: () => Promise<void> }) {
   const { state } = useContest();
   const { toast } = useToast();
-  const [f, setF] = useState({ username: "", password: "", language: "cpp", reason: "" });
+  const [f, setF] = useState({ username: "", password: "", language: "cpp" });
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -261,7 +264,7 @@ function CreateParticipantDialog({ onClose, onDone }: { onClose: () => void; onD
   const name = f.username.trim();
   const nameBad = name.length > 0 && !NAME_RULE.test(name);
   const signIn = name.replace(/\s+/g, "_").toLowerCase();
-  const ready = NAME_RULE.test(name) && f.password.length >= 8 && f.reason.trim().length >= 3;
+  const ready = NAME_RULE.test(name) && f.password.length >= 8;
 
   async function create() {
     setBusy(true);
@@ -271,7 +274,7 @@ function CreateParticipantDialog({ onClose, onDone }: { onClose: () => void; onD
         username: name,
         password: f.password,
         preferred_language: f.language,
-        reason: f.reason.trim(),
+        reason: `Created the participant ${name}.`,
       });
       toast({ title: `${name} added`, description: "Hand the password over in person — nothing is emailed.", tone: "success" });
       await onDone();
@@ -399,13 +402,6 @@ function CreateParticipantDialog({ onClose, onDone }: { onClose: () => void; onD
 
           <Field label="Language to start in" help="Only the editor's default. They can switch language on any question, at any time.">
             <SimpleSelect className="w-full sm:w-56" size="default" value={f.language} onValueChange={(v) => setF({ ...f, language: v })} options={LANGUAGES} />
-          </Field>
-        </fieldset>
-
-        <fieldset>
-          <legend className="mb-3 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">Why</legend>
-          <Field label="Reason" required help="Goes into the audit log with your name and the time.">
-            <Input value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} placeholder="e.g. their machine could not reach the server" />
           </Field>
         </fieldset>
 
