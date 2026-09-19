@@ -105,7 +105,7 @@ export default function AdminDashboard() {
               </AlertTitle>
               <AlertDescription>
                 {judgeDown
-                  ? "Nothing can be judged until it is back. Submissions queue and retry on their own — none are lost."
+                  ? "Nothing can be judged until it is back. Submissions queue and retry on their own, none are lost."
                   : "An internal error is the judge's fault, not the competitor's."}{" "}
                 <Link href="/admin/judge" className="font-semibold text-brand-deep hover:underline">
                   Open the judge
@@ -142,32 +142,28 @@ export default function AdminDashboard() {
                 <p className="text-[13px] text-muted-foreground">The contest has ended. Export the results from the audit log.</p>
               ) : (
                 <>
-                  {blocked && (
-                    <Alert variant="destructive">
-                      <Icon.Alert />
-                      <AlertTitle>Cannot advance yet</AlertTitle>
-                      <AlertDescription>
-                        <ul className="ml-4 list-disc space-y-0.5">
-                          {checks.blockers.map((x) => (
-                            <li key={x}>{x}</li>
-                          ))}
-                        </ul>
-                      </AlertDescription>
-                    </Alert>
+                  {/* Not an error: a checklist of what has to be true first.
+                      Alarm red for a list you are meant to work through reads
+                      as something broken, and there is nothing broken here. */}
+                  {(blocked || checks.warnings.length > 0) && (
+                    <ul className="space-y-1.5 border-l-2 border-line-2 pl-3.5">
+                      {checks.blockers.map((x) => (
+                        <li key={x} className="flex items-start gap-2 text-[13px] leading-relaxed">
+                          <Icon.Lock size={13} className="mt-[3px] shrink-0 text-muted-foreground" />
+                          <span>{x}</span>
+                        </li>
+                      ))}
+                      {checks.warnings.map((x) => (
+                        <li key={x} className="flex items-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
+                          <Icon.Alert size={13} className="mt-[3px] shrink-0 text-amber" />
+                          <span>
+                            {x} <span className="text-faint">advancing accepts this</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                  {checks.warnings.length > 0 && (
-                    <Alert variant="warning">
-                      <Icon.Alert />
-                      <AlertTitle>Advancing will acknowledge these</AlertTitle>
-                      <AlertDescription>
-                        <ul className="ml-4 list-disc space-y-0.5">
-                          {checks.warnings.map((x) => (
-                            <li key={x}>{x}</li>
-                          ))}
-                        </ul>
-                      </AlertDescription>
-                    </Alert>
-                  )}
+
                   <div className="flex flex-wrap items-center gap-2">
                     <ReasonAction
                       label={`Advance to ${PHASE_LABEL[checks.next]}`}
@@ -510,7 +506,7 @@ function LiveAuction() {
               ) : timerOn ? (
                 <Countdown until={lot.current_bid !== null ? lot.bidding_ends_at : lot.no_bid_deadline} />
               ) : (
-                <span className="text-muted-foreground">no timer — closes by hand</span>
+                <span className="text-muted-foreground">no timer, closes by hand</span>
               )}
             </span>
           </SummaryItem>

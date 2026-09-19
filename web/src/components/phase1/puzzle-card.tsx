@@ -32,7 +32,7 @@ export function PuzzleCard({ q, index, total, answer, explanation, status, locke
   q: PuzzleView; index: number; total: number; answer: unknown; explanation: string; status: SaveStatus; locked: boolean; formatError: string | null;
   onAnswer: (v: unknown, formatOk: boolean) => void; onExplanation: (v: string) => void; preview?: boolean;
 }) {
-  const statusText = status === "saving" ? "Saving…" : status === "saved" ? "Saved" : status === "failed" ? "Not saved" : locked ? "Locked" : preview ? "Preview — nothing is saved" : "";
+  const statusText = status === "saving" ? "Saving…" : status === "saved" ? "Saved" : status === "failed" ? "Not saved" : locked ? "Locked" : preview ? "Preview. Nothing is saved" : "";
   return (
     <div className="overflow-hidden rounded-box border border-line bg-card">
       <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">

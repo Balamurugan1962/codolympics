@@ -29,7 +29,7 @@ export function AuctionFloor() {
     return (
       <PageBody className="animate-fade-in">
         <PageHeader title="Auction"  />
-        <EmptyState icon={<Icon.Gavel size={20} />} title="No auction is running" body={`The current phase is ${contest.phase.replace(/\d/, (d) => ` ${d}`)}. When an auction opens, this page comes alive on its own — no refresh needed.`} />
+        <EmptyState icon={<Icon.Gavel size={20} />} title="No auction is running" body={`The current phase is ${contest.phase.replace(/\d/, (d) => ` ${d}`)}. When an auction opens, this page comes alive on its own, no refresh needed.`} />
       </PageBody>
     );
   }
@@ -72,7 +72,7 @@ export function AuctionFloor() {
         description={
           offline
             ? "The auctioneer runs this in the room. Bid out loud; an organiser records each sale and this board follows."
-            : "Bids rise by a fixed step. Every bid restarts the countdown, so bidding last does not win — bidding more does."
+            : "Bids rise by a fixed step. Every bid restarts the countdown, so bidding last does not win. Bidding more does."
         }
       />
       <div className="grid gap-4 lg:grid-cols-3">
@@ -134,7 +134,7 @@ export function AuctionFloor() {
                 <div className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:flex-row sm:items-center">
                   {offline ? (
                     <span className="text-[13px] text-muted-foreground">
-                      <span className="font-semibold text-ink">Bidding happens in the room.</span> Call your bid out loud — an organiser records
+                      <span className="font-semibold text-ink">Bidding happens in the room.</span> Call your bid out loud. An organiser records
                       the sale here, and your balance and the board update the moment they do.
                     </span>
                   ) : eligible ? (
@@ -143,7 +143,7 @@ export function AuctionFloor() {
                         {paused ? "Paused" : mine ? "You're winning" : `Bid ${lot.next_bid}`}
                       </Button>
                       <span className="text-[13px] text-muted-foreground" aria-live="polite">
-                        {paused ? "The organisers have paused the auction. The clock is stopped and nothing is lost — bidding resumes with the time that was left." : mine ? "Nobody has outbid you. If the ring empties, the question is yours." : !affordable ? `You'd need ${lot.next_bid - balance} more.` : hasBids ? "Outbid to restart the countdown." : "Be the first: the countdown starts on the first bid."}
+                        {paused ? "The organisers have paused the auction. The clock is stopped and nothing is lost. Bidding resumes with the time that was left." : mine ? "Nobody has outbid you. If the ring empties, the question is yours." : !affordable ? `You'd need ${lot.next_bid - balance} more.` : hasBids ? "Outbid to restart the countdown." : "Be the first: the countdown starts on the first bid."}
                       </span>
                     </>
                   ) : viewer.role === "participant" ? (

@@ -237,7 +237,7 @@ export default function ParticipantPage() {
 
           <Section
             title="Section A · Puzzles"
-            description="Every published puzzle, and what they put. An unanswered one is shown too — a blank is a fact."
+            description="Every published puzzle, and what they put. An unanswered one is shown too. A blank is a fact."
             actions={
               <span className="text-[12px] text-muted-foreground tabular-nums">
                 {p1.puzzles.filter((q) => q.answered).length}/{p1.puzzles.length} answered

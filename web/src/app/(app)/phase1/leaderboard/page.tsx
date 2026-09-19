@@ -44,7 +44,7 @@ export default function Phase1LeaderboardPage() {
             </Table>
             {board.standings.length === 0 && <EmptyState compact title="No standings yet" />}
           </Section>
-          <p className="text-[11.5px] text-faint">* provisional — some items are still being graded.</p>
+          <p className="text-[11.5px] text-faint">* provisional, some items are still being graded.</p>
         </div>
       )}
     </PageBody>

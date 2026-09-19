@@ -118,7 +118,7 @@ export default function PeoplePage() {
                 {ownNothing} participant{ownNothing === 1 ? " owns" : "s own"} nothing
               </AlertTitle>
               <AlertDescription>
-                They have money and nothing to solve. Assign an unsold question from the row menu, or leave it — losing every bid is a
+                They have money and nothing to solve. Assign an unsold question from the row menu, or leave it, losing every bid is a
                 legitimate outcome and the rules say so.
               </AlertDescription>
             </Alert>
@@ -277,7 +277,7 @@ function CreateParticipantDialog({ onClose, onDone }: { onClose: () => void; onD
         preferred_language: f.language,
         reason: `Created the participant ${name}.`,
       });
-      toast({ title: `${name} added`, description: "Hand the password over in person — nothing is emailed.", tone: "success" });
+      toast({ title: `${name} added`, description: "Hand the password over in person. Nothing is emailed.", tone: "success" });
       await onDone();
     } catch (err) {
       setError(errorMessage(err));
@@ -462,7 +462,7 @@ function ActionDialog({
       if (kind === "disqualify" || kind === "requalify") await api.post(`${b}/${kind}`, { reason });
       if (kind === "remove") await api.del(b, { reason });
       if (kind === "assign") await api.post(`/api/admin/questions/${v.qid}/assign`, { reason, participant_id: p.id, price: Number(v.price) });
-      await onDone(titles[kind].replace("?", "") + " — done");
+      await onDone(titles[kind].replace("?", "") + ", done");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -511,7 +511,7 @@ function ActionDialog({
         {kind === "remove" && (
           <Alert variant="destructive">
             <Icon.Alert />
-            <AlertDescription>This deletes the account outright. Only possible during registration — afterwards, disqualify instead.</AlertDescription>
+            <AlertDescription>This deletes the account outright. Only possible during registration, afterwards, disqualify instead.</AlertDescription>
           </Alert>
         )}
         {kind === "assign" && (

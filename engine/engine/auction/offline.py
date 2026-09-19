@@ -62,7 +62,7 @@ def _check_offline_open(c: sa.Row) -> None:
     require_auction(c.phase)
     if c.auction_paused_at:
         raise errors.conflict(
-            "auction_paused", "the auction is paused — resume it before recording a sale"
+            "auction_paused", "the auction is paused, resume it before recording a sale"
         )
 
 

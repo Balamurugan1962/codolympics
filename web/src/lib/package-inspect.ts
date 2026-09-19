@@ -73,7 +73,7 @@ export async function inspectPackage(file: File, sampleCount = 3): Promise<Packa
     if (problem.compare === "checker" && !hasChecker) issues.push("compare is \"checker\" but there is no checker.py.");
     if (typeof problem.time_limit_ms !== "number") warnings.push("problem.json has no time_limit_ms; the judge's default applies.");
     if (typeof problem.memory_limit_mb !== "number") warnings.push("problem.json has no memory_limit_mb; the judge's default applies.");
-    if (problem.hack_only && !hasValidator) warnings.push("A hacking problem without validator.py accepts any input as valid — every submitted input counts.");
+    if (problem.hack_only && !hasValidator) warnings.push("A hacking problem without validator.py accepts any input as valid. Every submitted input counts.");
     if (problem.hack_only && !problem.reference) issues.push("A hacking problem needs a stored reference solution (\"reference\" in problem.json).");
     if (!problem.hack_only && tests.length === 0) issues.push("There are no testcases under tests/.");
   }

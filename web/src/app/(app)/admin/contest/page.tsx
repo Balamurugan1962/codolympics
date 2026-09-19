@@ -44,13 +44,13 @@ type C = {
 };
 
 const AUCTION_STYLE = [
-  { value: "online", label: "Online — they bid from their seats" },
-  { value: "offline", label: "Offline — you record what the room does" },
+  { value: "online", label: "Online. They bid from their seats" },
+  { value: "offline", label: "Offline. You record what the room does" },
 ] as const;
 
 const MARKETPLACE = [
-  { value: "closed", label: "Closed — nothing on sale" },
-  { value: "open", label: "Open — powerups can be bought" },
+  { value: "closed", label: "Closed. Nothing on sale" },
+  { value: "open", label: "Open. Powerups can be bought" },
 ] as const;
 
 const VISIBILITY = [
@@ -77,7 +77,7 @@ export default function SettingsPage() {
     return (
       <PageBody>
         <PageHeader title="Settings" />
-        {/* Three titled panels of setting rows, which is what lands — not one
+        {/* Three titled panels of setting rows, which is what lands, not one
             undivided list of eight. */}
         <div className="space-y-5">
           {[3, 3, 4].map((rows, i) => (
@@ -148,8 +148,8 @@ export default function SettingsPage() {
           <span className="flex items-center gap-2">
             Settings
             <Hint>
-              Set the prices last. Every price depends on how many people advance from Phase 1 — twenty-five questions among twenty is a
-              different auction from twenty-five among eight.
+              Set the prices last. Every price depends on how many people advance from Phase 1: twenty-five questions among
+              twenty is a different auction from twenty-five among eight.
             </Hint>
           </span>
         }
@@ -324,7 +324,7 @@ const SCOPES: Record<Scope, { title: string; button: string; phrase: string; bod
       "Every problem package on the judge",
       "Every auction question and hint",
       "Every Phase 1 puzzle and hacking question",
-      "Your settings — back to the defaults",
+      "Your settings, back to the defaults",
     ],
   },
 };

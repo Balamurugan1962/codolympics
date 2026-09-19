@@ -45,7 +45,7 @@ export function SectionB() {
   async function submit() {
     if (!q) return;
     setBusy(true);
-    try { await api.post(`/api/phase1/hacking/${q.id}/attempts`, { input }); toast({ title: "Attempt submitted", description: "Judging — the result appears below.", tone: "info", duration: 2500 }); await load(); }
+    try { await api.post(`/api/phase1/hacking/${q.id}/attempts`, { input }); toast({ title: "Attempt submitted", description: "Judging. The result appears below.", tone: "info", duration: 2500 }); await load(); }
     catch (err) { toast({ title: "Not submitted", description: errorMessage(err), tone: "error" }); }
     finally { setBusy(false); }
   }
@@ -77,9 +77,9 @@ export function SectionB() {
               </Alert>
             )}
             <HackQuestionView q={q} index={current} total={data.questions.length} hacked={hackedIds.has(q.id)} />
-            <Section title="Your test input" description="Must obey the constraints. You are told whether it was valid and whether it broke the solution — nothing more.">
+            <Section title="Your test input" description="Must obey the constraints. You are told whether it was valid and whether it broke the solution, nothing more.">
               <div className="space-y-3">
-                {hackedIds.has(q.id) && <Alert variant="success"><AlertDescription>You have already broken this solution. Further hacks on it score nothing — move on.</AlertDescription></Alert>}
+                {hackedIds.has(q.id) && <Alert variant="success"><AlertDescription>You have already broken this solution. Further hacks on it score nothing. Move on.</AlertDescription></Alert>}
                 <Textarea rows={5} className="font-mono" disabled={locked} value={input} onChange={(e) => setInput(e.target.value)} placeholder={"e.g.\n-2 3"} aria-label="Test input" />
                 <div className="flex items-center gap-3">
                   <Button onClick={submit} loading={busy || inFlight} disabled={locked || !input.trim()}><Icon.Bug size={14} /> {inFlight ? "Judging…" : "Submit hack"}</Button>

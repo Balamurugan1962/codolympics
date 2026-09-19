@@ -113,7 +113,7 @@ export function BlackoutOverlay() {
 
       <p className="mt-8 max-w-sm text-[12.5px] leading-relaxed text-white/50">
         Nothing is lost. Your work is saved and you will come back to exactly where you were. Refreshing or opening another tab
-        will not clear this — the clock is on the server.
+        will not clear this. The clock is on the server.
       </p>
     </div>
   );

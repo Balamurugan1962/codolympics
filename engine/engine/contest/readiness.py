@@ -124,7 +124,7 @@ def _people_items(
     if not c.registration_open:
         registration = "closed"
     elif c.phase == "registration":
-        registration = "still open — close it before Phase 1"
+        registration = "still open, close it before Phase 1"
     else:
         registration = "still open"
     if c.p1_selection_basis:

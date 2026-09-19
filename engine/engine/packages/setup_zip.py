@@ -131,7 +131,7 @@ def import_setup(actor_id: str, zip_bytes: bytes, reason: str) -> dict[str, Any]
     files = read_zip(zip_bytes)
     meta_names = [n for n in files if n == "contest.json" or n.endswith("/contest.json")]
     if not meta_names:
-        raise errors.invalid("no contest.json — that is not a setup zip")
+        raise errors.invalid("no contest.json. That is not a setup zip")
     meta_name = meta_names[0]
     prefix = meta_name[: -len("contest.json")]
     meta = json.loads(files[meta_name])
@@ -179,12 +179,12 @@ def _import_staff(raw: bytes | None, summary: SetupSummary) -> None:
         if not username:
             continue
         if not person.get("password_hash"):
-            summary.warnings.append(f'Skipped "{username}" — the zip carries no password for it.')
+            summary.warnings.append(f'Skipped "{username}". The zip carries no password for it.')
         elif _create_staff_login(person, username):
             summary.staff += 1
         else:
             summary.warnings.append(
-                f'Kept the existing account "{username}" — an import never overwrites a login.'
+                f'Kept the existing account "{username}". An import never overwrites a login.'
             )
 
 
@@ -298,7 +298,7 @@ def _closing_warnings(phase: str, summary: SetupSummary) -> None:
         )
     if phase != "registration":
         summary.warnings.append(
-            "Nothing was published, because the contest is already running — publishing now"
+            "Nothing was published, because the contest is already running, publishing now"
             " would change what participants can see."
         )
     elif summary.published == 0 and summary.problems + summary.puzzles + summary.hacks > 0:

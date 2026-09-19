@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Codolympics", template: "%s · Codolympics" },
-  description: "Codolympics — the auction-based coding competition",
+  description: "Codolympics: the auction-based coding competition",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

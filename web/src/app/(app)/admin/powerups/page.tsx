@@ -9,7 +9,7 @@ export default function PowerupsPage() {
       <PageHeader
         title="Powerups"
         description="What is on sale, what it costs, and where it works. Open one to change it."
-        info="The marketplace itself is switched on in Settings. Editing a powerup applies to the next purchase and the next use — a blackout already running keeps the duration it landed with."
+        info="The marketplace itself is switched on in Settings. Editing a powerup applies to the next purchase and the next use. A blackout already running keeps the duration it landed with."
       />
       <PowerupList />
     </PageBody>

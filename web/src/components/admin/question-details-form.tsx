@@ -25,12 +25,12 @@ export const EMPTY_DETAILS: QuestionDetails = { title: "", difficulty: "medium",
 export function detailsIssues(d: QuestionDetails, testcases: number | null): string[] {
   const out: string[] = [];
   if (!d.title.trim()) out.push("Give the problem a title.");
-  if (!d.statement_md.trim()) out.push("Write the statement — participants would see an empty problem.");
+  if (!d.statement_md.trim()) out.push("Write the statement. Participants would see an empty problem.");
   if (d.score < 0 || !Number.isInteger(d.score)) out.push("Score must be a whole number, zero or more.");
   if (d.base_price < 0 || !Number.isInteger(d.base_price)) out.push("Base price must be a whole number, zero or more.");
   if (d.auction_order < 0 || !Number.isInteger(d.auction_order)) out.push("Auction order must be a whole number.");
   if (d.sample_count < 0 || d.sample_count > 20) out.push("Samples: between 0 and 20.");
-  if (testcases !== null && d.sample_count > testcases) out.push(`Only ${testcases} testcase${testcases === 1 ? "" : "s"} in the package — you cannot show ${d.sample_count} as samples.`);
+  if (testcases !== null && d.sample_count > testcases) out.push(`Only ${testcases} testcase${testcases === 1 ? "" : "s"} in the package. You cannot show ${d.sample_count} as samples.`);
   if (testcases !== null && testcases > 0 && d.sample_count >= testcases) out.push("Every testcase would be a sample; nothing would be hidden.");
   return out;
 }
@@ -107,7 +107,7 @@ export function HintsEditor({ hints, onChange }: { hints: QuestionDetails["hints
             <li key={i} className="rounded-box border border-line bg-card">
               <div className="flex items-center gap-3 border-b border-line bg-muted/60 px-3.5 py-2">
                 <span className="text-[12px] font-semibold text-muted-foreground">Hint {i + 1}</span>
-                <span className="text-[11.5px] text-faint">unlocks after hint {i}{i === 0 ? " — the first one anyone can buy" : ""}</span>
+                <span className="text-[11.5px] text-faint">unlocks after hint {i}{i === 0 ? ". The first one anyone can buy" : ""}</span>
                 <div className="ml-auto flex items-center gap-1">
                   <Button size="sm" variant="ghost" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>↑</Button>
                   <Button size="sm" variant="ghost" aria-label="Move down" disabled={i === hints.length - 1} onClick={() => move(i, 1)}>↓</Button>

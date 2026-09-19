@@ -135,7 +135,7 @@ def _hack_proof(result: dict[str, Any]) -> tuple[bool, str]:
     if result["hacked"]:
         detail = f"the given solution fails on it ({result['verdict']}); the reference handles it"
         return True, detail
-    return False, "the given solution handles this input correctly — it does not break it"
+    return False, "the given solution handles this input correctly. It does not break it"
 
 
 def carry_verification(section: str, question_id: int, breaking_input: str | None = None) -> None:

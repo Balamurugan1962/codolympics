@@ -41,7 +41,7 @@ const TEMPLATES: { label: string; text: string }[] = [
     label: "Round extended",
     text: "**This round has been extended by 10 minutes.** The countdown at the top of your screen is already updated.",
   },
-  { label: "Break", text: "**Ten-minute break.** Nothing is running. The next phase opens when we are back — watch the timeline." },
+  { label: "Break", text: "**Ten-minute break.** Nothing is running. The next phase opens when we are back, watch the timeline." },
 ];
 
 export default function AnnouncementsPage() {

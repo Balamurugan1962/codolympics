@@ -207,7 +207,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
 
       <Section
         title={<span className="flex items-center gap-2">Validate <span className="font-mono text-[12px] font-normal text-faint">{version}</span></span>}
-        description="Prove the package before it goes live. The reference solution is the part that matters — it must pass every test within the limits. A wrong solution should fail, proving the tests bite."
+        description="Prove the package before it goes live. The reference solution is the part that matters. It must pass every test within the limits. A wrong solution should fail, proving the tests bite."
         footer={<Button onClick={validate} loading={busy} disabled={!version}><Icon.Play size={14} /> Run validation</Button>}
       >
         <Summary cols={4} className="mb-5">
@@ -243,7 +243,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
             <Alert variant={report.ok ? "success" : "destructive"}><AlertTitle>{report.ok ? `${version} is valid` : `${version} has problems`}</AlertTitle><AlertDescription>
               <Checklist items={[
                 ...(report.reference ? [{ ok: report.reference.verdict === "AC", label: `Reference: ${report.reference.verdict}`, detail: `${report.reference.passed} passed · slowest ${report.reference.max_time_ms} ms${report.reference.first_fail !== null ? ` · first failure on test ${report.reference.first_fail}` : ""}` }] : []),
-                ...(report.wrong_solution ? [{ ok: report.wrong_solution.verdict !== "AC", label: `Wrong solution: ${report.wrong_solution.verdict}`, detail: report.wrong_solution.verdict === "AC" ? "it passed everything — the tests do not catch it" : "rejected, as it should be" }] : []),
+                ...(report.wrong_solution ? [{ ok: report.wrong_solution.verdict !== "AC", label: `Wrong solution: ${report.wrong_solution.verdict}`, detail: report.wrong_solution.verdict === "AC" ? "it passed everything. The tests do not catch it" : "rejected, as it should be" }] : []),
                 ...(report.checker ? [{ ok: report.checker.compiled, label: report.checker.compiled ? "Checker compiles" : "Checker does not compile", detail: report.checker.output || undefined }] : []),
                 ...report.issues.map((i) => ({ ok: false, label: i })),
               ]} />
@@ -361,7 +361,7 @@ function Preview({ id, problem, question }: { id: string; problem: P | null; que
     void api.post<{ samples: { input: string; output: string }[] }>(`/api/admin/problems/${id}/samples`, { count, version: problem.current ?? problem.versions.at(-1) }).then((r) => setSamples(r.samples)).catch(() => setSamples([]));
   }, [id, problem, count]);
 
-  if (!question) return <Section padded={false}><div className="p-8 text-center text-[13px] text-muted-foreground">No details to preview yet — add them under Details & hints.</div></Section>;
+  if (!question) return <Section padded={false}><div className="p-8 text-center text-[13px] text-muted-foreground">No details to preview yet, add them under Details & hints.</div></Section>;
   return (
     <div className="space-y-4">
       <Alert variant="info"><AlertDescription>This is the workspace's problem pane, rendered from the saved details and the {problem?.current ? "live" : "latest"} package.</AlertDescription></Alert>

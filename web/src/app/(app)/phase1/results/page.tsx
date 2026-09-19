@@ -28,7 +28,7 @@ export default function ResultsPage() {
       {error ? <EmptyState icon={<Icon.Clock size={20} />} title="Not available yet" body={error} /> : !data ? <ListSkeleton rows={6} /> : (
         <div className="space-y-4">
           <StatRow cols={4}>
-            <Stat label="Total points" value={data.standing?.points ?? 0} tone="success" icon={<Icon.Trophy size={13} />} hint={data.standing?.provisional ? "provisional — grading continues" : "final"} />
+            <Stat label="Total points" value={data.standing?.points ?? 0} tone="success" icon={<Icon.Trophy size={13} />} hint={data.standing?.provisional ? "provisional, grading continues" : "final"} />
             <Stat label="Rank" value={data.standing ? `#${data.standing.rank}` : "—"} icon={<Icon.List size={13} />} />
             <Stat label="Hacking" value={data.hacks.reduce((s, h) => s + h.points_awarded, 0)} icon={<Icon.Bug size={13} />} hint={`${data.hacks.filter((h) => h.hacked).length} successful`} />
             <Stat label="Status" value={<span className="text-[17px]">{data.standing?.advanced === true ? "Advancing" : data.standing?.advanced === false ? "Not selected" : "Awaiting selection"}</span>} icon={<Icon.Flag size={13} />} tone={data.standing?.advanced === true ? "success" : "default"} />

@@ -423,7 +423,7 @@ export default function AuctionControlPage() {
           {offline && (
             <Section
               title="Who can afford what"
-              description="Balances as they stand. A participant sees their own and nobody else's — this table is yours."
+              description="Balances as they stand. A participant sees their own and nobody else's. This table is yours."
               padded={false}
             >
               <Table>
@@ -450,7 +450,7 @@ export default function AuctionControlPage() {
                           {!open ? (
                             <span className="text-faint">—</span>
                           ) : b.disqualified ? (
-                            "no — disqualified"
+                            "no, they are disqualified"
                           ) : afford ? (
                             <span className="text-green-dark">yes, up to {b.balance.toLocaleString()}</span>
                           ) : (

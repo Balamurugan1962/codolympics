@@ -127,7 +127,7 @@ export function SectionA() {
       </div>
 
       <Modal open={finishOpen} onClose={() => setFinishOpen(false)} title="Finish Section A?">
-        <p className="text-[13px]">You have answered <strong>{answered.size}</strong> of <strong>{total}</strong>. After finishing you cannot change anything. Your submission time — the tiebreak — is recorded now.</p>
+        <p className="text-[13px]">You have answered <strong>{answered.size}</strong> of <strong>{total}</strong>. After finishing you cannot change anything. Your submission time, which is the tiebreak, is recorded now.</p>
         {answered.size < total && <div className="mt-3"><Alert variant="warning"><AlertDescription>{total - answered.size} question{total - answered.size === 1 ? "" : "s"} unanswered.</AlertDescription></Alert></div>}
         <div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setFinishOpen(false)}>Keep working</Button><Button onClick={finish}><Icon.Flag size={14} /> Finish</Button></div>
       </Modal>

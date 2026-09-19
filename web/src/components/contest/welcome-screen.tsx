@@ -100,7 +100,7 @@ export function WelcomeScreen({ forwarding = false }: { forwarding?: boolean }) 
             {waiting ? (
               <>
                 <span className="font-semibold">Waiting for the organisers to start.</span>{" "}
-                <span className="text-muted-foreground">Don&apos;t refresh — this screen follows.</span>
+                <span className="text-muted-foreground">Don&apos;t refresh. This screen follows.</span>
               </>
             ) : (
               <>

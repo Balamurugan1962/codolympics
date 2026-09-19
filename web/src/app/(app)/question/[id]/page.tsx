@@ -268,13 +268,13 @@ function explain(j: { verdict: string | null; state: string; first_fail: number 
   const onSample = j.first_fail !== null && j.first_fail < sampleCount;
   switch (j.verdict) {
     case "AC": return "Every testcase passed. This question is solved, and it stays solved.";
-    case "WA": return `Wrong answer on ${at}.${onSample ? " That is one of the samples — check your output format before your logic." : ""}`;
+    case "WA": return `Wrong answer on ${at}.${onSample ? " That is one of the samples. Check your output format before your logic." : ""}`;
     case "TLE": return `Too slow on ${at}. The logic may be right; the complexity is not.`;
     case "MLE": return `Used too much memory on ${at}.`;
     case "OLE": return `Printed far too much on ${at} — check for a stray debug print or a loop that never ends.`;
     case "RE": return `Crashed on ${at} — an exception, a bad index, or a non-zero exit code.`;
     case "CE": return "It did not compile. The compiler's own output is below.";
-    case "IE": return "The judge failed on our side. This is not counted against you — tell an organiser if it happens again.";
+    case "IE": return "The judge failed on our side. This is not counted against you. Tell an organiser if it happens again.";
     default: return "";
   }
 }
@@ -293,7 +293,7 @@ const TONE: Record<string, { text: string; bar: string; label: string }> = {
 
 const STAGE_LABEL: Record<Stage, string> = {
   sending: "Sending to the judge",
-  queued: "Queued — waiting for a free slot",
+  queued: "Queued, waiting for a free slot",
   running: "Running",
   done: "",
   gone: "",
@@ -350,7 +350,7 @@ function ResultPanel({ j, stage, stalled, unreachable, sampleCount, open, onTogg
           {running ? (
             <p className="text-white/60">
               {stalled
-                ? "Still waiting on the judge. Nothing is lost — it is queued and will be judged."
+                ? "Still waiting on the judge. Nothing is lost. It is queued and will be judged."
                 : unreachable
                   ? "Lost contact with the server for a moment. Still trying; your submission is safe."
                   : "Your submission is with the judge. You can keep editing while it runs."}
@@ -372,7 +372,7 @@ function ResultPanel({ j, stage, stalled, unreachable, sampleCount, open, onTogg
 }
 
 function History({ history, sampleCount }: { history: Question["history"]; sampleCount: number; onRestore: (h: Question["history"][number]) => void }) {
-  if (history.length === 0) return <EmptyState icon={<Icon.Code size={22} />} title="No submissions yet" body="Write your solution and press Submit — or Ctrl+Enter." />;
+  if (history.length === 0) return <EmptyState icon={<Icon.Code size={22} />} title="No submissions yet" body="Write your solution and press Submit, or Ctrl+Enter." />;
   return (
     <ol className="divide-y divide-line">
       {history.map((h, i) => (

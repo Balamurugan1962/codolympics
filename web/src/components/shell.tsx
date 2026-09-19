@@ -44,7 +44,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 const CONNECTION = {
   connecting: { dot: "bg-white/40 animate-pulse", label: "Connecting", hint: "Connecting to the contest server…" },
   open: { dot: "bg-green-bright", label: "Connected", hint: "Connected to the contest server" },
-  lost: { dot: "bg-red animate-pulse", label: "Reconnecting", hint: "Connection lost — reconnecting…" },
+  lost: { dot: "bg-red animate-pulse", label: "Reconnecting", hint: "Connection lost, reconnecting…" },
 } as const;
 
 export type Step = { key: string; label: string; short?: string };
@@ -250,7 +250,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       {connection === "lost" && (
         <div className="flex items-center justify-center gap-2 bg-red px-4 py-1.5 text-center text-[13px] font-semibold text-white" role="alert">
           <Icon.WifiOff size={14} />
-          Connection to the contest server lost — reconnecting. If this stays, raise your hand.
+          Connection to the contest server lost, reconnecting. If this stays, raise your hand.
         </div>
       )}
       {me?.disqualified && (
@@ -265,7 +265,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Above every screen, and outside <main> so nothing it covers is
-          unmounted — the page underneath is still there when it lifts. */}
+          unmounted. The page underneath is still there when it lifts. */}
       {viewer.role === "participant" && <BlackoutOverlay />}
     </div>
   );

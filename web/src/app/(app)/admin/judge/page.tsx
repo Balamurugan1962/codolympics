@@ -113,7 +113,7 @@ export default function JudgePage() {
     <PageBody width="wide">
       <PageHeader
         title="Judge"
-        description="Every request sent to the judge — submissions, hacks and validator runs."
+        description="Every request sent to the judge, submissions, hacks and validator runs."
         actions={
           <div className="flex items-center gap-3">
             <span className="hidden items-center gap-1.5 text-[12px] text-muted-foreground sm:flex">
@@ -140,7 +140,7 @@ export default function JudgePage() {
               <Icon.Alert />
               <AlertTitle>The judge is not answering</AlertTitle>
               <AlertDescription>
-                Nothing is being judged. Work queues and retries on its own, so none of it is lost — participants see "judging"
+                Nothing is being judged. Work queues and retries on its own, so none of it is lost. Participants see "judging"
                 rather than an error. Check the sandbox container is running and the judge API is listening.
               </AlertDescription>
             </Alert>
@@ -306,7 +306,7 @@ export default function JudgePage() {
             {settled.length === 0 ? (
               all.length === 0 ? (
                 <p className="px-5 py-6 text-[12.5px] text-muted-foreground">
-                  Answered requests are listed here, newest first — open one for the code, the input and the jury detail.
+                  Answered requests are listed here, newest first. Open one for the code, the input and the jury detail.
                 </p>
               ) : (
                 <EmptyState icon={<Icon.Gavel />} title="Nothing matches" body="Try a different filter." />

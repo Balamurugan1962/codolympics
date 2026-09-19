@@ -54,7 +54,7 @@ def _checks_for(
     if c.phase == "registration":
         if c.registration_open:
             blockers.append(
-                "close registration first — the roster must be final because balances are equal"
+                "close registration first. The roster must be final because balances are equal"
             )
         if _count(conn, participant) == 0:
             blockers.append("nobody has registered")
@@ -66,7 +66,7 @@ def _checks_for(
             p1_question.c.voided.is_(False),
         )
         if live_puzzles == 0:
-            blockers.append("no puzzle is published — Section A would open empty")
+            blockers.append("no puzzle is published, Section A would open empty")
     if nxt == "p1_hacking":
         _hacking_checks(conn, blockers, warnings)
     if nxt == "auction1":
@@ -86,7 +86,7 @@ def _hacking_checks(conn: sa.Connection, blockers: list[str], warnings: list[str
         )
     ).all()
     if not hacks:
-        blockers.append("no hacking question is published — Section B would open empty")
+        blockers.append("no hacking question is published, Section B would open empty")
     for h in hacks:
         # An attempt is judged against the live package; with none published,
         # every attempt fails silently.

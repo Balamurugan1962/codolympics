@@ -72,7 +72,7 @@ export default function AuctionOrderPage() {
           <Icon.Lock />
           <AlertTitle>The order is fixed for this contest</AlertTitle>
           <AlertDescription>
-            Lots have been created, and bidders have planned their money around this order. The server will refuse a change — reset the
+            Lots have been created, and bidders have planned their money around this order. The server will refuse a change, reset the
             contest if you genuinely need a different one.
           </AlertDescription>
         </Alert>

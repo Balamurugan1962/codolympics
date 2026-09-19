@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 
 /** Shown while loading as well as after, so the header does not grow on arrival. */
 const ABOUT =
-  "Powerups are bought with coins — the same coins you bid with at auction. Points come from solving questions and are never spent here, so buying a powerup never costs you a place on the leaderboard.";
+  "Powerups are bought with coins, the same coins you bid with at auction. Points come from solving questions and are never spent here, so buying a powerup never costs you a place on the leaderboard.";
 
 type Item = {
   id: number;
