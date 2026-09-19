@@ -52,18 +52,14 @@ export function CodingRound() {
               <h1 className="mt-1 text-[20px] leading-tight font-semibold sm:text-[22px]">
                 {next ? `Solve: ${next.title}` : mine.length ? "Everything you own is solved" : "You own no questions"}
               </h1>
-              <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
-                {next
-                  ? "Submit as often as you like — wrong answers cost nothing. Hints can be bought at any time."
-                  : mine.length
+              {!next && (
+                <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
+                  {mine.length
                     ? "Nothing left to attempt. Watch the leaderboard, or wait for the next auction."
                     : "There is nothing to solve this round. Losing every bid is a legitimate outcome."}
-              </p>
-              {contest.phase_ends_at && (
-                <p className="mt-2.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                  <Icon.Clock size={14} /> <Countdown until={contest.phase_ends_at} className="font-semibold text-foreground" /> remaining
                 </p>
               )}
+
             </div>
             {next && (
               <Button size="lg" className="shrink-0" asChild>
@@ -75,7 +71,7 @@ export function CodingRound() {
           </div>
         </section>
 
-        <StatRow cols={4}>
+        <StatRow cols={3}>
           <Stat
             label="Solved"
             value={`${solved.length}/${mine.length}`}
@@ -83,24 +79,18 @@ export function CodingRound() {
             icon={<Icon.Check size={13} />}
             hint={mine.length ? `${earned} of ${possible} points` : "nothing owned"}
           />
-          <Stat label="Balance" value={me ? me.balance.toLocaleString() : "—"} icon={<Icon.Coins size={13} />} hint="spend on hints" />
+          <Stat label="Coins" value={me ? me.balance.toLocaleString() : "—"} icon={<Icon.Coins size={13} />} hint="spend on hints and powerups" />
           <Stat
             label="Rank"
             value={state.rank ? `#${state.rank.rank}` : "—"}
             icon={<Icon.Trophy size={13} />}
             hint={state.rank ? `${state.rank.score} points` : contest.leaderboard_mode === "hidden" ? "leaderboard hidden" : "no standings yet"}
           />
-          <Stat
-            label="Time left"
-            value={<Countdown until={contest.phase_ends_at} />}
-            icon={<Icon.Clock size={13} />}
-            hint={contest.phase_ends_at ? "in this round" : "no deadline running"}
-          />
         </StatRow>
 
         <Section
           title="My questions"
-          description="Only you can attempt these. Unsolved first."
+          info="Only you can attempt these — nobody else can read or solve them. Unsolved ones come first. Wrong submissions cost nothing, and hints can be bought at any time."
           padded={false}
           actions={
             <Button size="sm" variant="ghost" asChild>
@@ -127,7 +117,7 @@ export function CodingRound() {
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[13.5px] font-semibold">{q.title}</div>
                         <div className="text-[11.5px] text-faint">
-                          bought for {q.price_paid} · {q.attempts} attempt{q.attempts === 1 ? "" : "s"}
+                          bought for {q.price_paid} coins · {q.attempts} attempt{q.attempts === 1 ? "" : "s"}
                           {q.progress === "solved" ? " · solved" : ""}
                         </div>
                       </div>

@@ -8,7 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { TableSkeleton } from "@/components/ui/skeleton";
+import { Pagination, usePaged } from "@/components/ui/pagination";
+import { BoardSkeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
 
@@ -23,11 +24,12 @@ export default function LeaderboardPage() {
 
   const me = state?.viewer.id;
   const mine = board?.standings.find((s) => s.participant_id === me);
+  const paged = usePaged(board?.standings ?? [], { param: "page" });
 
   return (
     <PageBody className="animate-fade-in">
-      <PageHeader title="Leaderboard" description="Ties: lower solve time, then Phase 1 rank." />
-      {!board ? <TableSkeleton rows={8} cols={5} /> : board.mode === "hidden" ? (
+      <PageHeader title="Leaderboard" description={board ? `${board.standings.length} participants. Ties: lower solve time, then Phase 1 rank.` : "Ties: lower solve time, then Phase 1 rank."} />
+      {!board ? <BoardSkeleton band rows={8} cols={5} /> : board.mode === "hidden" ? (
         <EmptyState icon={<Icon.Eye size={20} />} title="Standings are hidden" body="The organisers turned it off for this contest." />
       ) : (
         <div className="space-y-3">
@@ -41,9 +43,9 @@ export default function LeaderboardPage() {
           )}
           <Section padded={false}>
             <Table>
-              <TableHeader><TableRow><TableHead className="w-16 text-right">Rank</TableHead><TableHead>Participant</TableHead><TableHead className="text-right tabular-nums">Score</TableHead><TableHead className="hidden sm:table-cell text-right tabular-nums">Solved</TableHead><TableHead className="hidden md:table-cell text-right tabular-nums">Total solve time</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead className="w-16 text-right">Rank</TableHead><TableHead>Participant</TableHead><TableHead className="text-right tabular-nums">Points</TableHead><TableHead className="hidden sm:table-cell text-right tabular-nums">Solved</TableHead><TableHead className="hidden md:table-cell text-right tabular-nums">Total solve time</TableHead></TableRow></TableHeader>
               <TableBody>
-                {board.standings.map((s) => (
+                {paged.rows.map((s) => (
                   <TableRow key={s.participant_id} data-state={s.participant_id === me ? "selected" : undefined}>
                     <TableCell className="font-semibold text-right tabular-nums">{s.rank <= 3 ? <Badge variant={s.rank === 1 ? "success" : "neutral"}>#{s.rank}</Badge> : `#${s.rank}`}</TableCell>
                     <TableCell className="font-medium">{s.name}{s.participant_id === me && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-deep">you</span>}</TableCell>
@@ -54,6 +56,7 @@ export default function LeaderboardPage() {
                 ))}
               </TableBody>
             </Table>
+            <Pagination paged={paged} unit="participants" />
             {board.standings.length === 0 && <EmptyState compact title="No standings yet" body="Scores appear once someone solves a question." />}
           </Section>
         </div>

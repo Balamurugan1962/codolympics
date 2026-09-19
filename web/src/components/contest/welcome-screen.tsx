@@ -29,8 +29,8 @@ import { cn } from "@/lib/utils";
 /** Six lines, because six is what someone actually reads while waiting. */
 export const RULES: [string, string][] = [
   ["Two sections, then an auction", "Puzzles and hacking decide who goes through."],
-  ["Same money for everyone", "Identical starting balance. Money is never score."],
-  ["All or nothing", "A solved problem earns full score. Wrong submissions cost nothing."],
+  ["Two currencies", "Coins buy questions, hints and powerups. Points come from solving."],
+  ["All or nothing", "A solved problem pays its full points. Wrong submissions cost nothing."],
   ["Hidden tests stay hidden", "You see which test failed, never what was in it."],
   ["One seat, one session", "Signing in elsewhere ends this one. Work saves as you type."],
   ["Nothing moves by itself", "Organisers open each section. This screen follows."],
