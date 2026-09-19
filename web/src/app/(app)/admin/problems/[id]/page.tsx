@@ -305,7 +305,7 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
 function Details({ id, question, testcases, onChange }: { id: string; question: Q | null; testcases: number | null; onChange: () => void }) {
   const { toast } = useToast();
   const initial: QuestionDetails = question
-    ? { title: question.title, difficulty: question.difficulty as QuestionDetails["difficulty"], score: question.score, base_price: question.basePrice, auction_order: question.auctionOrder, statement_md: question.statementMd, sample_count: question.sampleCount, hints: question.hints.map((h) => ({ price: h.price, body_md: h.bodyMd })) }
+    ? { title: question.title, topic: question.topic ?? "", difficulty: question.difficulty as QuestionDetails["difficulty"], score: question.score, base_price: question.basePrice, auction_order: question.auctionOrder, statement_md: question.statementMd, sample_count: question.sampleCount, hints: question.hints.map((h) => ({ price: h.price, body_md: h.bodyMd })) }
     : EMPTY_DETAILS;
   const [d, setD] = useState<QuestionDetails>(initial);
   const [busy, setBusy] = useState(false);

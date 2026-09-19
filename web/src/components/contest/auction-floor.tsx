@@ -85,13 +85,16 @@ export function AuctionFloor() {
                 <div className="grid gap-6 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <div className="min-w-0">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-deep">Now offering</div>
-                    <h2 className="mt-1 text-[24px] font-semibold leading-tight tracking-[-0.01em]">{lot.title}</h2>
+                    <h2 className="mt-1 text-[24px] leading-tight font-semibold tracking-[-0.01em]">{lot.topic || "Topic not set"}</h2>
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       <Badge variant={lot.difficulty === "hard" ? "destructive" : lot.difficulty === "medium" ? "warning" : "success"}>{lot.difficulty}</Badge>
                       <Badge variant="navy">{lot.score} points</Badge>
                       <Badge variant="neutral">base {lot.base_price} coins</Badge>
                     </div>
-                    <p className="mt-3 text-[11.5px] text-faint">The statement is what you are buying. You will read it only if you win.</p>
+                    <p className="mt-3 text-[11.5px] text-faint">
+                      Bidding is blind. The topic, the difficulty and what it pays are all anyone is told; the question itself is
+                      yours to read the moment you win it.
+                    </p>
                   </div>
                   <div className="flex justify-center">
                     {offline ? (
@@ -179,7 +182,7 @@ export function AuctionFloor() {
               <li key={o.id} className={`flex items-center gap-3 px-4 py-2.5 text-[13px] ${o.state === "open" ? "bg-brand-tint" : o.state === "pending" ? "" : "opacity-70"}`}>
                 <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${o.state === "open" ? "bg-brand text-white" : o.state === "closed" ? "bg-line-2 text-ink" : "border border-line-2 text-faint"}`}>{o.order}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold">{o.title}</div>
+                  <div className="truncate font-semibold">{o.topic || "Topic not set"}</div>
                   <div className="text-[11.5px] text-faint">{o.difficulty} · {o.score} pts · base {o.base_price}</div>
                 </div>
                 {o.state === "closed" ? (

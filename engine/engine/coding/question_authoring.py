@@ -28,6 +28,7 @@ def admin_list() -> list[dict[str, Any]]:
 
 QUESTION_FIELDS = (
     "title",
+    "topic",
     "difficulty",
     "score",
     "base_price",

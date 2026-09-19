@@ -218,7 +218,7 @@ export default function AuctionControlPage() {
               ) : !live?.lot ? (
                 <p className="text-[13px] text-muted-foreground">Between lots.</p>
               ) : (
-                <LiveLot lot={live.lot} lotId={open.id} control={control} paused={paused} act={act} />
+                <LiveLot live={live.lot} lot={open} control={control} act={act} />
               )}
             </Section>
 
@@ -503,20 +503,21 @@ function Tally({ label, value, note }: { label: string; value: React.ReactNode; 
  * thirty people waiting.
  */
 function LiveLot({
+  live,
   lot,
-  lotId,
   control,
-  paused,
   act,
 }: {
-  lot: NonNullable<AuctionSnapshot["lot"]>;
-  lotId: number;
+  /** The public board: bids and clocks, and no idea which question this is. */
+  live: NonNullable<AuctionSnapshot["lot"]>;
+  /** The same lot from the organiser's own read, which does have its name. */
+  lot: Lot;
   control: Control;
-  paused: boolean;
   act: (action: string, payload: Record<string, unknown>, done: string) => Promise<void>;
 }) {
-  const closing = lot.current_bid !== null;
-  const deadline = closing ? lot.bidding_ends_at : lot.no_bid_deadline;
+  const paused = Boolean(control.paused_at);
+  const closing = live.current_bid !== null;
+  const deadline = closing ? live.bidding_ends_at : live.no_bid_deadline;
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -530,10 +531,10 @@ function LiveLot({
       {/* The three numbers the room is waiting on, at a size you can read from
           the back of it. Nothing else in this panel competes with them. */}
       <div className="grid grid-cols-1 divide-y border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        <Figure label="Highest bid" note={lot.current_bidder_name ? `by ${lot.current_bidder_name}` : "no bids yet"}>
-          <span className="tabular-nums">{lot.current_bid ?? "—"}</span>
+        <Figure label="Highest bid" note={live.current_bidder_name ? `by ${live.current_bidder_name}` : "no bids yet"}>
+          <span className="tabular-nums">{live.current_bid ?? "—"}</span>
         </Figure>
-        <Figure label={closing ? "Closes in" : "Opens for"} note={`next legal bid ${lot.next_bid}`}>
+        <Figure label={closing ? "Closes in" : "Opens for"} note={`next legal bid ${live.next_bid}`}>
           {paused ? (
             <span className="text-amber">held</span>
           ) : deadline ? (
@@ -588,7 +589,7 @@ function LiveLot({
           <ReasonAction
             label="Retract top bid"
             icon={<Icon.Undo size={14} />}
-            disabled={lot.current_bid === null}
+            disabled={live.current_bid === null}
             title="Retract the highest bid"
             defaultReason="Retracting a bid placed by mistake."
             description="The bid is removed and the question goes back to whoever held it before, with the countdown restarted. No balance moves, because bidding never debits; only winning does."
@@ -603,7 +604,7 @@ function LiveLot({
               body: "Nothing is sold and no coins move. The bids so far are kept for the record, the next question opens, and you can put it back later.",
               label: "Withdraw",
             }}
-            onAct={() => act("withdraw", { reason: `Withdrew ${lot.title} mid-auction.`, lot_id: lotId }, "Question withdrawn")}
+            onAct={() => act("withdraw", { reason: `Withdrew ${lot.title} mid-auction.`, lot_id: lot.id }, "Question withdrawn")}
           />
         </div>
       </div>

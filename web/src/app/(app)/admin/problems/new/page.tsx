@@ -69,7 +69,7 @@ export default function NewProblemPage() {
   // Prefill from an existing question when the id matches one -- adding a version, not replacing details.
   useEffect(() => {
     if (!knownQ) return;
-    setDetails({ title: knownQ.title, difficulty: knownQ.difficulty as QuestionDetails["difficulty"], score: knownQ.score, base_price: knownQ.basePrice, auction_order: knownQ.auctionOrder, statement_md: knownQ.statementMd, sample_count: knownQ.sampleCount, hints: knownQ.hints.map((h) => ({ price: h.price, body_md: h.bodyMd })) });
+    setDetails({ title: knownQ.title, topic: knownQ.topic ?? "", difficulty: knownQ.difficulty as QuestionDetails["difficulty"], score: knownQ.score, base_price: knownQ.basePrice, auction_order: knownQ.auctionOrder, statement_md: knownQ.statementMd, sample_count: knownQ.sampleCount, hints: knownQ.hints.map((h) => ({ price: h.price, body_md: h.bodyMd })) });
   }, [knownQ]);
 
   const packageIssues = useMemo(() => {
