@@ -2,9 +2,9 @@
 
 /**
  * The administrator frame. A persistent navy sidebar carries the whole
- * information architecture, grouped by what you are doing — running the
- * contest, preparing content, managing people, watching it work. The top bar
- * holds only what must always be true: the phase, the clock, and who you are.
+ * information architecture as eight destinations, each named after a job;
+ * the pages inside one appear only while you are in it. The top bar holds
+ * only what must always be true: the phase, the clock, and who you are.
  *
  * Health lives at the foot of the sidebar rather than in a dashboard card,
  * because "is the judge up?" is a question you ask while doing something else.
@@ -35,75 +35,93 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 
 type Role = "admin" | "evaluator";
-type Item = { href: string; label: string; icon: (p: { size?: number }) => React.ReactElement; roles?: Role[] };
-type Group = { section: string | null; items: Item[] };
+type Item = { href: string; label: string; roles?: Role[] };
+type Group = {
+  label: string;
+  icon: (p: { size?: number }) => React.ReactElement;
+  /** Where the group row goes. Defaults to its first child. */
+  href?: string;
+  items?: Item[];
+};
 
 /**
- * The console's whole information architecture, grouped by what you are doing:
- * running the day, preparing each phase, watching the boards, managing people,
- * checking the machinery.
+ * The console's whole information architecture, two levels deep and no deeper.
+ *
+ * Eight destinations, each named after a job: run the day, prepare a phase,
+ * grade, read the boards, manage people, watch the machinery, set it up. A
+ * group's pages appear only while you are inside it, because nineteen links
+ * under eight headings was a wall to read rather than a place to be — and at
+ * any moment an organiser is doing exactly one of these jobs.
  *
  * `roles` narrows an item to administrators. It is presentation only — every
  * route enforces its own permissions server-side, because hiding a link has
  * never been a control.
  */
 const NAV: Group[] = [
+  { label: "Dashboard", icon: Icon.Grid, href: "/admin" },
   {
-    section: null,
+    label: "Phase 1",
+    icon: Icon.Flag,
     items: [
-      { href: "/admin", label: "Dashboard", icon: Icon.Grid },
-      { href: "/admin/readiness", label: "Readiness", icon: Icon.ListChecks },
+      { href: "/admin/phase1/puzzles", label: "Section A · Puzzles" },
+      { href: "/admin/phase1/puzzles/order", label: "Section A order" },
+      { href: "/admin/phase1/hacking", label: "Section B · Hacking" },
+      { href: "/admin/phase1/hacking/order", label: "Section B order" },
+      { href: "/admin/phase1/review", label: "Review & advance" },
     ],
   },
   {
-    section: "Phase 1",
+    label: "Phase 2",
+    icon: Icon.Gavel,
     items: [
-      { href: "/admin/phase1/puzzles", label: "Section A · Puzzles", icon: Icon.Puzzle },
-      { href: "/admin/phase1/hacking", label: "Section B · Hacking", icon: Icon.Bug },
-      { href: "/admin/phase1/order", label: "Order", icon: Icon.Sort },
-      { href: "/admin/phase1/review", label: "Review & advance", icon: Icon.Flag },
+      { href: "/admin/problems", label: "Problems" },
+      { href: "/admin/problems/order", label: "Auction order" },
+      { href: "/admin/auction", label: "Auction control" },
+      { href: "/admin/powerups", label: "Powerups" },
     ],
   },
   {
-    section: "Phase 2",
+    label: "Grading",
+    icon: Icon.Scale,
     items: [
-      { href: "/admin/problems", label: "Problems", icon: Icon.Code },
-      { href: "/admin/problems/order", label: "Auction order", icon: Icon.Sort },
-      { href: "/admin/auction", label: "Auction control", icon: Icon.Gavel },
-      { href: "/admin/powerups", label: "Powerups", icon: Icon.Spark },
+      { href: "/grade", label: "Answers" },
+      { href: "/grade/hacks", label: "Hack attempts" },
     ],
   },
   {
-    section: "Leaderboard",
+    label: "Leaderboards",
+    icon: Icon.Trophy,
     items: [
-      { href: "/admin/leaderboard/phase1", label: "Phase 1", icon: Icon.Trophy },
-      { href: "/admin/leaderboard/phase2", label: "Phase 2", icon: Icon.Trophy },
+      { href: "/admin/leaderboard/phase1", label: "Phase 1" },
+      { href: "/admin/leaderboard/phase2", label: "Phase 2" },
     ],
   },
   {
-    section: "Grading",
+    label: "People",
+    icon: Icon.Users,
     items: [
-      { href: "/grade", label: "Answers", icon: Icon.Scale },
-      { href: "/grade/hacks", label: "Hack attempts", icon: Icon.Bug },
+      { href: "/admin/participants", label: "Participants" },
+      { href: "/admin/staff", label: "Staff", roles: ["admin"] },
+      { href: "/admin/announcements", label: "Announcements" },
     ],
   },
   {
-    section: "People",
+    label: "Monitor",
+    icon: Icon.Server,
     items: [
-      { href: "/admin/participants", label: "Participants", icon: Icon.Users },
-      { href: "/admin/staff", label: "Staff", icon: Icon.ShieldCheck, roles: ["admin"] },
-      { href: "/admin/announcements", label: "Announcements", icon: Icon.Megaphone },
+      { href: "/admin/judge", label: "Judge" },
+      { href: "/admin/submissions", label: "Submissions" },
+      { href: "/admin/audit", label: "Audit log" },
     ],
   },
   {
-    section: "Monitor",
+    label: "Setup",
+    icon: Icon.Settings,
     items: [
-      { href: "/admin/judge", label: "Judge", icon: Icon.Server },
-      { href: "/admin/submissions", label: "Submissions", icon: Icon.List },
-      { href: "/admin/audit", label: "Audit log", icon: Icon.Shield },
+      { href: "/admin/readiness", label: "Readiness" },
+      { href: "/admin/contest", label: "Settings", roles: ["admin"] },
     ],
   },
-  { section: "Configure", items: [{ href: "/admin/contest", label: "Settings", icon: Icon.Settings, roles: ["admin"] }] },
 ];
 
 /**
@@ -146,12 +164,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const role = viewer.role === "admin" ? "admin" : "evaluator";
   const nav = NAV.map((g) => ({
     ...g,
-    items: g.items.filter(
+    items: g.items?.filter(
       (it) =>
         (!it.roles || it.roles.includes(role)) &&
         !(it.href === "/admin/leaderboard/phase2" && BEFORE_PHASE2.includes(contest.phase)),
     ),
-  })).filter((g) => g.items.length > 0);
+  })).filter((g) => !g.items || g.items.length > 0);
+
+  const here = current(pathname, nav);
 
   const sidebar = (
     <div className="flex h-full w-60 flex-col bg-sidebar text-sidebar-foreground">
@@ -166,33 +186,54 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="pane min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="Administration">
-        {nav.map((group, gi) => (
-          <div key={group.section ?? gi} className={gi ? "mt-4" : ""}>
-            {group.section && (
-              <div className="mb-1 px-2.5 text-[10px] font-semibold tracking-[0.1em] text-white/35 uppercase">{group.section}</div>
-            )}
-            <ul className="space-y-0.5">
-              {group.items.map(({ href, label, icon: I }) => {
-                const active = isActive(pathname, href);
-                return (
-                  <li key={href}>
-                    <Link
-                      href={href}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
-                        active ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white/90",
-                      )}
-                    >
-                      <I size={16} />
-                      <span>{label}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+        <ul className="space-y-0.5">
+          {nav.map(({ label, icon: I, items, href }) => {
+            const target = items?.[0]?.href ?? href ?? "/admin";
+            const open = here?.group === label;
+            return (
+              <li key={label}>
+                <Link
+                  href={target}
+                  aria-current={here?.href === target && !items ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors",
+                    open ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white/90",
+                  )}
+                >
+                  <I size={16} />
+                  <span>{label}</span>
+                  {items && (
+                    <Icon.ChevronRight size={13} className={cn("ml-auto text-white/30 transition-transform", open && "rotate-90")} />
+                  )}
+                </Link>
+
+                {open && items && (
+                  <ul className="mt-0.5 mb-1 ml-[26px] border-l border-white/10">
+                    {items.map((it) => {
+                      const active = here?.href === it.href;
+                      return (
+                        <li key={it.href}>
+                          <Link
+                            href={it.href}
+                            aria-current={active ? "page" : undefined}
+                            className={cn(
+                              "-ml-px flex min-h-8 items-center border-l pr-2 pl-3 text-[12.5px] transition-colors",
+                              active
+                                ? "border-brand-bright font-medium text-white"
+                                : "border-transparent text-white/50 hover:border-white/25 hover:text-white/90",
+                            )}
+                          >
+                            {it.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       </nav>
 
       <div className="flex shrink-0 items-center gap-4 border-t border-sidebar-border px-4 py-2.5">
@@ -207,7 +248,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <aside className="sticky top-0 hidden h-screen shrink-0 lg:block">{sidebar}</aside>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-60 gap-0 border-sidebar-border bg-sidebar p-0">
+        <SheetContent
+          side="left"
+          className="w-60 gap-0 border-sidebar-border bg-sidebar p-0 [&>button]:top-3.5 [&>button]:right-3.5 [&>button]:p-1.5 [&>button]:text-white/60 [&>button]:opacity-100 [&>button]:hover:text-white"
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>Administration</SheetTitle>
           </SheetHeader>
@@ -285,16 +329,25 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Exact match, or a match on a path segment boundary. Without the boundary
- * /admin/problems would light up while you are on /admin/problems/order.
+ * Which nav entry the current URL belongs to.
+ *
+ * The longest matching href wins, so /admin/problems/7 lands on Problems while
+ * /admin/problems/order keeps its own row, and a question's own page lights up
+ * the list it came from.
  */
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/admin") return pathname === "/admin";
-  if (pathname === href) return true;
-  if (!pathname.startsWith(href + "/")) return false;
-  // /admin/problems must not claim /admin/problems/order, which is its own item.
-  const rest = pathname.slice(href.length + 1);
-  return !NAV.some((g) => g.items.some((it) => it.href === `${href}/${rest.split("/")[0]}`));
+function current(pathname: string, nav: Group[]): { group: string; href: string } | null {
+  let best: { group: string; href: string } | null = null;
+  let length = -1;
+  for (const g of nav) {
+    for (const href of g.items?.map((it) => it.href) ?? [g.href ?? ""]) {
+      const matches = href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(href + "/");
+      if (matches && href.length > length) {
+        best = { group: g.label, href };
+        length = href.length;
+      }
+    }
+  }
+  return best;
 }
 
 /** An honest dead end rather than a screen of failed requests. */
