@@ -22,7 +22,12 @@ export function Hint({ children, label = "More information", className }: { chil
         <button
           type="button"
           aria-label={label}
-          className={cn("inline-flex shrink-0 text-faint transition-colors hover:text-muted-foreground", className)}
+          // 14px mark, 24px target: the icon stays quiet, the hit area meets
+          // the minimum. Negative margin keeps it from spacing the title out.
+          className={cn(
+            "-m-[5px] inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-faint transition-colors hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+            className,
+          )}
         >
           <Icon.Info size={14} />
         </button>
