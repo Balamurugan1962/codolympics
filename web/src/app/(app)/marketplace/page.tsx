@@ -22,13 +22,18 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Hint } from "@/components/ui/hint";
 import { Modal } from "@/components/ui/modal";
-import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { SectionSkeleton, StatStripSkeleton } from "@/components/ui/skeleton";
+import { PageBody, PageHeader } from "@/components/ui/page";
+import { OfferSkeleton, StatStripSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 import { cn } from "@/lib/utils";
+
+/** Shown while loading as well as after, so the header does not grow on arrival. */
+const ABOUT =
+  "Powerups are bought with coins — the same coins you bid with at auction. Points come from solving questions and are never spent here, so buying a powerup never costs you a place on the leaderboard.";
 
 type Item = {
   id: number;
@@ -133,11 +138,11 @@ export default function MarketplacePage() {
   if (!market) {
     return (
       <PageBody width="narrow">
-        <PageHeader title="Marketplace" />
+        <PageHeader title="Marketplace" info={ABOUT} />
         <div className="space-y-5">
           <StatStripSkeleton cols={2} />
-          <SectionSkeleton lines={3} />
-          <SectionSkeleton lines={3} />
+          <OfferSkeleton />
+          <OfferSkeleton actions={1} />
         </div>
       </PageBody>
     );
@@ -147,7 +152,7 @@ export default function MarketplacePage() {
 
   return (
     <PageBody width="narrow" className="animate-fade-in">
-      <PageHeader title="Marketplace" description="Spend the money you bid with. Everything here is settled on the server." />
+      <PageHeader title="Marketplace" info={ABOUT} />
 
       {!market.open && (
         <Alert variant="warning" className="mb-5">
@@ -158,16 +163,16 @@ export default function MarketplacePage() {
       )}
 
       <StatRow cols={2} className="mb-5">
-        <Stat label="Your balance" value={market.balance.toLocaleString()} icon={<Icon.Wallet size={13} />} hint="the same money you bid with" />
-        <Stat label="Powerups held" value={held} icon={<Icon.Spark size={13} />} hint={held === 0 ? "nothing bought yet" : "ready to use"} />
+        <Stat label="Your coins" value={market.balance.toLocaleString()} icon={<Icon.Wallet size={13} />} />
+        <Stat label="Powerups held" value={held} icon={<Icon.Spark size={13} />} />
       </StatRow>
 
       {market.items.length === 0 ? (
         <EmptyState icon={<Icon.Spark />} title="Nothing on sale" body="The organisers have not put any powerups up yet." />
       ) : (
-        <div className="space-y-4">
+        <div className="divide-y border bg-card">
           {market.items.map((item) => (
-            <Section key={item.id} padded={false}>
+            <div key={item.id}>
               <div className="flex flex-wrap items-start justify-between gap-4 px-5 py-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -175,12 +180,12 @@ export default function MarketplacePage() {
                       {item.kind === "blackout" ? <Icon.Ban size={15} /> : <Icon.Shield size={15} />}
                     </span>
                     <h2 className="text-[15px] font-semibold">{item.name}</h2>
+                    <Hint>{item.description}</Hint>
                     {item.owned > 0 && <Badge variant="success">{item.owned} held</Badge>}
                     {!item.usable_now && <Badge variant="neutral">not usable now</Badge>}
                   </div>
-                  <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-muted-foreground">{item.description}</p>
                   <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-faint">
-                    <span className="font-semibold tabular-nums text-foreground">{item.price.toLocaleString()}</span>
+                    <span className="font-semibold tabular-nums text-foreground">{item.price.toLocaleString()} coins</span>
                     {item.duration_seconds !== null && <span>lasts {item.duration_seconds}s</span>}
                     {item.max_held !== null && <span>hold up to {item.max_held}</span>}
                     {item.max_purchases !== null && (
@@ -213,7 +218,7 @@ export default function MarketplacePage() {
                   Protected. The next {item.owned === 1 ? "Blackout aimed at you is" : `${item.owned} Blackouts aimed at you are`} absorbed automatically.
                 </p>
               )}
-            </Section>
+            </div>
           ))}
         </div>
       )}

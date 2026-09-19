@@ -89,7 +89,7 @@ export function AuctionFloor() {
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       <Badge variant={lot.difficulty === "hard" ? "destructive" : lot.difficulty === "medium" ? "warning" : "success"}>{lot.difficulty}</Badge>
                       <Badge variant="navy">{lot.score} points</Badge>
-                      <Badge variant="neutral">base price {lot.base_price}</Badge>
+                      <Badge variant="neutral">base {lot.base_price} coins</Badge>
                     </div>
                     <p className="mt-3 text-[11.5px] text-faint">The statement is what you are buying. You will read it only if you win.</p>
                   </div>
@@ -125,7 +125,7 @@ export function AuctionFloor() {
                     </div>
                   )}
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Your balance</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Your coins</div>
                     <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none">{balance.toLocaleString()}</div>
                     <div className="mt-1.5 text-[12.5px] text-muted-foreground">{offline ? "raise your hand to bid" : affordable ? `${stepsLeft} more step${stepsLeft === 1 ? "" : "s"} after this` : "not enough for the next bid"}</div>
                   </div>
