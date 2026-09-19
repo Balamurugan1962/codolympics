@@ -1,11 +1,12 @@
 # The whole contest on one machine (NFR-J-08): Postgres, the sandbox, the
-# judge API and the web app. Four services.
+# judge API, the contest engine and the web app. Five services.
 #
 #   cp .env.example .env      # fill in the secrets
 #   docker compose up -d --build
 #   open http://<this machine>:3000
 #
-# go-judge and judge-api publish no ports; only the web app is reachable.
+# Only the web app publishes a port. go-judge, judge-api and the engine are
+# reachable only from other containers on the internal network.
 
 services:
   postgres:
@@ -46,9 +47,9 @@ services:
       - problems:/problems:ro          # read-only: the judge never writes here
     networks: [internal]
 
-  web:
-    build: ./web
-    image: contest-web:1.0
+  engine:
+    build: ./engine
+    image: contest-engine:1.0
     restart: unless-stopped
     depends_on:
       postgres: { condition: service_healthy }
@@ -56,7 +57,7 @@ services:
     environment:
       DATABASE_URL: postgres://contest:${POSTGRES_PASSWORD}@postgres:5432/contest
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL to the address participants use}
+      ENGINE_SERVICE_TOKEN: ${ENGINE_SERVICE_TOKEN:?set ENGINE_SERVICE_TOKEN in .env}
       JUDGE_URL: http://judge-api:8000
       JUDGE_SERVICE_TOKEN: ${JUDGE_SERVICE_TOKEN}
       PROBLEMS_DIR: /problems
@@ -64,6 +65,21 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
     volumes:
       - problems:/problems             # read-write: uploads land here
+    # No ports: only the web app talks to the engine.
+    networks: [internal]
+
+  web:
+    build: ./web
+    image: contest-web:1.0
+    restart: unless-stopped
+    depends_on:
+      engine: { condition: service_started }
+    environment:
+      DATABASE_URL: postgres://contest:${POSTGRES_PASSWORD}@postgres:5432/contest   # Better Auth's sessions only
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL to the address participants use}
+      ENGINE_URL: http://engine:8080
+      ENGINE_SERVICE_TOKEN: ${ENGINE_SERVICE_TOKEN}
     ports:
       - "3000:3000"
     networks: [internal]
