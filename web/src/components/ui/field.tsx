@@ -11,7 +11,7 @@
  * problem statement, and a form where every box is full-width reads as a wall.
  */
 import type { ReactNode } from "react";
-import { useId } from "react";
+import { Children, cloneElement, isValidElement, useId } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -39,27 +39,49 @@ export function Field({
   children: ReactNode;
   className?: string;
 }) {
+  const auto = useId();
+  const id = htmlFor ?? auto;
+  const noteId = `${id}-note`;
+  const note = error ?? help;
   return (
     <div className={cn("min-w-0", className)}>
       {label && (
         <div className="mb-1.5 flex items-baseline justify-between gap-2">
-          <Label htmlFor={htmlFor} className="text-[12.5px] font-semibold text-foreground">
+          <Label htmlFor={id} className="text-[12.5px] font-semibold text-foreground">
             {label}
             {required && <span className="text-destructive">*</span>}
           </Label>
           {hint && <span className="text-[11px] font-normal text-faint">{hint}</span>}
         </div>
       )}
-      {children}
+      {labelled(children, id, note ? noteId : undefined)}
       {error ? (
-        <p className="mt-1.5 flex items-start gap-1.5 text-[11.5px] leading-snug font-medium text-destructive">
+        <p id={noteId} role="alert" className="mt-1.5 flex items-start gap-1.5 text-[11.5px] leading-snug font-medium text-destructive">
           <Icon.CircleAlert size={13} className="mt-px shrink-0" /> {error}
         </p>
       ) : help ? (
-        <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">{help}</p>
+        <p id={noteId} className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
+          {help}
+        </p>
       ) : null}
     </div>
   );
+}
+
+/**
+ * Hand the control the label's id, and the id of whatever is written under it.
+ *
+ * Without this the label is only next to the input, not attached to it: a
+ * screen reader reads an unlabelled box, and clicking the label does nothing.
+ * A control that already carries its own id or description keeps it.
+ */
+function labelled(children: ReactNode, id: string, describedBy?: string): ReactNode {
+  const only = Children.count(children) === 1 ? Children.only(children) : null;
+  if (!isValidElement<{ id?: string; "aria-describedby"?: string }>(only)) return children;
+  return cloneElement(only, {
+    id: only.props.id ?? id,
+    "aria-describedby": only.props["aria-describedby"] ?? describedBy,
+  });
 }
 
 /** A labelled setting with an explanation beside it. The shape every settings page uses. */
@@ -109,7 +131,7 @@ export function SearchInput({
       {/* The browser's own clear button and decoration are hidden by a plain
           rule (.search-plain in globals.css) rather than by an arbitrary
           variant, so one class covers both pseudo-elements. */}
-      <Input type="search" value={value} className="search-plain pr-8 pl-8" {...props} />
+      <Input type="search" aria-label="Search" value={value} className="search-plain pr-8 pl-8" {...props} />
       {onClear && value ? (
         <button
           type="button"

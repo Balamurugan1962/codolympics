@@ -12,6 +12,8 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { Hint } from "./hint";
+
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./card";
 
 type Width = "narrow" | "default" | "wide" | "full";
@@ -39,12 +41,15 @@ export function PageBody({
 export function PageHeader({
   title,
   description,
+  info,
   actions,
   breadcrumb,
   className,
 }: {
   title: ReactNode;
   description?: ReactNode;
+  /** The explanation most people never need: behind the i, not on the page. */
+  info?: ReactNode;
   actions?: ReactNode;
   breadcrumb?: ReactNode;
   className?: string;
@@ -54,7 +59,10 @@ export function PageHeader({
       {breadcrumb && <div className="mb-2.5">{breadcrumb}</div>}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-[22px] leading-tight font-semibold tracking-[-0.015em] sm:text-2xl">{title}</h1>
+          <h1 className="flex items-center gap-2 text-[22px] leading-tight font-semibold tracking-[-0.015em] sm:text-2xl">
+            {title}
+            {info && <Hint>{info}</Hint>}
+          </h1>
           {description && <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{description}</p>}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
@@ -70,6 +78,7 @@ export function PageHeader({
 export function Section({
   title,
   description,
+  info,
   actions,
   footer,
   padded = true,
@@ -79,6 +88,8 @@ export function Section({
 }: {
   title?: ReactNode;
   description?: ReactNode;
+  /** The explanation most people never need: behind the i, not on the page. */
+  info?: ReactNode;
   actions?: ReactNode;
   footer?: ReactNode;
   padded?: boolean;
@@ -90,7 +101,10 @@ export function Section({
     <Card className={cn("overflow-hidden", className)}>
       {(title || actions) && (
         <CardHeader>
-          <CardTitle>{title}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {title}
+            {info && <Hint>{info}</Hint>}
+          </CardTitle>
           {description && <CardDescription>{description}</CardDescription>}
           {actions && <CardAction>{actions}</CardAction>}
         </CardHeader>
