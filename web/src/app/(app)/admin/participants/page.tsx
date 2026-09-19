@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, SearchInput } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { SimpleSelect } from "@/components/ui/select";
@@ -493,7 +494,7 @@ function ActionDialog({
         )}
         {kind === "password" && (
           <Field label="New password" help="Tell them in person; nothing is emailed.">
-            <Input type="password" value={v.password} onChange={(e) => setV({ ...v, password: e.target.value })} autoFocus />
+            <PasswordInput value={v.password} onChange={(e) => setV({ ...v, password: e.target.value })} autoFocus />
           </Field>
         )}
         {kind === "rename" && (

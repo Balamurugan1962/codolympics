@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { SimpleSelect } from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
 import { api, errorMessage } from "@/lib/client";
@@ -47,7 +48,7 @@ export default function RegisterPage() {
           <Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required minLength={2} maxLength={32} placeholder="e.g. Bala" />
         </Field>
         <Field label="Password" hint="8+ characters" help="An organiser can reset this for you if you forget it.">
-          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} placeholder="••••••••" />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required minLength={8} placeholder="At least 8 characters" />
         </Field>
         <Field label="Language to start in" help="Only the editor's default. You can switch language on any question, at any time, as often as you like.">
           <SimpleSelect className="w-full" size="default" value={language} onValueChange={setLanguage}
