@@ -36,8 +36,7 @@ export default function ContestPage() {
 
   const phase = state.contest.phase;
   // Phase 2 is closed to anyone the organisers did not select.
-  const inPhase2 = ["auction1", "coding1", "auction2", "final"].includes(phase);
-  if (inPhase2 && !state.me?.advanced) return <NotSelected />;
+  if (state.contest.in_phase2 && !state.me?.advanced) return <NotSelected />;
 
   switch (phase) {
     case "p1_puzzles":

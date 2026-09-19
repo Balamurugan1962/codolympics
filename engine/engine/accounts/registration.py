@@ -19,13 +19,14 @@ import re
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
 
+from engine.accounts import wallet
 from engine.accounts.credentials import generate_id, hash_password
 from engine.accounts.viewer import naive_utc_now
-from engine.contest.rules import lock_contest
+from engine.contest.rules import in_phase2, lock_contest
 from engine.core import db, errors
 from engine.core.audit import audit
 from engine.core.config import settings
-from engine.schema import account, ledger, participant, user
+from engine.schema import account, participant, user
 
 log = logging.getLogger("engine.accounts")
 
@@ -94,22 +95,22 @@ def _new_user(
 
 
 def _enrol(conn: sa.Connection, user_id: str, balance: int, preferred_language: str | None) -> None:
-    """Everyone starts on the identical configured balance, with a ledger line saying so."""
+    """Add the participant, with the coins they are due right now.
+
+    In Phase 1 that is none: coins buy questions at auction, hints and powerups,
+    all of which are Phase 2, so they are granted when somebody reaches Phase 2
+    (wallet.settle_starting_balance, from the selection). Somebody an organiser
+    creates once Phase 2 has started is granted them here instead, because the
+    moment everyone else was paid has already passed.
+    """
     conn.execute(
         sa.insert(participant).values(
             user_id=user_id,
-            balance=balance,
+            balance=0,
             preferred_language=preferred_language,
         )
     )
-    conn.execute(
-        sa.insert(ledger).values(
-            participant_id=user_id,
-            delta=balance,
-            balance_after=balance,
-            reason="starting_balance",
-        )
-    )
+    wallet.settle_starting_balance(conn, user_id, entitled=True, amount=balance, held=False)
 
 
 def register_participant(display_name: str, password: str, preferred_language: str | None) -> str:
@@ -119,7 +120,7 @@ def register_participant(display_name: str, password: str, preferred_language: s
         if not c.registration_open or c.phase != "registration":
             raise errors.conflict("registration_closed", "registration is closed")
         user_id = _new_user(conn, display_name, password, "participant", preferred_language)
-        _enrol(conn, user_id, c.starting_balance, preferred_language)
+        _enrol(conn, user_id, 0, preferred_language)
     return user_id
 
 
@@ -132,15 +133,17 @@ def create_participant(
 ) -> str:
     """An organiser adding someone by hand.
 
-    Ignores the registration gate, never the starting balance.
+    Ignores the registration gate. They are enrolled with the starting balance
+    only if Phase 2 has already begun, because that is when everyone else got it.
     """
     with db.transaction() as conn:
         c = lock_contest(conn)
         user_id = _new_user(conn, display_name, password, "participant", preferred_language)
-        _enrol(conn, user_id, c.starting_balance, preferred_language)
+        balance = c.starting_balance if in_phase2(c.phase) else 0
+        _enrol(conn, user_id, balance, preferred_language)
         detail = {
             "username": display_name,
-            "balance": c.starting_balance,
+            "balance": balance,
             "phase": c.phase,
         }
         audit(

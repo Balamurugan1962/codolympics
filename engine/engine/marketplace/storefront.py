@@ -6,7 +6,7 @@ from typing import Any
 
 import sqlalchemy as sa
 
-from engine.contest.rules import get_contest
+from engine.contest.rules import get_contest, in_phase2, marketplace_closed_reason
 from engine.core import clock, db, errors
 from engine.marketplace.catalogue import catalogue
 from engine.schema import blackout, participant, powerup, powerup_inventory, user
@@ -27,7 +27,8 @@ def marketplace_for(participant_id: str) -> dict[str, Any]:
         held = {h.powerup_id: h for h in inventory}
         targets = _attackable_targets(conn, participant_id)
     return {
-        "open": c.marketplace_open,
+        "open": marketplace_closed_reason(c) is None,
+        "in_phase2": in_phase2(c.phase),
         "phase": c.phase,
         "balance": p.balance,
         "items": [_offer(item, held.get(item.id), c, p) for item in items if item.enabled],
@@ -66,8 +67,8 @@ def _offer(item: sa.Row, held: sa.Row | None, c: sa.Row, p: sa.Row) -> dict[str,
 
 
 def _buy_blocked(item: sa.Row, c: sa.Row, p: sa.Row, owned: int, bought: int) -> str | None:
-    if not c.marketplace_open:
-        return "The marketplace is closed."
+    if closed := marketplace_closed_reason(c):
+        return closed
     if p.disqualified_at:
         return "Your account is disqualified."
     if item.price > p.balance:
