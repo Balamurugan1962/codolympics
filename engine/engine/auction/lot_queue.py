@@ -28,7 +28,7 @@ def withdraw_lot(actor_id: str, lot_id: int, reason: str) -> None:
         if target.state in ("closed", "unsold"):
             raise errors.conflict(
                 "already_settled",
-                "that lot has already been settled — take the question back instead",
+                "that lot has already been settled, take the question back instead",
             )
         conn.execute(
             sa.update(lot)

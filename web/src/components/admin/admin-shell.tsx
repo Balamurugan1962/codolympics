@@ -318,7 +318,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         {connection === "lost" && (
           <div className="flex items-center justify-center gap-2 bg-red px-4 py-1.5 text-center text-[13px] font-semibold text-white" role="alert">
-            <Icon.WifiOff size={14} /> Live connection lost — reconnecting.
+            <Icon.WifiOff size={14} /> Live connection lost, reconnecting.
           </div>
         )}
 

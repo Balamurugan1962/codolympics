@@ -32,7 +32,7 @@ export default function RegisterPage() {
     try {
       await api.post("/api/register", { username: username.trim(), password, preferred_language: language });
       const { error } = await authClient.signIn.username({ username: username.trim().replace(/\s+/g, "_").toLowerCase(), password });
-      if (error) throw new Error("Registered, but sign-in failed — try signing in.");
+      if (error) throw new Error("Registered, but sign-in failed. Try signing in.");
       router.push("/welcome"); router.refresh();
     } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
   }

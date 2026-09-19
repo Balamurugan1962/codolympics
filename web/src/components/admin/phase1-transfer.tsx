@@ -134,7 +134,7 @@ function ImportDialog({ section, onClose, onImported }: { section: Section; onCl
       description={
         result
           ? undefined
-          : "A zip exported from this app — one question, a whole section, or all of Phase 1. Everything arrives as a draft."
+          : "A zip exported from this app. One question, a whole section, or all of Phase 1. Everything arrives as a draft."
       }
       footer={
         result ? (

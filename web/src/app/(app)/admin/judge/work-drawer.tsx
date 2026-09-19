@@ -152,7 +152,7 @@ export function WorkDrawer({ work, onClose }: { work: Work | null; onClose: () =
                     {detail.request.problem_version ? ` @${detail.request.problem_version}` : ""}
                   </span>
                 ) : (
-                  <span className="text-faint">none — runs a validator, not a package</span>
+                  <span className="text-faint">none: it runs a validator, not a package</span>
                 )}
               </SummaryItem>
             </Summary>
@@ -192,7 +192,7 @@ function SubmissionBody({ d }: { d: SubmissionDetail }) {
         </div>
         {r.message && <p className="mt-2 text-[13px]">{r.message}</p>}
         {r.jury_detail && (
-          <p className="mt-1.5 font-mono text-[11.5px] text-red" title="Jury detail — never sent to a participant">
+          <p className="mt-1.5 font-mono text-[11.5px] text-red" title="Jury detail, never sent to a participant">
             {r.jury_detail}
           </p>
         )}
@@ -281,7 +281,7 @@ function HackBody({ d }: { d: HackDetail }) {
             {r.hacked === null ? <span className="text-faint">—</span> : r.hacked ? "Yes" : "No"}
           </SummaryItem>
           <SummaryItem label="Verdict on the solution">
-            {r.valid_input === false ? <span className="text-faint">never run — the input was rejected</span> : <VerdictBadge verdict={r.verdict} />}
+            {r.valid_input === false ? <span className="text-faint">never run. The input was rejected</span> : <VerdictBadge verdict={r.verdict} />}
           </SummaryItem>
         </Summary>
         <p className="mt-3 text-[12.5px] text-muted-foreground">
@@ -289,7 +289,7 @@ function HackBody({ d }: { d: HackDetail }) {
         </p>
       </Section>
 
-      <Section title="The input they sent" description="This is the whole submission — a hack is data, not code." padded={false}>
+      <Section title="The input they sent" description="This is the whole submission. A hack is data, not code." padded={false}>
         <pre className="pane max-h-72 overflow-auto bg-muted p-3 text-[11.5px]">{d.input}</pre>
       </Section>
 

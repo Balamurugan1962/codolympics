@@ -105,7 +105,7 @@ DEFAULTS = (
         "sort_order": 2,
         "description": (
             "Absorbs one Blackout aimed at you. "
-            "Works while you hold it — there is nothing to switch on."
+            "Works while you hold it. There is nothing to switch on."
         ),
     },
 )

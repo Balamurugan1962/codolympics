@@ -130,7 +130,7 @@ export default function NewProblemPage() {
         reachable={(i) => i <= reached}
         aside={
           <WizardNote title="What happens next">
-            The package becomes a new, unpublished version. On the problem page you validate it against the judge and publish it — only then can it be auctioned.
+            The package becomes a new, unpublished version. On the problem page you validate it against the judge and publish it, only then can it be auctioned.
           </WizardNote>
         }
         footer={
@@ -150,7 +150,7 @@ export default function NewProblemPage() {
           <>
             <Section title="Identify the problem" description="The id names the folder on the judge. Reuse an existing id to upload a new version of it.">
               <Field label="Problem id" hint="letters, digits, . _ -" error={id && !ID.test(id.trim()) ? "Only letters, digits, dots, dashes and underscores." : undefined}
-                help={known ? undefined : "Short and stable — it appears in the audit log and on the judge, never to participants."}>
+                help={known ? undefined : "Short and stable. It appears in the audit log and on the judge, never to participants."}>
                 <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="e.g. hard-03" autoFocus className="max-w-xs font-mono" />
               </Field>
               {known && (

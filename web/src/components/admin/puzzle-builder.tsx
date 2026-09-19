@@ -127,7 +127,7 @@ function contentIssues(f: Form): string[] {
   if (f.kind === "numeric" && (f.tolerance === "" || Number.isNaN(Number(f.tolerance)) || Number(f.tolerance) < 0)) out.push("Tolerance must be a number, zero or more.");
   if (f.kind === "set" && (!Number.isInteger(f.max_entries) || f.max_entries < 1)) out.push("Maximum entries must be at least 1.");
   if (f.format_regex.trim()) { try { new RegExp(f.format_regex); } catch { out.push("The format pattern is not a valid regular expression."); } }
-  if (f.format_regex.trim() && !f.format_hint.trim()) out.push("Add a format hint — it is what the participant is told when an entry is rejected.");
+  if (f.format_regex.trim() && !f.format_hint.trim()) out.push("Add a format hint. It is what the participant is told when an entry is rejected.");
   return out;
 }
 function gradingIssues(f: Form): string[] {
@@ -145,7 +145,7 @@ function gradingIssues(f: Form): string[] {
     if (!/def\s+check\s*\(/.test(f.validator_py)) out.push("The validator must define check(entry).");
     if (!Number.isInteger(f.points_per_entry) || f.points_per_entry < 1) out.push("Points per entry must be at least 1.");
   }
-  if (f.grading === "manual" && !f.model_answer.trim()) out.push("Record a model answer — the evaluator grades against it, and the self-test needs it.");
+  if (f.grading === "manual" && !f.model_answer.trim()) out.push("Record a model answer. The evaluator grades against it, and the self-test needs it.");
   return out;
 }
 
@@ -193,7 +193,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
     try {
       if (existing) {
         await api.patch(`/api/admin/phase1/puzzles/${existing.id}`, toPayload(f, `Edited the puzzle “${f.title.trim()}”.`));
-        toast({ title: "Saved", description: existing.ready || existing.published ? "Readiness was reset — run the self-test again before it goes live." : undefined, tone: "success" });
+        toast({ title: "Saved", description: existing.ready || existing.published ? "Readiness was reset, run the self-test again before it goes live." : undefined, tone: "success" });
         await onSaved?.();
       } else {
         const r = await api.post<{ id: number }>("/api/admin/phase1/puzzles", toPayload(f, `Created the puzzle “${f.title.trim()}”.`));
@@ -219,7 +219,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
             {dirty ? "You have unsaved changes. Saving resets readiness; the self-test must run again." : existing.published ? "Participants see this question when Section A is open." : existing.ready ? "The self-test passed. Publish it under Verify & publish." : "Run the self-test under Verify & publish before it can go live."}
           </WizardNote>
         ) : (
-          <WizardNote title="What happens next">Nothing is saved until you create it. Then you run its self-test — the intended answer must score full marks — and publish it.</WizardNote>
+          <WizardNote title="What happens next">Nothing is saved until you create it. Then you run its self-test, where the intended answer must score full marks, and publish it.</WizardNote>
         )
       }
       footer={
@@ -297,7 +297,7 @@ export function PuzzleBuilder({ existing, initialStep, onSaved }: { existing: Pu
             </Section>
           )}
           {f.kind === "sequence" && (
-            <Section title="Items to order" description="Shown to participants in this order — so shuffle them here. The correct order is set under Grading.">
+            <Section title="Items to order" description="Shown to participants in this order, so shuffle them here. The correct order is set under Grading.">
               <StringListEditor items={f.items} onChange={(v) => { set("items", v); set("key_order", v.map((_, i) => i)); }} placeholder={(i) => `Item ${i + 1}`} addLabel="Add item" max={12} />
             </Section>
           )}
@@ -512,7 +512,7 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
 
       <Section
         title="Self-test"
-        description={puzzle.grading === "auto" ? "Answer it as a participant would. The intended answer must score full marks — anything less usually means a slip in the key."
+        description={puzzle.grading === "auto" ? "Answer it as a participant would. The intended answer must score full marks. Anything less usually means a slip in the key."
           : puzzle.grading === "validator" ? "Give entries that must be accepted and entries that must be rejected. The validator runs in the judge sandbox on each."
           : "Manual grading has nothing to compute; the check confirms a model answer is recorded."}
         footer={<Button onClick={test} loading={busy}><Icon.Play size={14} /> {puzzle.grading === "manual" ? "Check readiness" : "Run self-test"}</Button>}
@@ -536,7 +536,7 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
         {puzzle.grading === "manual" && (
           <div className="rounded-box border border-line bg-muted p-4 text-[13px]">
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Model answer on record</div>
-            {puzzle.modelAnswer?.trim() ? <p className="whitespace-pre-wrap">{puzzle.modelAnswer}</p> : <p className="text-red">None — add one under Grading.</p>}
+            {puzzle.modelAnswer?.trim() ? <p className="whitespace-pre-wrap">{puzzle.modelAnswer}</p> : <p className="text-red">None, add one under Grading.</p>}
           </div>
         )}
         {error && <div className="mt-4"><Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert></div>}

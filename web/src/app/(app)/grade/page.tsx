@@ -466,7 +466,7 @@ function MarkRow({ q, item, state, label, index, onSaved }: {
             autoFocus={commenting && !comment}
             value={comment}
             onChange={(e) => { setComment(e.target.value); later({ comment: e.target.value }); }}
-            placeholder="Comment — the competitor sees this"
+            placeholder="Comment. The competitor sees this"
             aria-label={`Comment for ${label}`}
             className="mt-2 min-h-8 py-1 text-[12.5px]"
           />

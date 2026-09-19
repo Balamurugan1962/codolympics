@@ -60,7 +60,7 @@ export function SetupTransfer() {
             <Icon.Package size={15} /> Setup, out and back in
           </h2>
           <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-            Set the contest up once, export it, and import it on the day — settings, problems, questions, the proving and what was live.
+            Set the contest up once, export it, and import it on the day: settings, problems, questions, the proving and what was live.
             Nothing that happened during a contest travels: only what was set up.
           </p>
         </div>
@@ -93,7 +93,7 @@ export function SetupTransfer() {
         <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <CheckField
             label="Include staff logins"
-            help="Evaluators sign in exactly as before. The zip then holds password hashes — keep it where you keep a password list."
+            help="Evaluators sign in exactly as before. The zip then holds password hashes, so keep it where you keep a password list."
             checked={withStaff}
             onChange={(e) => setWithStaff(e.target.checked)}
           />
@@ -195,9 +195,9 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
               <Icon.Check />
               <AlertTitle>Nothing to re-prove</AlertTitle>
               <AlertDescription>
-                Every package, puzzle and hacking question in this zip was already proven where it was exported, and the results came with
-                them — so none of that has to be done again. Each one says where it was proven, and you can re-run any of them if this
-                machine is slower than the one that did.
+                Every package, puzzle and hacking question in this zip was already proven where it was exported, and the results came
+                with them, so none of that has to be done again. Each one says where it was proven, and you can re-run any of them if
+                this machine is slower than the one that did.
               </AlertDescription>
             </Alert>
           ) : (

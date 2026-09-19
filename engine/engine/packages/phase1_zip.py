@@ -148,7 +148,7 @@ def import_package(
     dirs = sorted(n[: -len("question.json")] for n in files if n.endswith("question.json"))
     if not dirs:
         raise errors.invalid(
-            "no question.json in the zip — export one from this page to see the shape"
+            "no question.json in the zip, export one from this page to see the shape"
         )
     out: dict[str, Any] = {
         "created": [],

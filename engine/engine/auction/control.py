@@ -129,7 +129,7 @@ def _new_clock(
         raise errors.invalid("say how many seconds to add or remove")
     live = open_lot.bidding_ends_at if bidding else open_lot.no_bid_deadline
     if live is None:
-        raise errors.conflict("timer_off", "this lot has no timer to adjust — restart it first")
+        raise errors.conflict("timer_off", "this lot has no timer to adjust, restart it first")
     # Never into the past: that would be a close, and closing is its own action.
     moved = max(clock.seconds_from_now(1), live + timedelta(seconds=seconds))
     if bidding:

@@ -67,7 +67,7 @@ def _use(
         _require_owned(conn, actor_id, item)
         raise errors.conflict(
             "passive",
-            f"a {item.name} protects you while you hold it — there is nothing to activate",
+            f"a {item.name} protects you while you hold it. There is nothing to activate",
         )
     if not target_id:
         raise errors.invalid("choose who to use it on")
@@ -139,7 +139,7 @@ def _land_blackout(
     seconds = item.duration_seconds or 0
     if seconds <= 0:
         raise errors.conflict(
-            "no_duration", f"{item.name} has no duration set — an organiser must configure it"
+            "no_duration", f"{item.name} has no duration set. An organiser must configure it"
         )
     ends_at = _append_blackout(conn, target.user_id, actor_id, seconds)
     notify(conn, target.user_id, f"**{attacker}** blacked you out for {seconds} seconds.")

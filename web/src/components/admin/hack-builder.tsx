@@ -51,7 +51,7 @@ function basicsIssues(f: Form, problems: JudgeProblem[] | null): string[] {
   return out;
 }
 function statementIssues(f: Form): string[] {
-  return f.statement_md.trim() ? [] : ["Write the problem statement — participants need to know what the solution is supposed to do."];
+  return f.statement_md.trim() ? [] : ["Write the problem statement. Participants need to know what the solution is supposed to do."];
 }
 function sourceIssues(f: Form): string[] {
   const out: string[] = [];
@@ -106,7 +106,7 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
       const payload = { ...f, title: f.title.trim(), reason: `${existing ? "Edited" : "Created"} the hacking question “${f.title.trim()}”.` };
       if (existing) {
         await api.patch(`/api/admin/phase1/hacking/${existing.id}`, payload);
-        toast({ title: "Saved", description: existing.ready || existing.published ? "Readiness was reset — prove a breaking input again before it goes live." : undefined, tone: "success" });
+        toast({ title: "Saved", description: existing.ready || existing.published ? "Readiness was reset, prove a breaking input again before it goes live." : undefined, tone: "success" });
         await onSaved?.();
       } else {
         const r = await api.post<{ id: number }>("/api/admin/phase1/hacking", payload);
@@ -216,7 +216,7 @@ export function HackBuilder({ existing, initialStep, onSaved }: { existing: Hack
 
       {key === "source" && (
         <>
-          <Section title="The given solution" description="Shown to participants read-only. It must compile and run — and be wrong on at least one valid input, which you will prove in the last step.">
+          <Section title="The given solution" description="Shown to participants read-only. It must compile and run, and be wrong on at least one valid input, which you will prove in the last step.">
             <div className="mb-3 max-w-xs">
               <Field label="Language">
                 <SimpleSelect
@@ -289,14 +289,14 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
       <Section title="Where it stands">
         <Checklist items={[
           { ok: true, label: "Saved", detail: `Question #${hack.id} · judge problem ${hack.problemId}` },
-          { ok: hack.ready, label: hack.ready ? "Breaking input proven" : "No breaking input proven", detail: hack.ready ? (hack.verifiedElsewhere ? "proven on the install this was imported from — the input below is the one that broke it" : "the given code fails where the reference does not") : "prove one below; every save resets this" },
+          { ok: hack.ready, label: hack.ready ? "Breaking input proven" : "No breaking input proven", detail: hack.ready ? (hack.verifiedElsewhere ? "proven on the install this was imported from. The input below is the one that broke it" : "the given code fails where the reference does not") : "prove one below; every save resets this" },
           { ok: hack.published, label: hack.published ? "Published" : "Not published", detail: hack.published ? "participants see it when Section B is open" : hack.ready ? "publish below" : "needs the proof first" },
           ...(hack.voided ? [{ ok: false, label: "Voided", detail: "scores for nobody" }] : []),
         ]} />
       </Section>
       <Section
         title="Prove it breaks"
-        description="An input that obeys the constraints and on which the given solution is wrong. The judge validates it, runs both programs, and compares — exactly what happens to a participant's attempt."
+        description="An input that obeys the constraints and on which the given solution is wrong. The judge validates it, runs both programs, and compares, exactly what happens to a participant's attempt."
         footer={<Button onClick={test} loading={busy} disabled={!input.trim()}><Icon.Bug size={14} /> Run the hack</Button>}
       >
         <Field label="Breaking input" help="Never shown to participants.">
@@ -322,7 +322,7 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
         )}
         {result && (
           <div className="mt-4">
-            <Alert variant={result.ready ? "success" : "warning"}><AlertTitle>{result.ready ? "It breaks — ready to publish" : "Not proven"}</AlertTitle><AlertDescription>
+            <Alert variant={result.ready ? "success" : "warning"}><AlertTitle>{result.ready ? "It breaks, ready to publish" : "Not proven"}</AlertTitle><AlertDescription>
               <p>{result.detail}</p>
               <Summary cols={3} className="mt-3">
                 <SummaryItem label="Input valid">{result.result.valid_input ? "yes" : `no — ${result.result.invalid_reason}`}</SummaryItem>

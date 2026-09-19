@@ -86,7 +86,7 @@ function useLoadPowerups() {
 function terms(p: Powerup): string {
   const where = p.usablePhases.length
     ? p.usablePhases.map((k) => PHASE_LABEL.get(k) ?? k).join(", ")
-    : "nowhere — no phases picked";
+    : "nowhere, no phases picked";
   const bits = [`${p.price} coins`];
   if (p.durationSeconds) bits.push(`${p.durationSeconds}s`);
   bits.push(where);

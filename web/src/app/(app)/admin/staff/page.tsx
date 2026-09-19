@@ -137,7 +137,7 @@ function StaffPanel() {
 }
 
 const SINGLE_ADMIN =
-  "There is only one administrator. If that account is locked out mid-contest nobody can advance the phase — create a second one and keep the password off the machine.";
+  "There is only one administrator. If that account is locked out mid-contest nobody can advance the phase, create a second one and keep the password off the machine.";
 
 /** 2–32 of letters, digits, spaces, _ . - — the same rule the server enforces. */
 const NAME_RULE = /^[A-Za-z0-9 _.-]{2,32}$/;
@@ -187,7 +187,7 @@ function CreateStaffDialog({ onClose, onDone }: { onClose: () => void; onDone: (
     setError(null);
     try {
       await api.post("/api/admin/staff", { ...f, username: name });
-      toast({ title: `${role.label} '${name}' created`, description: "Hand the password over in person — nothing is emailed.", tone: "success" });
+      toast({ title: `${role.label} '${name}' created`, description: "Hand the password over in person. Nothing is emailed.", tone: "success" });
       await onDone();
     } catch (err) {
       setError(errorMessage(err));
@@ -202,7 +202,7 @@ function CreateStaffDialog({ onClose, onDone }: { onClose: () => void; onDone: (
       onClose={onClose}
       size="lg"
       title="Create a staff account"
-      description="Staff sign in with a name and a password you set here. Nothing is emailed and nothing is recoverable — write the password down before you close this."
+      description="Staff sign in with a name and a password you set here. Nothing is emailed and nothing is recoverable, write the password down before you close this."
       footer={
         <>
           <span className="mr-auto hidden text-[12px] text-faint sm:block">Recorded in the audit log</span>

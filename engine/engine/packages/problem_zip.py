@@ -203,7 +203,7 @@ def import_problem(
     meta = _read_meta(files) or {}
     pid = (problem_id or meta.get("id") or "").strip()
     if not pid:
-        raise errors.invalid("the zip has no id — give one, or export the problem from this app")
+        raise errors.invalid("the zip has no id, give one, or export the problem from this app")
     if not ID.match(pid):
         raise errors.invalid("problem id: letters, digits, . _ - only")
     result = ProblemImport(id=pid)
@@ -214,7 +214,7 @@ def import_problem(
         _import_details(actor_id, pid, details, validated, reason, result)
     else:
         result.warnings.append(
-            "No contest details in the zip — add a title, statement and price"
+            "No contest details in the zip, add a title, statement and price"
             " before this can be auctioned."
         )
         with db.transaction() as conn:
@@ -253,7 +253,7 @@ def _import_package(
             package[rel] = data
     if not package:
         result.warnings.append(
-            "No judge package in the zip — the details were imported, but nothing can be"
+            "No judge package in the zip. The details were imported, but nothing can be"
             " judged until one is uploaded."
         )
         return None
@@ -349,5 +349,5 @@ def _unpublished_note(result: ProblemImport) -> str:
         )
     return (
         f"Uploaded as {result.version}. Validate it, then publish"
-        " — nothing was published by this import."
+        ". Nothing was published by this import."
     )

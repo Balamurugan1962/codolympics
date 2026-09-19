@@ -90,7 +90,7 @@ export function CodingRound() {
 
         <Section
           title="My questions"
-          info="Only you can attempt these — nobody else can read or solve them. Unsolved ones come first. Wrong submissions cost nothing, and hints can be bought at any time."
+          info="Only you can attempt these. Nobody else can read or solve them. Unsolved ones come first. Wrong submissions cost nothing, and hints can be bought at any time."
           padded={false}
           actions={
             <Button size="sm" variant="ghost" asChild>

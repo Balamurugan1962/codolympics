@@ -49,7 +49,7 @@ export function HackQuestionView({ q, index, total, hacked = false, eyebrowExtra
           <span className="ml-2 font-normal tracking-normal normal-case text-faint tabular-nums">{lines} lines</span>
         </span>
         <span className="flex shrink-0 items-center gap-2">
-          <span className="hidden font-normal tracking-normal normal-case text-faint sm:inline">read only — it is wrong somewhere</span>
+          <span className="hidden font-normal tracking-normal normal-case text-faint sm:inline">read only. It is wrong somewhere</span>
           <Button
             variant="outline"
             size="xs"

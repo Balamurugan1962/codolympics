@@ -123,7 +123,7 @@ def _validate_one(package: dict[str, Any]) -> dict[str, Any]:
         "issues": [],
     }
     if package["hack_only"]:
-        return row | {"skipped": "hacking package — nothing to validate against"}
+        return row | {"skipped": "hacking package. Nothing to validate against"}
     if version is None:
         return row | {"skipped": "no version on disk"}
     if not package["has_reference"]:

@@ -160,7 +160,7 @@ function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported
             <AlertTitle>Nothing is live yet</AlertTitle>
             <AlertDescription>
               {result.imported.every((one) => !one.version || one.validated)
-                ? "Every package came with a validation that passed where it was exported, so there is nothing to re-run — open each problem and publish it when you are ready. Re-validate first if this machine is slower than the one they were proven on."
+                ? "Every package came with a validation that passed where it was exported, so there is nothing to re-run. Open each problem and publish it when you are ready. Re-validate first if this machine is slower than the one they were proven on."
                 : "Open each problem marked not validated, run its validation, then publish. The ones that arrived validated were proven where they were exported; re-run those only if this machine is slower."}
             </AlertDescription>
           </Alert>

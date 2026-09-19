@@ -21,7 +21,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <ul className="mt-6 space-y-4 text-[12.5px] leading-relaxed text-white/65">
             {[
               ["Phase 1", "Logical puzzles, then hacking. Your score decides who reaches the auction."],
-              ["Phase 2", "Problems are auctioned one at a time. One owner each — nobody else may attempt yours."],
+              ["Phase 2", "Problems are auctioned one at a time. One owner each. Nobody else may attempt yours."],
               ["Scoring", "Solving is all-or-nothing. Wrong submissions cost nothing; ties break on solve time."],
             ].map(([k, v]) => (
               <li key={k} className="flex gap-3">
