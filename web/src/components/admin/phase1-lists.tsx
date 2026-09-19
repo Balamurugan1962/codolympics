@@ -150,9 +150,12 @@ export function PuzzleList() {
                   <TableRow key={r.id} className={r.voided ? "opacity-60" : ""}>
                     <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
                     <TableCell>
+                      {/* The name only. A row of question text in every row is
+                          a paragraph the organiser has to read past to find the
+                          one they came for; the question is on its own page. */}
                       <Link href={`/admin/phase1/puzzles/${r.id}`} className="group block">
                         <div className="font-semibold group-hover:text-brand-deep">{r.title}</div>
-                        <div className="text-[11.5px] text-faint">{CATEGORY_LABEL[r.category]} · {r.bodyMd.replace(/\s+/g, " ").slice(0, 80)}{r.bodyMd.length > 80 ? "…" : ""}</div>
+                        <div className="text-[11.5px] text-faint">{CATEGORY_LABEL[r.category]}</div>
                       </Link>
                     </TableCell>
                     <TableCell className="hidden md:table-cell"><Badge variant="outline">{KIND_LABEL[r.kind]}</Badge></TableCell>
@@ -244,7 +247,7 @@ export function HackList() {
                     <TableCell>
                       <Link href={`/admin/phase1/hacking/${r.id}`} className="group block">
                         <div className="font-semibold group-hover:text-brand-deep">{r.title}</div>
-                        <div className="text-[11.5px] text-faint">{r.statementMd.replace(/\s+/g, " ").slice(0, 80)}{r.statementMd.length > 80 ? "…" : ""}</div>
+                        <div className="text-[11.5px] text-faint md:hidden">{r.problemId}</div>
                       </Link>
                     </TableCell>
                     <TableCell className="hidden font-mono text-[12px] md:table-cell">{r.problemId}</TableCell>
