@@ -93,12 +93,12 @@ function StatStripSkeleton({ cols = 4 }: { cols?: number }) {
     5: "sm:grid-cols-2 lg:grid-cols-5",
   };
   return (
-    <Loading className={cn("grid grid-cols-2 gap-3", map[cols] ?? map[4])}>
+    <Loading className={cn("grid grid-cols-2 divide-x divide-y divide-border border bg-card sm:divide-y-0", map[cols] ?? map[4])}>
       {Array.from({ length: cols }).map((_, i) => (
-        <div key={i} className="rounded-lg border bg-card px-4 py-3.5 shadow-xs">
+        <div key={i} className="px-4 py-3">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="mt-3 h-6 w-16" />
-          <Skeleton className="mt-2.5 h-2.5 w-28" />
+          <Skeleton className="mt-2 h-2.5 w-28" />
         </div>
       ))}
     </Loading>
@@ -165,6 +165,65 @@ function SectionSkeleton({ children, lines = 2, className }: { children?: React.
         </div>
       )}
     </Loading>
+  );
+}
+
+/**
+ * A marketplace offer: the icon, the name and its two lines of detail on the
+ * left, and the Buy/Use column on the right. The action column is the part
+ * worth reserving — it is the widest thing on the card, and a placeholder
+ * without it lets the whole row re-flow when the prices arrive.
+ */
+function OfferSkeleton({ actions = 2 }: { actions?: number }) {
+  return (
+    <Loading className="overflow-hidden rounded-lg border bg-card shadow-xs">
+      <div className="flex items-start justify-between gap-4 px-5 py-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Skeleton className="size-7 shrink-0 rounded-md" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <Skeleton className="mt-3 h-2.5 w-4/5" />
+          <Skeleton className="mt-2 h-2.5 w-3/5" />
+          <div className="mt-3 flex gap-3">
+            <Skeleton className="h-2.5 w-10" />
+            <Skeleton className="h-2.5 w-16" />
+            <Skeleton className="h-2.5 w-20" />
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {Array.from({ length: actions }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-20 rounded-md" />
+          ))}
+        </div>
+      </div>
+    </Loading>
+  );
+}
+
+/**
+ * A standings table.
+ *
+ * Rows are one line, because that is what a board row is: a rank badge, a name
+ * and figures. The two-line first cell TableSkeleton uses for record lists
+ * would settle into the wrong height and jump on arrival.
+ *
+ * `band` reserves the "You are #3" strip above the table. Without it the strip
+ * appears on load and pushes the whole board down, which is the one movement a
+ * competitor checking their place notices.
+ */
+function BoardSkeleton({ band = false, rows = 8, cols = 5 }: { band?: boolean; rows?: number; cols?: number }) {
+  return (
+    <div className="space-y-3">
+      {band && (
+        <Loading className="flex items-center gap-4 rounded-box border border-brand/40 bg-brand-tint px-4 py-3">
+          <Skeleton className="size-[18px] shrink-0 rounded-full" />
+          <Skeleton className="h-2.5 w-20" />
+          <Skeleton className="h-2.5 w-52" />
+        </Loading>
+      )}
+      <TableSkeleton rows={rows} cols={cols} firstWide={false} />
+    </div>
   );
 }
 
@@ -302,6 +361,8 @@ function ContestSkeleton({ rail = 7, code = false }: { rail?: number; code?: boo
 export {
   Skeleton,
   TableSkeleton,
+  BoardSkeleton,
+  OfferSkeleton,
   StatStripSkeleton,
   ListSkeleton,
   PageSkeleton,
