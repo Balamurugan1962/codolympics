@@ -215,7 +215,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <PhaseRail phase={contest.phase} endsAt={contest.phase_ends_at} />
 
       <Sheet open={mobile} onOpenChange={setMobile}>
-        <SheetContent side="left" className="w-72 gap-0 border-white/10 bg-navy p-0 text-white">
+        <SheetContent
+          side="left"
+          className="w-72 gap-0 border-white/10 bg-navy p-0 text-white [&>button]:top-3.5 [&>button]:right-3.5 [&>button]:p-1.5 [&>button]:text-white/60 [&>button]:opacity-100 [&>button]:hover:text-white"
+        >
           <SheetHeader className="h-14 justify-center border-b border-white/10 px-5">
             <SheetTitle className="flex items-center gap-2.5 text-[15px] font-bold tracking-tight text-white">
               <Mark size={24} /> Cod<span className="-ml-2.5 text-brand-bright">olympics</span>
