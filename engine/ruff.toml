@@ -1,0 +1,10 @@
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = ["F", "I", "E", "W", "B", "UP", "SIM"]
+# Readability over brevity: plain if/else and explicit try/except are preferred here.
+ignore = ["SIM102", "SIM105", "SIM108"]
+
+[lint.isort]
+known-first-party = ["engine", "api"]
