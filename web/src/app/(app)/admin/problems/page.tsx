@@ -140,6 +140,11 @@ export default function ProblemsPage() {
         actions={
           <>
             <ValidateAllButton onDone={load} />
+            <Button variant="outline" asChild>
+              <Link href="/admin/problems/order">
+                <Icon.Sort size={14} /> Order
+              </Link>
+            </Button>
             <ProblemTransferActions onImported={load} />
             <Button asChild>
               <Link href="/admin/problems/new">

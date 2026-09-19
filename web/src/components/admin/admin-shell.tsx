@@ -53,6 +53,11 @@ type Group = {
  * under eight headings was a wall to read rather than a place to be — and at
  * any moment an organiser is doing exactly one of these jobs.
  *
+ * A question set's order is not a destination of its own: it is one thing you
+ * do to that set, reached by the Order button on its list and named there.
+ * Listed here, "Section A order" sat beside "Section A · Puzzles" as if they
+ * were peers, and the prefixes were doing the work the grouping should do.
+ *
  * `roles` narrows an item to administrators. It is presentation only — every
  * route enforces its own permissions server-side, because hiding a link has
  * never been a control.
@@ -63,10 +68,8 @@ const NAV: Group[] = [
     label: "Phase 1",
     icon: Icon.Flag,
     items: [
-      { href: "/admin/phase1/puzzles", label: "Section A · Puzzles" },
-      { href: "/admin/phase1/puzzles/order", label: "Section A order" },
-      { href: "/admin/phase1/hacking", label: "Section B · Hacking" },
-      { href: "/admin/phase1/hacking/order", label: "Section B order" },
+      { href: "/admin/phase1/puzzles", label: "Puzzles" },
+      { href: "/admin/phase1/hacking", label: "Hacking" },
       { href: "/admin/phase1/review", label: "Review & advance" },
     ],
   },
@@ -75,7 +78,6 @@ const NAV: Group[] = [
     icon: Icon.Gavel,
     items: [
       { href: "/admin/problems", label: "Problems" },
-      { href: "/admin/problems/order", label: "Auction order" },
       { href: "/admin/auction", label: "Auction control" },
       { href: "/admin/powerups", label: "Powerups" },
     ],
