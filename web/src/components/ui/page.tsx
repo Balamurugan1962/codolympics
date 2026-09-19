@@ -10,8 +10,11 @@
  */
 import type { ReactNode } from "react";
 
+import Link from "next/link";
+
 import { cn } from "@/lib/utils";
 
+import { Icon } from "../icons";
 import { Hint } from "./hint";
 
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./card";
@@ -38,6 +41,24 @@ export function PageBody({
 }
 
 /** Title, one line of context, and the primary action. Nothing else belongs here. */
+/**
+ * The way back out of a sub-page.
+ *
+ * A sub-page reached from a list needs to say which list, in the same place
+ * every time — the browser's back button is not a thing you can see.
+ */
+export function BackLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <Icon.ChevronLeft size={14} />
+      {children}
+    </Link>
+  );
+}
+
 export function PageHeader({
   title,
   description,
