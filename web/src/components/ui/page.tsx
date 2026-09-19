@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { Icon } from "../icons";
 import { Hint } from "./hint";
 
+import { Button } from "./button";
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./card";
 
 type Width = "narrow" | "default" | "wide" | "full";
@@ -44,18 +45,19 @@ export function PageBody({
 /**
  * The way back out of a sub-page.
  *
- * A sub-page reached from a list needs to say which list, in the same place
- * every time — the browser's back button is not a thing you can see.
+ * A real button, not a line of small text above the title: it is the control
+ * you reach for when you are finished here, and the browser's back button is
+ * not a thing you can see on the page. Same place on every sub-page, so it is
+ * found without looking.
  */
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link
-      href={href}
-      className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-    >
-      <Icon.ChevronLeft size={14} />
-      {children}
-    </Link>
+    <Button variant="outline" size="sm" className="mb-4" asChild>
+      <Link href={href}>
+        <Icon.ChevronLeft size={14} />
+        {children}
+      </Link>
+    </Button>
   );
 }
 

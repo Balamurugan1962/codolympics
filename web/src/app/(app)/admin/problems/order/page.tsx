@@ -17,8 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/input";
-import { PageBody, PageHeader, Section } from "@/components/ui/page";
+import { BackLink, PageBody, PageHeader, Section } from "@/components/ui/page";
 import { ReorderList } from "@/components/ui/reorder-list";
 import { ListSkeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
@@ -31,7 +30,6 @@ export default function AuctionOrderPage() {
   const { state } = useContest();
   const [rows, setRows] = useState<Q[] | null>(null);
   const [order, setOrder] = useState<Q[]>([]);
-  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -50,9 +48,8 @@ export default function AuctionOrderPage() {
   async function save() {
     setBusy(true);
     try {
-      await api.post("/api/admin/questions/order", { ids: order.map((r) => r.id), reason: reason.trim() });
+      await api.post("/api/admin/questions/order", { ids: order.map((r) => r.id), reason: "Auction order changed." });
       toast({ title: "Auction order saved", tone: "success" });
-      setReason("");
       await load();
     } catch (err) {
       toast({ title: "Not saved", description: errorMessage(err), tone: "error" });
@@ -63,9 +60,11 @@ export default function AuctionOrderPage() {
 
   return (
     <PageBody>
+      <BackLink href="/admin/problems">Problems</BackLink>
       <PageHeader
         title="Auction order"
-        description="Drag to reorder, or use the arrow keys."
+        description="The order lots are offered in. Drag, or use the arrow keys."
+        info="Bidders plan their coins around this order, so it is published in advance and fixed once the lots exist."
       />
 
       {started && (
@@ -96,16 +95,10 @@ export default function AuctionOrderPage() {
                 <span className="mr-auto flex items-center gap-1.5 text-[12.5px] font-semibold">
                   <Icon.Alert size={14} className="text-amber" /> Unsaved order
                 </span>
-                <Input
-                  className="max-w-xs"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Reason — recorded in the audit log"
-                />
                 <Button variant="outline" onClick={() => setOrder(rows)} disabled={busy}>
                   Discard
                 </Button>
-                <Button onClick={save} loading={busy} disabled={reason.trim().length < 3 || started}>
+                <Button onClick={save} loading={busy} disabled={started}>
                   Save order
                 </Button>
               </>
