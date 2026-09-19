@@ -19,9 +19,9 @@ import { cn } from "@/lib/utils";
 
 import { AnnouncementOverlay } from "./announcement-overlay";
 import { BlackoutOverlay } from "./contest/blackout-overlay";
+import { PhaseRail } from "./contest/phase-rail";
 import { ContestLoading } from "./contest/waiting";
 import { useContest } from "./contest-provider";
-import { Countdown } from "./countdown";
 import { Icon } from "./icons";
 import { plainText } from "./local-time";
 import { Logo, Mark } from "./logo";
@@ -154,24 +154,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-2.5">
-            <span
-              className="hidden items-center gap-2 rounded-none bg-white/10 px-2.5 py-1 text-[12px] font-semibold sm:inline-flex"
-              title="Current phase"
-            >
-              <span className="size-1.5 rounded-full bg-brand-bright" />
-              {PHASE_LABEL[contest.phase]}
-              {contest.phase_ends_at && (
-                <span className="border-l border-white/20 pl-2 text-white/90">
-                  <Countdown until={contest.phase_ends_at} />
-                </span>
-              )}
-            </span>
-            {contest.phase_ends_at && (
-              <span className="text-[12px] font-semibold sm:hidden">
-                <Countdown until={contest.phase_ends_at} />
-              </span>
-            )}
-
             {me && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -180,7 +162,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                     <span className="tabular-nums">{me.balance.toLocaleString()}</span>
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>Your balance</TooltipContent>
+                <TooltipContent>Your coins — spent on questions, hints and powerups</TooltipContent>
               </Tooltip>
             )}
 
@@ -229,6 +211,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+
+      <PhaseRail phase={contest.phase} endsAt={contest.phase_ends_at} />
 
       <Sheet open={mobile} onOpenChange={setMobile}>
         <SheetContent side="left" className="w-72 gap-0 border-white/10 bg-navy p-0 text-white">
