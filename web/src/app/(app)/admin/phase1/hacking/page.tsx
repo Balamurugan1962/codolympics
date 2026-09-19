@@ -19,6 +19,11 @@ export default function HackingPage() {
         description="Each one needs a proven breaking input before it can go live."
         actions={
           <>
+            <Button variant="outline" asChild>
+              <Link href="/admin/phase1/hacking/order">
+                <Icon.Sort size={14} /> Order
+              </Link>
+            </Button>
             <TransferActions section="hacking" onImported={async () => setVersion((v) => v + 1)} />
             <Button asChild>
               <Link href="/admin/phase1/hacking/new">

@@ -21,6 +21,11 @@ export default function PuzzlesPage() {
         description="Each one must pass its self-test before it can go live."
         actions={
           <>
+            <Button variant="outline" asChild>
+              <Link href="/admin/phase1/puzzles/order">
+                <Icon.Sort size={14} /> Order
+              </Link>
+            </Button>
             <TransferActions section="puzzles" onImported={async () => setVersion((v) => v + 1)} />
             <Button asChild>
               <Link href="/admin/phase1/puzzles/new">
