@@ -149,7 +149,8 @@ export default function WorkspacePage() {
   async function cancel() { try { await api.del("/api/submissions/current"); await load(); } catch (err) { toast({ title: "Could not cancel", description: errorMessage(err), tone: "error" }); } }
   async function buyHint() {
     setBusy(true);
-    try { const h = await api.post<{ idx: number; balance: number }>(`/api/questions/${id}/hints`); setHintDialog(false); toast({ title: `Hint ${h.idx + 1} revealed`, description: `Balance now ${h.balance}.`, tone: "success" }); setTab("hints"); await load(); }
+    // Naming the hint being bought makes a double click buy it once, not this one and the next.
+    try { const h = await api.post<{ idx: number; balance: number }>(`/api/questions/${id}/hints`, { idx: q?.hints.next?.idx }); setHintDialog(false); toast({ title: `Hint ${h.idx + 1} revealed`, description: `Balance now ${h.balance}.`, tone: "success" }); setTab("hints"); await load(); }
     catch (err) { toast({ title: "Not bought", description: errorMessage(err), tone: "error" }); }
     finally { setBusy(false); }
   }
@@ -426,10 +427,16 @@ function WorkspaceSkeleton() {
           <div className="h-7 w-44 animate-pulse rounded-[3px] bg-white/10" />
           <div className="h-4 w-12 animate-pulse rounded-[3px] bg-white/5" />
         </div>
-        <div className="flex-1 space-y-2.5 p-4">
+        <div className="min-h-0 flex-1 space-y-2.5 p-4">
           {[11, 8, 6, 9, 5, 10, 7].map((w, i) => (
             <div key={i} className="h-2.5 animate-pulse rounded-[3px] bg-white/5" style={{ width: `${w * 6}%` }} />
           ))}
+        </div>
+        {/* The submit bar is the editor's floor. Without it here the editor
+            fills the pane and then shrinks when the real bar arrives. */}
+        <div className="flex shrink-0 items-center gap-3 border-t border-white/10 px-3 py-2">
+          <div className="hidden h-4 w-40 animate-pulse rounded-[3px] bg-white/5 sm:block" />
+          <div className="ml-auto h-9 w-24 animate-pulse rounded-[3px] bg-white/10" />
         </div>
       </div>
     </div>
