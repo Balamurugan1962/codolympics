@@ -22,6 +22,16 @@ def notify(conn: sa.Connection, participant_id: str, body_md: str) -> None:
     conn.execute(sa.insert(notification).values(participant_id=participant_id, body_md=body_md))
 
 
+def announce_in(conn: sa.Connection, body_md: str) -> None:
+    """An announcement written inside the caller's transaction.
+
+    Used by the change that caused it -- a phase advance -- so the announcement
+    and the change commit together. There is no second audit entry: the action
+    that wrote it is already recorded, with its reason.
+    """
+    conn.execute(sa.insert(announcement).values(body_md=body_md))
+
+
 def announce(actor_id: str, body_md: str) -> None:
     with db.transaction() as conn:
         conn.execute(sa.insert(announcement).values(body_md=body_md))
