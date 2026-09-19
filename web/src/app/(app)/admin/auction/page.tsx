@@ -187,187 +187,40 @@ export default function AuctionControlPage() {
           body="These controls come alive when the contest reaches an auction phase."
         />
       ) : (
-        <>
-          <StatRow cols={4}>
-            <Stat
-              label="State"
-              value={paused ? "Held" : open ? "Bidding" : "Between lots"}
-              tone={paused ? "warning" : open ? "info" : "default"}
-              icon={<Icon.Gavel size={13} />}
-              hint={paused ? "resume to continue" : open ? `on ${open.title}` : "the next lot opens on its own"}
-            />
-            <Stat label="Sold" value={sold} icon={<Icon.CheckAll size={13} />} hint={`of ${control.lots.length} lots this round`} />
-            <Stat label="Still to come" value={pending.length} icon={<Icon.List size={13} />} hint={pending.length ? "in the order below" : "the round is finished"} />
-            <Stat
-              label="Highest bid"
-              value={live?.lot?.current_bid ?? "—"}
-              icon={<Icon.Coins size={13} />}
-              hint={live?.lot?.current_bidder_name ? `by ${live.lot.current_bidder_name}` : "no bids on the open lot"}
-            />
-          </StatRow>
-
-          <Section
-            title="On the block"
-            description={open ? "What the room is bidding on right now." : "Nothing is open — the next lot opens by itself."}
-          >
-            {!open ? (
-              <p className="text-[13px] text-muted-foreground">
-                {paused ? "Held between lots. Resume to offer the next question." : "Between lots."}
-              </p>
-            ) : offline ? (
-              /* Offline the app is the record, not the mechanism: the room has
-                 already decided, and this writes down what it decided. */
-              <OfflineLot
-                lot={open}
-                balances={control.balances}
-                winner={winner}
-                price={price}
-                onWinner={setWinner}
-                onPrice={setPrice}
-                onRecorded={() => { setWinner(""); setPrice(""); }}
-                act={act}
-                paused={paused}
-              />
-            ) : !live?.lot ? (
-              <p className="text-[13px] text-muted-foreground">Between lots.</p>
-            ) : (
-              <LiveLot lot={live.lot} lotId={open.id} control={control} paused={paused} act={act} />
-            )}
-          </Section>
-
-          {offline && (
+        /* The room is looking at one question. So is this page: the open lot
+           and its controls take the width, and everything that is reference
+           rather than action -- what is coming, who can afford it, what has
+           settled -- sits in a rail beside it at a size you read, not act on. */
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0 space-y-5">
             <Section
-              title="Who can afford what"
-              description="Balances as they stand. A participant sees their own and nobody else's — this table is yours."
-              padded={false}
+              title="On the block"
+              description={open ? "What the room is bidding on right now." : "Nothing is open. The next lot opens by itself."}
             >
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Participant</TableHead>
-                    <TableHead className="w-28 text-right">Balance</TableHead>
-                    <TableHead className="w-24 text-right">Owns</TableHead>
-                    <TableHead className="w-40">Can take this lot</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {control.balances.map((b) => {
-                    const afford = open ? b.balance >= open.base_price : false;
-                    return (
-                      <TableRow key={b.id} className={cn(b.disqualified && "opacity-50")}>
-                        <TableCell className="font-medium">
-                          {b.name}
-                          {b.disqualified && <Badge variant="neutral" className="ml-2">disqualified</Badge>}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold tabular-nums">{b.balance.toLocaleString()}</TableCell>
-                        <TableCell className="text-right tabular-nums">{b.owned}</TableCell>
-                        <TableCell className="text-[12.5px] text-muted-foreground">
-                          {!open ? (
-                            <span className="text-faint">—</span>
-                          ) : b.disqualified ? (
-                            "no — disqualified"
-                          ) : afford ? (
-                            <span className="text-green-dark">yes, up to {b.balance.toLocaleString()}</span>
-                          ) : (
-                            <span className="text-amber">short by {(open.base_price - b.balance).toLocaleString()}</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              {!open ? (
+                <p className="text-[13px] text-muted-foreground">
+                  {paused ? "Held between lots. Resume to offer the next question." : "Between lots."}
+                </p>
+              ) : offline ? (
+                /* Offline the app is the record, not the mechanism: the room has
+                   already decided, and this writes down what it decided. */
+                <OfflineLot
+                  lot={open}
+                  balances={control.balances}
+                  winner={winner}
+                  price={price}
+                  onWinner={setWinner}
+                  onPrice={setPrice}
+                  onRecorded={() => { setWinner(""); setPrice(""); }}
+                  act={act}
+                  paused={paused}
+                />
+              ) : !live?.lot ? (
+                <p className="text-[13px] text-muted-foreground">Between lots.</p>
+              ) : (
+                <LiveLot lot={live.lot} lotId={open.id} control={control} paused={paused} act={act} />
+              )}
             </Section>
-          )}
-
-          <Section
-            title="Still to come"
-            description="The order they will be offered in. Reordering only moves questions that have not been offered yet."
-            padded={false}
-            actions={
-              dirty ? (
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setOrder(null)}>
-                    Discard
-                  </Button>
-                  <ActionButton
-                    label="Save order"
-                    variant="default"
-                    icon={<Icon.Save size={14} />}
-                    title="Only questions that have not been offered move"
-                    onAct={() => act("reorder", { reason: "Reordered the questions still to be offered.", round: control!.round, lot_ids: queue }, "Order saved")}
-                  />
-                </div>
-              ) : null
-            }
-          >
-            {pending.length === 0 ? (
-              <EmptyState icon={<Icon.CheckAll />} title="Everything has been offered" body="No questions are left in this round's queue." />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-14 text-right">#</TableHead>
-                    <TableHead>Question</TableHead>
-                    <TableHead className="hidden w-24 sm:table-cell">Difficulty</TableHead>
-                    <TableHead className="w-20 text-right">Score</TableHead>
-                    <TableHead className="w-24 text-right">Base</TableHead>
-                    <TableHead className="w-32">Move</TableHead>
-                    <TableHead className="w-28">
-                      <span className="sr-only">Withdraw</span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {queue.map((id, i) => {
-                    const l = byId.get(id);
-                    if (!l) return null;
-                    return (
-                      <TableRow key={id} className={dirty ? "bg-brand-tint" : ""}>
-                        <TableCell className="text-right text-faint tabular-nums">{i + 1}</TableCell>
-                        <TableCell>
-                          <span className="block truncate font-medium">{l.title}</span>
-                          <span className="font-mono text-[11px] text-faint">{l.question_id}</span>
-                        </TableCell>
-                        <TableCell className="hidden capitalize text-muted-foreground sm:table-cell">{l.difficulty}</TableCell>
-                        <TableCell className="text-right tabular-nums">{l.score}</TableCell>
-                        <TableCell className="text-right tabular-nums">{l.base_price}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button variant="outline" size="icon-sm" aria-label={`Move ${l.title} earlier`} disabled={i === 0} onClick={() => move(id, -1)}>
-                              <Icon.ArrowUp size={13} />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon-sm"
-                              aria-label={`Move ${l.title} later`}
-                              disabled={i === queue.length - 1}
-                              onClick={() => move(id, 1)}
-                            >
-                              <Icon.ArrowDown size={13} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <ActionButton
-                            label="Withdraw"
-                            size="xs"
-                            icon={<Icon.Ban size={12} />}
-                            confirm={{
-                              title: `Take ${l.title} off the block?`,
-                              body: "It will not be offered this round. Nothing is sold and no coins move; you can put it back from Settled.",
-                              label: "Withdraw",
-                            }}
-                            onAct={() => act("withdraw", { reason: `Withdrew ${l.title} before it was offered.`, lot_id: l.id }, "Question withdrawn")}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </Section>
 
           <Section
             title="Settled"
@@ -469,7 +322,150 @@ export default function AuctionControlPage() {
               </Table>
             )}
           </Section>
-        </>
+          </div>
+
+          <div className="min-w-0 space-y-5">
+            <Section title="This round" padded={false} bodyClassName="divide-y">
+              <Tally label="State" value={paused ? "Held" : open ? "Bidding" : "Between lots"} note={paused ? "resume to continue" : open ? open.title : "the next lot opens on its own"} />
+              <Tally label="Sold" value={`${sold} of ${control.lots.length}`} note="lots this round" />
+              <Tally label="Still to come" value={pending.length} note={pending.length ? "in the order below" : "the round is finished"} />
+              <Tally label="Run" value={offline ? "In the room" : "From their seats"} note={offline ? "you record each sale" : "bids arrive on their own"} />
+            </Section>
+
+          <Section
+            title="Still to come"
+            description="The order they will be offered in. Reordering only moves questions that have not been offered yet."
+            padded={false}
+            actions={
+              dirty ? (
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setOrder(null)}>
+                    Discard
+                  </Button>
+                  <ActionButton
+                    label="Save order"
+                    variant="default"
+                    icon={<Icon.Save size={14} />}
+                    title="Only questions that have not been offered move"
+                    onAct={() => act("reorder", { reason: "Reordered the questions still to be offered.", round: control!.round, lot_ids: queue }, "Order saved")}
+                  />
+                </div>
+              ) : null
+            }
+          >
+            {pending.length === 0 ? (
+              <EmptyState icon={<Icon.CheckAll />} title="Everything has been offered" body="No questions are left in this round's queue." />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-14 text-right">#</TableHead>
+                    <TableHead>Question</TableHead>
+                    <TableHead className="hidden w-24 sm:table-cell">Difficulty</TableHead>
+                    <TableHead className="w-20 text-right">Score</TableHead>
+                    <TableHead className="w-24 text-right">Base</TableHead>
+                    <TableHead className="w-32">Move</TableHead>
+                    <TableHead className="w-28">
+                      <span className="sr-only">Withdraw</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {queue.map((id, i) => {
+                    const l = byId.get(id);
+                    if (!l) return null;
+                    return (
+                      <TableRow key={id} className={dirty ? "bg-brand-tint" : ""}>
+                        <TableCell className="text-right text-faint tabular-nums">{i + 1}</TableCell>
+                        <TableCell>
+                          <span className="block truncate font-medium">{l.title}</span>
+                          <span className="font-mono text-[11px] text-faint">{l.question_id}</span>
+                        </TableCell>
+                        <TableCell className="hidden capitalize text-muted-foreground sm:table-cell">{l.difficulty}</TableCell>
+                        <TableCell className="text-right tabular-nums">{l.score}</TableCell>
+                        <TableCell className="text-right tabular-nums">{l.base_price}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button variant="outline" size="icon-sm" aria-label={`Move ${l.title} earlier`} disabled={i === 0} onClick={() => move(id, -1)}>
+                              <Icon.ArrowUp size={13} />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon-sm"
+                              aria-label={`Move ${l.title} later`}
+                              disabled={i === queue.length - 1}
+                              onClick={() => move(id, 1)}
+                            >
+                              <Icon.ArrowDown size={13} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <ActionButton
+                            label="Withdraw"
+                            size="xs"
+                            icon={<Icon.Ban size={12} />}
+                            confirm={{
+                              title: `Take ${l.title} off the block?`,
+                              body: "It will not be offered this round. Nothing is sold and no coins move; you can put it back from Settled.",
+                              label: "Withdraw",
+                            }}
+                            onAct={() => act("withdraw", { reason: `Withdrew ${l.title} before it was offered.`, lot_id: l.id }, "Question withdrawn")}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </Section>
+          {offline && (
+            <Section
+              title="Who can afford what"
+              description="Balances as they stand. A participant sees their own and nobody else's — this table is yours."
+              padded={false}
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Participant</TableHead>
+                    <TableHead className="w-28 text-right">Balance</TableHead>
+                    <TableHead className="w-24 text-right">Owns</TableHead>
+                    <TableHead className="w-40">Can take this lot</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {control.balances.map((b) => {
+                    const afford = open ? b.balance >= open.base_price : false;
+                    return (
+                      <TableRow key={b.id} className={cn(b.disqualified && "opacity-50")}>
+                        <TableCell className="font-medium">
+                          {b.name}
+                          {b.disqualified && <Badge variant="neutral" className="ml-2">disqualified</Badge>}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold tabular-nums">{b.balance.toLocaleString()}</TableCell>
+                        <TableCell className="text-right tabular-nums">{b.owned}</TableCell>
+                        <TableCell className="text-[12.5px] text-muted-foreground">
+                          {!open ? (
+                            <span className="text-faint">—</span>
+                          ) : b.disqualified ? (
+                            "no — disqualified"
+                          ) : afford ? (
+                            <span className="text-green-dark">yes, up to {b.balance.toLocaleString()}</span>
+                          ) : (
+                            <span className="text-amber">short by {(open.base_price - b.balance).toLocaleString()}</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Section>
+          )}
+          </div>
+        </div>
       )}
     </PageBody>
   );
@@ -484,6 +480,19 @@ export default function AuctionControlPage() {
  * get to decide that money exists. The form says so before you submit, so the
  * refusal is not a surprise after the hammer has already come down.
  */
+/** One fact about the round: a label, the number, and what the number means. */
+function Tally({ label, value, note }: { label: string; value: React.ReactNode; note?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 px-4 py-2.5">
+      <span className="shrink-0 text-[12px] text-muted-foreground">{label}</span>
+      <span className="min-w-0 text-right">
+        <span className="block truncate text-[13.5px] font-semibold tabular-nums">{value}</span>
+        {note && <span className="block truncate text-[11.5px] text-faint">{note}</span>}
+      </span>
+    </div>
+  );
+}
+
 /**
  * The lot on the block, and everything that can be done to it while it is.
  *
@@ -506,34 +515,42 @@ function LiveLot({
   paused: boolean;
   act: (action: string, payload: Record<string, unknown>, done: string) => Promise<void>;
 }) {
+  const closing = lot.current_bid !== null;
+  const deadline = closing ? lot.bidding_ends_at : lot.no_bid_deadline;
   return (
-    <>
-      <Summary cols={4}>
-        <SummaryItem label="Question">
-          <span className="block truncate text-[15px] font-semibold">{lot.title}</span>
-          <span className="font-mono text-[11px] text-faint">{lot.question_id}</span>
-        </SummaryItem>
-        <SummaryItem label="Highest bid">
-          <span className="text-[15px] font-semibold tabular-nums">{lot.current_bid ?? "—"}</span>{" "}
-          <span className="text-muted-foreground">{lot.current_bidder_name ? `by ${lot.current_bidder_name}` : "no bids"}</span>
-        </SummaryItem>
-        <SummaryItem label={lot.current_bid !== null ? "Closes in" : "Opens for"}>
-          <span className="text-[15px] font-semibold">
-            {paused ? (
-              <span className="text-amber">held</span>
-            ) : lot.bidding_ends_at || lot.no_bid_deadline ? (
-              <Countdown until={lot.current_bid !== null ? lot.bidding_ends_at : lot.no_bid_deadline} />
-            ) : (
-              <span className="text-muted-foreground">no timer</span>
-            )}
-          </span>
-        </SummaryItem>
-        <SummaryItem label="Next legal bid">
-          <span className="tabular-nums">{lot.next_bid}</span>
-        </SummaryItem>
-      </Summary>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="truncate text-[19px] leading-tight font-semibold tracking-[-0.01em]">{lot.title}</h2>
+          <p className="mt-1 font-mono text-[11.5px] text-faint">{lot.question_id}</p>
+        </div>
+        <Badge variant={paused ? "warning" : "info"}>{paused ? "held" : closing ? "bidding" : "open for bids"}</Badge>
+      </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
+      {/* The three numbers the room is waiting on, at a size you can read from
+          the back of it. Nothing else in this panel competes with them. */}
+      <div className="grid grid-cols-1 divide-y border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <Figure label="Highest bid" note={lot.current_bidder_name ? `by ${lot.current_bidder_name}` : "no bids yet"}>
+          <span className="tabular-nums">{lot.current_bid ?? "—"}</span>
+        </Figure>
+        <Figure label={closing ? "Closes in" : "Opens for"} note={`next legal bid ${lot.next_bid}`}>
+          {paused ? (
+            <span className="text-amber">held</span>
+          ) : deadline ? (
+            <Countdown until={deadline} />
+          ) : (
+            <span className="text-[15px] font-medium text-muted-foreground">no timer, closes by hand</span>
+          )}
+        </Figure>
+        <Figure label="Worth" note={`base ${lot.base_price} coins`}>
+          <span className="tabular-nums">{lot.score}</span>
+          <span className="ml-1.5 text-[13px] font-normal text-muted-foreground">points</span>
+        </Figure>
+      </div>
+
+      {/* Grouped by what they do to the room: settle it, give it more time,
+          take it away. The destructive pair sits apart from the rest. */}
+      <div className="flex flex-wrap items-center gap-2 border-t pt-4">
         <ActionButton
           label="Close bidding"
           variant="default"
@@ -545,15 +562,9 @@ function LiveLot({
           }}
           onAct={() => act("close", { reason: `Closed bidding on ${lot.title} by hand.` }, "Lot closed")}
         />
-        <ReasonAction
-          label="Retract top bid"
-          icon={<Icon.Undo size={14} />}
-          disabled={lot.current_bid === null}
-          title="Retract the highest bid"
-          defaultReason="Retracting a bid placed by mistake."
-          description="The bid is removed and the question goes back to whoever held it before, with the countdown restarted. No balance moves — bidding never debits, only winning does."
-          onConfirm={async (reason) => act("retract-bid", { reason }, "Bid retracted")}
-        />
+
+        <span aria-hidden className="mx-1 hidden h-6 w-px bg-line sm:block" />
+
         <ActionButton
           label="Add 30s"
           icon={<Icon.Timer size={14} />}
@@ -563,7 +574,7 @@ function LiveLot({
         <ActionButton
           label="Restart timer"
           icon={<Icon.Refresh size={14} />}
-          title={`Puts a full ${lot.current_bid !== null ? control.countdown_seconds : control.opening_window_seconds} seconds back on the clock, and turns a stopped timer back on`}
+          title={`Puts a full ${closing ? control.countdown_seconds : control.opening_window_seconds} seconds back on the clock, and turns a stopped timer back on`}
           onAct={() => act("timer", { reason: `Restarted the countdown on ${lot.title}.`, mode: "restart" }, "Timer restarted")}
         />
         <ActionButton
@@ -572,19 +583,42 @@ function LiveLot({
           title="Bidding stays open until you close it by hand; restart the timer to undo this"
           onAct={() => act("timer", { reason: `Running ${lot.title} to a manual close.`, mode: "off" }, "Timer stopped")}
         />
-        <ActionButton
-          label="Withdraw"
-          variant="destructive"
-          icon={<Icon.Ban size={14} />}
-          confirm={{
-            title: `Take ${lot.title} off the block?`,
-            body: "Nothing is sold and no coins move. The bids so far are kept for the record, the next question opens, and you can put it back later.",
-            label: "Withdraw",
-          }}
-          onAct={() => act("withdraw", { reason: `Withdrew ${lot.title} mid-auction.`, lot_id: lotId }, "Question withdrawn")}
-        />
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <ReasonAction
+            label="Retract top bid"
+            icon={<Icon.Undo size={14} />}
+            disabled={lot.current_bid === null}
+            title="Retract the highest bid"
+            defaultReason="Retracting a bid placed by mistake."
+            description="The bid is removed and the question goes back to whoever held it before, with the countdown restarted. No balance moves, because bidding never debits; only winning does."
+            onConfirm={async (reason) => act("retract-bid", { reason }, "Bid retracted")}
+          />
+          <ActionButton
+            label="Withdraw"
+            variant="destructive"
+            icon={<Icon.Ban size={14} />}
+            confirm={{
+              title: `Take ${lot.title} off the block?`,
+              body: "Nothing is sold and no coins move. The bids so far are kept for the record, the next question opens, and you can put it back later.",
+              label: "Withdraw",
+            }}
+            onAct={() => act("withdraw", { reason: `Withdrew ${lot.title} mid-auction.`, lot_id: lotId }, "Question withdrawn")}
+          />
+        </div>
       </div>
-    </>
+    </div>
+  );
+}
+
+/** One of the three numbers on the open lot, big enough to read across a room. */
+function Figure({ label, note, children }: { label: string; note?: string; children: React.ReactNode }) {
+  return (
+    <div className="px-4 py-3.5">
+      <div className="text-[10.5px] font-semibold tracking-[0.08em] text-faint uppercase">{label}</div>
+      <div className="mt-1.5 text-[26px] leading-none font-semibold">{children}</div>
+      {note && <div className="mt-1.5 truncate text-[12px] text-muted-foreground">{note}</div>}
+    </div>
   );
 }
 
