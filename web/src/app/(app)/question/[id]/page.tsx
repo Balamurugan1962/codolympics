@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useContest } from "@/components/contest-provider";
+import { useContest, useEngineEvent } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { Markdown } from "@/components/markdown";
 import { StatementView } from "@/components/problems/statement-view";
@@ -53,7 +53,7 @@ const TEMPLATE: Record<string, string> = {
 
 export default function WorkspacePage() {
   const { id } = useParams<{ id: string }>();
-  const { state, lastEvent, serverNow } = useContest();
+  const { state, serverNow } = useContest();
   const { toast } = useToast();
   const [q, setQ] = useState<Question | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,15 +98,14 @@ export default function WorkspacePage() {
   const following = newest && newest.judgement.state !== "done" ? newest.id : null;
   const { judgement: live, stage, stalled, unreachable, poke } = useJudgement(following, newest?.judgement as LiveJudgement | null);
 
-  useEffect(() => {
-    if (lastEvent?.name === "balance") { void load(); return; }
-    if (lastEvent?.name !== "verdict") return;
-    const d = lastEvent.data as { submission_id?: number; rejudge?: boolean };
-    // A verdict for something this page is not watching — another tab, or an
-    // administrator rejudging the question — means the history is stale.
+  useEngineEvent(["balance", "verdict"], (event) => {
+    if (event.name === "balance") { void load(); return; }
+    const d = event.data as { submission_id?: number; rejudge?: boolean };
+    // A verdict for something this page is not watching, another tab or an
+    // administrator rejudging the question, means the history is stale.
     if (d.rejudge || (d.submission_id !== undefined && d.submission_id !== following)) void load();
     else poke();
-  }, [lastEvent, poke, load, following]);
+  });
 
   // One reload when it lands, for the things the narrow poll does not carry:
   // the history row, the question's status, the cooldown.

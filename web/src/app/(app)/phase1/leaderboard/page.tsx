@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { useContest } from "@/components/contest-provider";
+import { useContest, useEngineEvent } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -15,10 +15,11 @@ import { api } from "@/lib/client";
 type Board = { mode: string; selection_basis?: string; standings: { participant_id: string; name: string; points: number; provisional: boolean; rank: number; advanced?: boolean | null; submitted_at?: string | null }[] };
 
 export default function Phase1LeaderboardPage() {
-  const { state, lastEvent } = useContest();
+  const { state } = useContest();
   const [board, setBoard] = useState<Board | null>(null);
-  const bump = lastEvent?.name === "leaderboard" ? lastEvent.at : 0;
-  useEffect(() => { void api.get<Board>("/api/phase1/leaderboard").then(setBoard); }, [bump]);
+  const load = useCallback(() => { void api.get<Board>("/api/phase1/leaderboard").then(setBoard); }, []);
+  useEffect(load, [load]);
+  useEngineEvent("leaderboard", load);
   const me = state?.viewer.id;
   return (
     <PageBody className="animate-fade-in">

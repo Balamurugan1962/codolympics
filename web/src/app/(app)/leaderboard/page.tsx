@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { useContest } from "@/components/contest-provider";
+import { useContest, useEngineEvent } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -17,10 +17,11 @@ type Row = { participant_id: string; name: string; score: number; solved: number
 type Board = { mode: string; frozen_at: string | null; standings: Row[] };
 
 export default function LeaderboardPage() {
-  const { state, lastEvent } = useContest();
+  const { state } = useContest();
   const [board, setBoard] = useState<Board | null>(null);
-  const bump = lastEvent?.name === "leaderboard" ? lastEvent.at : 0;
-  useEffect(() => { void api.get<Board>("/api/leaderboard").then(setBoard); }, [bump]);
+  const load = useCallback(() => { void api.get<Board>("/api/leaderboard").then(setBoard); }, []);
+  useEffect(load, [load]);
+  useEngineEvent("leaderboard", load);
 
   const me = state?.viewer.id;
   const mine = board?.standings.find((s) => s.participant_id === me);
