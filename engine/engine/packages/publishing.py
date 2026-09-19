@@ -1,0 +1,69 @@
+"""Making a package version live.
+
+A problem's `current` symlink names its live version, and swapping that symlink is
+the atomic publish. Publishes of one problem serialise on an advisory lock, so the
+symlink and the question row always name the same version.
+
+Publishing while the contest is running rejudges every submission for the question,
+so the caller must confirm how many submissions that will be.
+"""
+
+from __future__ import annotations
+
+import os
+
+import sqlalchemy as sa
+
+from engine.coding.rejudge import rejudge_question, submission_count
+from engine.contest.rules import get_contest, is_phase2
+from engine.core import clock, db, errors
+from engine.core.audit import audit
+from engine.packages.validation import validation_of
+from engine.packages.volume import dir_for, versions_of
+from engine.schema import question
+
+
+def publish_version(
+    actor_id: str, problem_id: str, version: str, reason: str, confirmed_rejudge: int
+) -> dict[str, int]:
+    """Swap the live symlink, then rejudge if the contest is running.
+
+    The number of submissions to rejudge must have been confirmed.
+    """
+    if version not in versions_of(problem_id):
+        raise errors.not_found(f"{problem_id} {version}")
+    with db.transaction() as conn:
+        db.advisory_xact_lock_on(conn, db.LOCK_PUBLISH_PACKAGE, problem_id)
+        affected = submission_count(conn, problem_id) if is_phase2(get_contest(conn).phase) else 0
+        if affected != confirmed_rejudge:
+            raise errors.conflict(
+                "confirm_rejudge",
+                f"publishing will rejudge {affected} submission(s); confirm that number",
+            )
+        _swap_current(problem_id, version)
+        # The flag follows the version: one with a passing record stays validated.
+        record = validation_of(problem_id, version) or {}
+        validated = bool(record.get("ok"))
+        conn.execute(
+            sa.update(question)
+            .where(question.c.id == problem_id)
+            .values(problem_version=version, validated=validated)
+        )
+        audit(
+            conn,
+            actor_id=actor_id,
+            action="problem.publish",
+            target=problem_id,
+            reason=reason,
+            detail={"version": version, "rejudged": affected},
+        )
+    rejudged = rejudge_question(problem_id) if affected > 0 else 0
+    return {"rejudged": rejudged}
+
+
+def _swap_current(problem_id: str, version: str) -> None:
+    """Write a new symlink beside `current`, then rename it over the old one in one step."""
+    link = dir_for(problem_id, "current")
+    tmp = dir_for(problem_id, f".current.{clock.now_ms()}")
+    os.symlink(version, tmp)
+    os.replace(tmp, link)
