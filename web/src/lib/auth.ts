@@ -6,6 +6,10 @@
  * denylist. Works with no internet: nothing here calls out.
  *
  * Three roles, one per account (decision 61j): participant, evaluator, admin.
+ *
+ * The web app only signs people in and out. Accounts are created by the contest
+ * engine, which writes users and password hashes in exactly the shape Better
+ * Auth reads, and the engine checks this session cookie on every request.
  */
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
@@ -93,10 +97,3 @@ export const auth = betterAuth({
     },
   },
 });
-
-export type Session = typeof auth.$Infer.Session;
-
-/** The synthetic email a username maps to. Never used for mail. */
-export function syntheticEmail(usernameValue: string): string {
-  return `${usernameValue.toLowerCase()}@contest.local`;
-}

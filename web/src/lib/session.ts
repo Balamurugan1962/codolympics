@@ -1,14 +1,13 @@
 /**
- * Who is calling. Two flavours: pages redirect to /login, API routes throw.
+ * Who is signed in, for deciding which page to show.
  *
- * Roles are enforced here, server-side, on every request (US-P1-01, F1-03):
- * hiding a link is never the control.
+ * This only picks a page and redirects. What anyone may actually see or do is
+ * decided by the engine, which checks the session again on every API request.
  */
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth, type Role } from "./auth";
-import { errors } from "./api";
 
 export type Viewer = {
   id: string;
@@ -35,14 +34,6 @@ export async function requireViewer(...roles: Role[]): Promise<Viewer> {
   const viewer = await current();
   if (!viewer) redirect("/login");
   if (roles.length && !roles.includes(viewer.role)) redirect(homeFor(viewer.role));
-  return viewer;
-}
-
-/** For API routes: the signed-in viewer, or a 401 / 403. */
-export async function requireApiViewer(...roles: Role[]): Promise<Viewer> {
-  const viewer = await current();
-  if (!viewer) throw errors.unauthorized();
-  if (roles.length && !roles.includes(viewer.role)) throw errors.forbidden();
   return viewer;
 }
 

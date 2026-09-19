@@ -1,1 +1,0 @@
-ALTER TABLE "contest" ADD COLUMN "auction_mode" text DEFAULT 'online' NOT NULL;

@@ -1,1 +1,0 @@
-ALTER TABLE "contest" ADD COLUMN "auction_paused_at" timestamp with time zone;

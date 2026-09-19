@@ -8,12 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "DATABASE_URL=${DATABASE_URL:-postgres://contest:contest@localhost:5432/contest_test} vitest run",
-    "test:setup": "DATABASE_URL=postgres://contest:contest@localhost:5432/contest_test drizzle-kit migrate",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx src/db/seed.ts",
+    "smoke": "tsx tests/e2e/smoke.ts",
     "auth:schema": "pnpm dlx @better-auth/cli@latest generate --config src/lib/auth.ts --output src/db/auth-schema.ts -y"
   },
   "dependencies": {
