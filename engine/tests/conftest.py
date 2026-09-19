@@ -112,12 +112,15 @@ def add_user(
     return user_id
 
 
-def add_question(question_id: str, order: int = 1, base_price: int = 100, score: int = 100) -> str:
+def add_question(
+    question_id: str, order: int = 1, base_price: int = 100, score: int = 100, topic: str = "Graphs"
+) -> str:
     with db.transaction() as conn:
         conn.execute(
             sa.insert(question).values(
                 id=question_id,
                 title=question_id,
+                topic=topic,
                 difficulty="easy",
                 score=score,
                 base_price=base_price,

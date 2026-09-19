@@ -53,13 +53,15 @@ export type AuctionSnapshot = {
   countdown_seconds: number;
   opening_window_seconds: number;
   recent_bids: { id: number; amount: number; participant_id: string; name: string; at: string }[];
+  /* Blind bidding: a lot says what it is about and what it is worth, never
+     which problem it is. The winner reads the real thing once it is theirs. */
   lot: {
-    id: number; question_id: string; title: string; difficulty: string; score: number; base_price: number;
+    id: number; topic: string; difficulty: string; score: number; base_price: number;
     current_bid: number | null; current_bidder_id: string | null; current_bidder_name: string | null; next_bid: number;
     no_bid_deadline: string | null; bidding_ends_at: string | null; opened_at: string | null;
   } | null;
   order: {
-    id: number; questionId: string; title: string; difficulty: string; score: number; base_price: number;
+    id: number; topic: string; difficulty: string; score: number; base_price: number;
     state: string; current_bid: number | null; order: number;
     winner_id: string | null; winner_name: string | null; price_paid: number | null;
   }[];

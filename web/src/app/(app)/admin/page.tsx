@@ -426,12 +426,12 @@ function LiveAuction() {
             disabled={!lot}
             icon={<Icon.Gavel size={14} />}
             confirm={{
-              title: lot ? `Close bidding on ${lot.title}?` : "Close bidding on the open lot?",
+              title: `Close bidding on the open lot?`,
               body: "The highest bidder wins it immediately. If there are no bids it goes unsold.",
               label: "Close bidding",
             }}
             onAct={async () => {
-              await api.post("/api/admin/lots/close", { reason: lot ? `Closed bidding on ${lot.title} by hand.` : "Closed bidding by hand." });
+              await api.post("/api/admin/lots/close", { reason: `Closed bidding on ${lot?.topic || "the open lot"} by hand.` });
               toast({ title: "Lot closed", tone: "success" });
             }}
           />
@@ -446,7 +446,7 @@ function LiveAuction() {
                 icon={<Icon.Pause size={14} />}
                 title="Bidding then stays open until you close it by hand; you can start it again from here"
                 onAct={async () => {
-                  await api.post("/api/admin/auction/timer", { reason: lot ? `Running ${lot.title} to a manual close.` : "Running this lot to a manual close.", mode: "off" });
+                  await api.post("/api/admin/auction/timer", { reason: `Running the open lot to a manual close.`, mode: "off" });
                   toast({ title: "Timer stopped", description: "This lot now closes only by hand.", tone: "success" });
                 }}
               />
@@ -457,7 +457,7 @@ function LiveAuction() {
                 icon={<Icon.Play size={14} />}
                 title="A full countdown starts now, and the lot settles on its own again"
                 onAct={async () => {
-                  await api.post("/api/admin/auction/timer", { reason: lot ? `Put the clock back on ${lot.title}.` : "Put the clock back on.", mode: "restart" });
+                  await api.post("/api/admin/auction/timer", { reason: `Put the clock back on the open lot.`, mode: "restart" });
                   toast({ title: "Timer restarted", tone: "success" });
                 }}
               />
@@ -491,7 +491,10 @@ function LiveAuction() {
       {lot ? (
         <Summary cols={3}>
           <SummaryItem label="Now offering">
-            <span className="block truncate text-[15px] font-semibold">{lot.title}</span>
+            {/* The board is blind, so this card names the topic like everyone
+                else sees it. The question's own name is on Auction control. */}
+            <span className="block truncate text-[15px] font-semibold">{lot.topic || "Topic not set"}</span>
+            <span className="text-[12px] text-muted-foreground capitalize">{lot.difficulty}</span>
           </SummaryItem>
           <SummaryItem label="Highest bid">
             <span className="text-[15px] font-semibold tabular-nums">{lot.current_bid ?? "—"}</span>{" "}

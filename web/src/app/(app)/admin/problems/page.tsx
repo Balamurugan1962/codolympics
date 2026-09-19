@@ -51,6 +51,8 @@ export type ValidationRecord = {
 export type Q = {
   id: string;
   title: string;
+  /** What bidders are told instead of the title. */
+  topic: string;
   difficulty: string;
   score: number;
   basePrice: number;

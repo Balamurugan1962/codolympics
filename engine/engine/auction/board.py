@@ -24,6 +24,7 @@ def current_lot(conn: sa.Connection) -> sa.Row | None:
         sa.select(
             lot,
             question.c.title,
+            question.c.topic,
             question.c.difficulty,
             question.c.score,
             question.c.base_price,
@@ -55,7 +56,18 @@ def lock_open_lot(conn: sa.Connection) -> sa.Row:
 
 
 def snapshot(conn: sa.Connection, round_: int) -> dict[str, Any]:
-    """Everything a client needs to draw the auction. Participant-safe."""
+    """Everything a client needs to draw the auction. Participant-safe.
+
+    Bidding is blind. A lot carries its topic, its difficulty, what it costs to
+    open and what it pays, and never its title, its id or its statement: those
+    would tell the room which problem it is, and the whole point of paying for
+    a question is not knowing exactly what you are buying. The winner reads the
+    real thing on their own questions list the moment it is theirs.
+
+    This payload is published to everybody at once, so it is written for the
+    least privileged reader. Organisers get the names from the admin endpoints,
+    which are theirs alone.
+    """
     c = get_contest(conn)
     open_lot = current_lot(conn)
     return {
@@ -78,8 +90,7 @@ def snapshot(conn: sa.Connection, round_: int) -> dict[str, Any]:
 def _lot_view(open_lot: sa.Row, increment: int) -> dict[str, Any]:
     return {
         "id": open_lot.id,
-        "question_id": open_lot.question_id,
-        "title": open_lot.title,
+        "topic": open_lot.topic,
         "difficulty": open_lot.difficulty,
         "score": open_lot.score,
         "base_price": open_lot.base_price,
@@ -118,8 +129,7 @@ def _round_order(conn: sa.Connection, round_: int) -> list[dict[str, Any]]:
     found = conn.execute(
         sa.select(
             lot.c.id,
-            lot.c.question_id,
-            question.c.title,
+            question.c.topic,
             question.c.difficulty,
             question.c.score,
             question.c.base_price,
@@ -142,8 +152,7 @@ def _round_order(conn: sa.Connection, round_: int) -> list[dict[str, Any]]:
     return [
         {
             "id": o.id,
-            "questionId": o.question_id,
-            "title": o.title,
+            "topic": o.topic,
             "difficulty": o.difficulty,
             "score": o.score,
             "state": o.state,

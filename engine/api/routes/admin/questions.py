@@ -28,6 +28,8 @@ class HintInput(Body):
 class QuestionBody(ReasonBody):
     id: ProblemId
     title: Annotated[str, Field(min_length=1, max_length=200)]
+    # What the room is told it is bidding on. The title is not.
+    topic: Annotated[str, Field(max_length=80)] = ""
     difficulty: Difficulty
     score: Annotated[int, Field(ge=0)]
     base_price: Annotated[int, Field(ge=0)]

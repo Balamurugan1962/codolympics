@@ -16,15 +16,16 @@ import { Textarea } from "../ui/textarea";
 import { MarkdownEditor } from "../ui/markdown-editor";
 
 export type QuestionDetails = {
-  title: string; difficulty: "easy" | "medium" | "hard"; score: number; base_price: number; auction_order: number;
+  title: string; topic: string; difficulty: "easy" | "medium" | "hard"; score: number; base_price: number; auction_order: number;
   statement_md: string; sample_count: number; hints: { price: number; body_md: string }[];
 };
 
-export const EMPTY_DETAILS: QuestionDetails = { title: "", difficulty: "medium", score: 100, base_price: 100, auction_order: 1, statement_md: "", sample_count: 1, hints: [] };
+export const EMPTY_DETAILS: QuestionDetails = { title: "", topic: "", difficulty: "medium", score: 100, base_price: 100, auction_order: 1, statement_md: "", sample_count: 1, hints: [] };
 
 export function detailsIssues(d: QuestionDetails, testcases: number | null): string[] {
   const out: string[] = [];
   if (!d.title.trim()) out.push("Give the problem a title.");
+  if (!d.topic.trim()) out.push("Give the topic. It is all a bidder is told about the problem.");
   if (!d.statement_md.trim()) out.push("Write the statement. Participants would see an empty problem.");
   if (d.score < 0 || !Number.isInteger(d.score)) out.push("Score must be a whole number, zero or more.");
   if (d.base_price < 0 || !Number.isInteger(d.base_price)) out.push("Base price must be a whole number, zero or more.");
@@ -50,10 +51,17 @@ export function QuestionBasicsFields({ d, onChange, testcases }: { d: QuestionDe
   const set = <K extends keyof QuestionDetails>(k: K, v: QuestionDetails[K]) => onChange({ ...d, [k]: v });
   return (
     <div className="space-y-5">
-      <Field label="Title" help="As it appears on the auction block and in the workspace.">
+      <Field label="Title" help="For you and for whoever wins it. Bidders never see this.">
         <Input value={d.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Shortest Round Trip" maxLength={200} autoFocus />
       </Field>
-      <Field label="Tier" help="Shown to bidders before they see the statement. Set the price and score to match.">
+      <Field
+        label="Topic"
+        hint="what the room bids on"
+        help="With the tier, the price and the points, this is everything a bidder is told. Say enough to bid on and not enough to solve: “Graphs, shortest paths”, not “Dijkstra on a 2D grid with teleports”."
+      >
+        <Input value={d.topic} onChange={(e) => set("topic", e.target.value)} placeholder="e.g. Graphs, shortest paths" maxLength={80} />
+      </Field>
+      <Field label="Tier" help="Shown to bidders with the topic. Set the price and points to match.">
         <ChoiceCards
           value={d.difficulty}
           onChange={(v) => set("difficulty", v)}
@@ -67,10 +75,10 @@ export function QuestionBasicsFields({ d, onChange, testcases }: { d: QuestionDe
         />
       </Field>
       <FormGrid cols={3}>
-        <Field label="Score" help="Added to the owner's total when solved. All or nothing.">
+        <Field label="Points" help="Paid to the owner when they solve it. All or nothing, and shown to bidders.">
           <Input type="number" min={0} step={1} value={d.score} onChange={(e) => set("score", Number(e.target.value))} />
         </Field>
-        <Field label="Base price" help="Where bidding opens. Money is not score.">
+        <Field label="Base price" help="Where bidding opens, in coins. Coins are not points.">
           <Input type="number" min={0} step={1} value={d.base_price} onChange={(e) => set("base_price", Number(e.target.value))} />
         </Field>
         <Field label="Auction order" help="Lower goes on the block first. Published in advance.">

@@ -28,6 +28,9 @@ question = Table(
     metadata,
     Column("id", Text, primary_key=True),  # the judge's problem_id
     Column("title", Text, nullable=False),
+    # What a bidder is told they are bidding on. The title would give the
+    # problem away, so the floor sees this instead until the lot is sold.
+    Column("topic", Text, nullable=False, server_default=text("''")),
     Column("difficulty", Text, nullable=False),
     Column("score", Integer, nullable=False),
     Column("base_price", Integer, nullable=False),

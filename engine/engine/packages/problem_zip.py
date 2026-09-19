@@ -93,6 +93,7 @@ def _question_doc(
     if q is not None:
         details = {
             "title": q.title,
+            "topic": q.topic,
             "difficulty": q.difficulty,
             "score": q.score,
             "base_price": q.base_price,
@@ -293,6 +294,7 @@ def _import_details(
             order = count + 1
         values = {
             "title": str(details.get("title") or pid),
+            "topic": str(details.get("topic") or ""),
             "difficulty": difficulty,
             "score": int(details.get("score") or 0),
             "base_price": int(details.get("base_price") or 0),

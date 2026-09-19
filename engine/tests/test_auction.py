@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import timedelta
 
 import pytest
@@ -19,7 +20,7 @@ from conftest import (
 )
 from sqlalchemy.exc import IntegrityError
 
-from engine.auction import bidding, lots, rules
+from engine.auction import bidding, board, lots, rules
 from engine.auction.takeback import take_back_question
 from engine.core import clock, db
 from engine.schema import bid, ledger, lot, ownership, participant
@@ -138,3 +139,21 @@ def test_a_question_taken_back_and_relisted_can_be_sold_again() -> None:
     assert lots.close_lot(open_lot().id) == "sold"
     owner = rows(sa.select(ownership).where(ownership.c.question_id == "q"))[0]
     assert (owner.participant_id, owner.voided_at) == ("b", None)
+
+
+def test_the_auction_board_never_names_the_question() -> None:
+    """Bidding is blind: the board says what a lot is about, never which problem it is."""
+    add_user("alice")
+    add_question("secret-problem", order=1, topic="Graphs, shortest paths")
+    set_contest(phase="auction1", registration_open=False)
+    with db.transaction() as conn:
+        lots.create_lots_for_round(conn, 1)
+    lots.open_next_lot(1)
+
+    with db.transaction() as conn:
+        view = board.snapshot(conn, 1)
+    flat = json.dumps(view)
+    assert "secret-problem" not in flat
+    assert view["lot"]["topic"] == "Graphs, shortest paths"
+    assert "title" not in view["lot"] and "question_id" not in view["lot"]
+    assert all("title" not in row and "questionId" not in row for row in view["order"])
