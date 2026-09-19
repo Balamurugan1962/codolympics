@@ -19,6 +19,7 @@ import { Badge, StatusDot } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SearchInput } from "@/components/ui/field";
 import { Section, Toolbar } from "@/components/ui/page";
+import { Pagination, usePaged } from "@/components/ui/pagination";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
@@ -76,11 +77,15 @@ function duration(ms: number): string {
 
 export function Phase1Standings({ rows, compact = false }: { rows: P1Row[] | null; compact?: boolean }) {
   const [filter, setFilter] = useState("");
+  const all = rows ?? [];
+  const shown = all.filter((r) => !filter || r.name.toLowerCase().includes(filter.toLowerCase()));
+  const paged = usePaged(shown, { param: "p1page" });
+
   if (!rows) return <TableSkeleton rows={compact ? 5 : 8} cols={4} />;
   if (rows.length === 0) {
     return <EmptyState compact icon={<Icon.Trophy />} title="Nobody is registered yet" body="The board fills as people sign up and answer." />;
   }
-  const shown = rows.filter((r) => !filter || r.name.toLowerCase().includes(filter.toLowerCase()));
+  const display = compact ? shown.slice(0, 10) : paged.rows;
 
   return (
     <>
@@ -106,7 +111,7 @@ export function Phase1Standings({ rows, compact = false }: { rows: P1Row[] | nul
           </TableRow>
         </TableHeader>
         <TableBody>
-          {(compact ? shown.slice(0, 10) : shown).map((r) => (
+          {display.map((r) => (
             <TableRow key={r.participant_id} className={r.disqualified ? "opacity-60" : ""}>
               <TableCell className="text-right">
                 <Rank rank={r.disqualified ? 0 : r.rank} />
@@ -142,6 +147,7 @@ export function Phase1Standings({ rows, compact = false }: { rows: P1Row[] | nul
           ))}
         </TableBody>
       </Table>
+      {!compact && <Pagination paged={paged} unit="participants" />}
       {!compact && rows.some((r) => r.provisional) && (
         <p className="border-t px-4 py-2.5 text-[11.5px] text-muted-foreground">
           <span className="font-semibold text-amber">*</span> provisional: something is still with an evaluator, or a validator errored.
@@ -153,6 +159,10 @@ export function Phase1Standings({ rows, compact = false }: { rows: P1Row[] | nul
 
 export function Phase2Standings({ rows, compact = false }: { rows: P2Row[] | null; compact?: boolean }) {
   const [filter, setFilter] = useState("");
+  const all = rows ?? [];
+  const shown = all.filter((r) => !filter || r.name.toLowerCase().includes(filter.toLowerCase()));
+  const paged = usePaged(shown, { param: "p2page" });
+
   if (!rows) return <TableSkeleton rows={compact ? 5 : 8} cols={5} />;
   if (rows.length === 0) {
     return (
@@ -164,7 +174,7 @@ export function Phase2Standings({ rows, compact = false }: { rows: P2Row[] | nul
       />
     );
   }
-  const shown = rows.filter((r) => !filter || r.name.toLowerCase().includes(filter.toLowerCase()));
+  const display = compact ? shown.slice(0, 10) : paged.rows;
 
   return (
     <>
@@ -191,7 +201,7 @@ export function Phase2Standings({ rows, compact = false }: { rows: P2Row[] | nul
           </TableRow>
         </TableHeader>
         <TableBody>
-          {(compact ? shown.slice(0, 10) : shown).map((r) => (
+          {display.map((r) => (
             <TableRow key={r.participant_id}>
               <TableCell className="text-right">
                 <Rank rank={r.rank} />
@@ -217,6 +227,7 @@ export function Phase2Standings({ rows, compact = false }: { rows: P2Row[] | nul
           ))}
         </TableBody>
       </Table>
+      {!compact && <Pagination paged={paged} unit="participants" />}
       {!compact && (
         <p className="border-t px-4 py-2.5 text-[11.5px] text-muted-foreground">
           Ties break on total solve time, measured from the moment each question was won, then on Phase 1 rank.

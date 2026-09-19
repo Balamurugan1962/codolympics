@@ -1,12 +1,20 @@
 "use client";
 
 /**
- * The client's view of the contest. One SSE connection per page; on any
- * reconnect the whole state is re-read from /api/state -- cached local state
- * is never trusted (US-F2-03, US-F10-02).
+ * The client's view of the contest, kept live by polling the engine.
+ *
+ * About once a second the page asks `/api/poll?after=<cursor>` for the events
+ * since the last one it saw. They are the same events the engine used to push
+ * over SSE, so everything downstream -- `lastEvent`, the auction snapshot, the
+ * toasts -- behaves exactly as before. The cursor starts at the `event_cursor`
+ * the initial state was read at, so nothing between that read and the first
+ * poll is missed.
+ *
+ * Local state is never trusted after a gap: if a poll fails, or the engine says
+ * events were pruned while this tab was away, the whole state is re-read.
  *
  * `serverNow()` returns the server's clock, from an offset measured on every
- * event, so countdowns never depend on the browser's clock (NFR-F-07).
+ * poll, so countdowns never depend on the browser's clock.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -16,6 +24,8 @@ export type ContestState = {
   viewer: { id: string; name: string; username: string; role: "participant" | "evaluator" | "admin" };
   contest: { phase: string; phase_ends_at: string | null; registration_open: boolean; leaderboard_mode: string; server_now: number };
   announcements: { id: number; bodyMd: string; createdAt: string }[];
+  /** The newest event id when this state was read: where polling starts. */
+  event_cursor: number;
   me?: { balance: number; disqualified: boolean; advanced: boolean; p1_puzzles_finished: boolean; p1_hacking_finished: boolean; preferred_language: string | null } | null;
   questions?: { id: string; title: string; difficulty: string; score: number; status: string; price_paid: number; awarded_at: string; attempts: number; progress: "solved" | "judging" | "attempted" | "unattempted" }[];
   rank?: { rank: number; score: number; solved: number; total_time_ms: number } | null;
@@ -50,18 +60,22 @@ export type AuctionSnapshot = {
   server_now: number;
 };
 
+type EngineEvent = { id: number; name: string; data: Record<string, unknown> };
+type Poll = { events: EngineEvent[]; cursor: number; reset: boolean; server_now: number };
+
+const POLL_MS = 1_000;
+/** Consecutive failed polls before the chrome reports the connection lost. */
+const LOST_AFTER_FAILURES = 3;
+
 /**
- * "connecting" is the first few hundred milliseconds, before the stream has
- * ever opened. It is not an error and must never be reported as one — the
- * chrome shows a quiet loading state until the stream has opened once, and
- * only a genuine drop after that raises the alarm.
+ * "connecting" is before the first successful poll. It is not an error and must
+ * never be reported as one; only failures after that raise the alarm.
  */
 export type Connection = "connecting" | "open" | "lost";
 
 type Ctx = {
   state: ContestState | null;
   connection: Connection;
-  connected: boolean;
   serverNow: () => number;
   refresh: () => Promise<void>;
   lastEvent: { name: string; data: unknown; at: number } | null;
@@ -74,61 +88,117 @@ export function ContestProvider({ initial, children }: { initial: ContestState; 
   const [connection, setConnection] = useState<Connection>("connecting");
   const [lastEvent, setLastEvent] = useState<Ctx["lastEvent"]>(null);
   const offset = useRef(initial.contest.server_now - Date.now());
+  const lastAt = useRef(0);
 
   const noteServerNow = (serverNow: unknown) => {
     if (typeof serverNow === "number") offset.current = serverNow - Date.now();
   };
 
-  const refresh = useCallback(async () => {
-    const fresh = await api.get<ContestState>("/api/state");
-    noteServerNow(fresh.contest.server_now);
-    setState(fresh);
+  // Single flight: a burst of events asks for one re-read, plus one more if
+  // anything arrived while it ran -- never one full state read per event.
+  const reading = useRef<Promise<void> | null>(null);
+  const again = useRef(false);
+  const refresh = useCallback(async (): Promise<void> => {
+    if (reading.current) {
+      again.current = true;
+      return reading.current;
+    }
+    reading.current = (async () => {
+      do {
+        again.current = false;
+        const fresh = await api.get<ContestState>("/api/state");
+        noteServerNow(fresh.contest.server_now);
+        setState(fresh);
+      } while (again.current);
+    })().finally(() => { reading.current = null; });
+    return reading.current;
   }, []);
 
-  useEffect(() => {
-    const es = new EventSource("/api/events");
-    let wasDown = false;
-    es.onopen = () => {
-      setConnection("open");
-      if (wasDown) void refresh(); // reconciled from the server, never from cache
-      wasDown = false;
-    };
-    es.onerror = () => {
-      // Before the first open this is still the connection being made; after
-      // it, the stream really has gone away.
-      setConnection((c) => (c === "connecting" ? "connecting" : "lost"));
-      wasDown = true;
-    };
-
-    const on = (name: string) => (e: MessageEvent) => {
-      const data = JSON.parse(e.data);
-      noteServerNow(data.server_now);
-      setLastEvent({ name, data, at: Date.now() });
-      if (name === "auction") setState((s) => (s ? { ...s, auction: data } : s));
-      else if (name === "phase") setState((s) => (s ? { ...s, contest: data } : s));
-      else if (name === "balance" && typeof data.balance === "number") setState((s) => (s?.me ? { ...s, me: { ...s.me, balance: data.balance } } : s));
-      else if (name === "verdict") {
-        // A running judgement emits a progress tick roughly once a second.
-        // Re-reading the whole contest for each one is most of a round's
-        // traffic and changes nothing on screen — the workspace polls the one
-        // submission it is watching. Only a finished judgement moves anything
-        // else: the score, the cooldown, the leaderboard.
-        const d = data as { state?: string; cancelled?: boolean; rejudge?: boolean };
-        if (d.state === "done" || d.cancelled || d.rejudge) void refresh();
-      } else if (["balance", "notify", "announce", "hack"].includes(name)) void refresh();
-    };
-    for (const name of ["hello", "ping", "phase", "auction", "balance", "verdict", "hack", "announce", "notify", "leaderboard"]) {
-      es.addEventListener(name, on(name));
-    }
-    return () => es.close();
+  const apply = useCallback((event: EngineEvent) => {
+    const { name, data } = event;
+    noteServerNow(data.server_now);
+    // `at` marks each event as new to the components watching it, so it must never repeat.
+    lastAt.current = Math.max(Date.now(), lastAt.current + 1);
+    setLastEvent({ name, data, at: lastAt.current });
+    if (name === "auction") setState((s) => (s ? { ...s, auction: data as unknown as AuctionSnapshot } : s));
+    else if (name === "phase") setState((s) => (s ? { ...s, contest: data as unknown as ContestState["contest"] } : s));
+    else if (name === "balance" && typeof data.balance === "number") {
+      const balance = data.balance;
+      setState((s) => (s?.me ? { ...s, me: { ...s.me, balance } } : s));
+    } else if (name === "verdict") {
+      // A running judgement reports progress about once a second. Only a finished
+      // one moves anything else -- the score, the cooldown, the leaderboard -- so
+      // only that re-reads the contest; the workspace polls its own submission.
+      if (data.state === "done" || data.cancelled || data.rejudge) void refresh().catch(() => undefined);
+    } else if (["balance", "notify", "announce", "hack"].includes(name)) void refresh().catch(() => undefined);
   }, [refresh]);
 
+  useEventPolling(initial.event_cursor, { apply, refresh, setConnection, noteServerNow });
+
   const value = useMemo<Ctx>(() => ({
-    state, connection, connected: connection === "open", refresh, lastEvent,
+    state, connection, refresh, lastEvent,
     serverNow: () => Date.now() + offset.current,
   }), [state, connection, refresh, lastEvent]);
 
   return <ContestContext.Provider value={value}>{children}</ContestContext.Provider>;
+}
+
+/**
+ * Ask the engine for new events about once a second, and apply each in turn.
+ *
+ * Hidden tabs do not poll; the first poll back picks up everything since. Any
+ * gap -- a failed poll, or events pruned while away -- re-reads the whole state.
+ */
+type PollingHandlers = {
+  apply: (event: EngineEvent) => void;
+  refresh: () => Promise<void>;
+  setConnection: React.Dispatch<React.SetStateAction<Connection>>;
+  /** Every poll carries the server's clock, so countdowns stay honest even when nothing happens. */
+  noteServerNow: (serverNow: unknown) => void;
+};
+
+function useEventPolling(startCursor: number, { apply, refresh, setConnection, noteServerNow }: PollingHandlers) {
+  useEffect(() => {
+    let cursor = startCursor;
+    let failures = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
+
+    const pollOnce = async () => {
+      const poll = await api.get<Poll>(`/api/poll?after=${cursor}`);
+      noteServerNow(poll.server_now);
+      if (poll.reset || failures > 0) await refresh();
+      failures = 0;
+      setConnection("open");
+      for (const event of poll.events) {
+        apply(event);
+        // One render per event, as a stream delivered them: components watch
+        // `lastEvent`, and events applied together would only show them the last.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      cursor = poll.cursor;
+    };
+
+    const tick = async () => {
+      if (!document.hidden) {
+        try {
+          await pollOnce();
+        } catch {
+          failures += 1;
+          if (failures >= LOST_AFTER_FAILURES) setConnection((c) => (c === "connecting" ? c : "lost"));
+        }
+      }
+      if (!stopped) timer = setTimeout(() => void tick(), POLL_MS);
+    };
+
+    void tick();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+    // The cursor starts from the state the page was rendered with, once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apply, refresh, setConnection]);
 }
 
 export function useContest(): Ctx {

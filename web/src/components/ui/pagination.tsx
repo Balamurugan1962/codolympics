@@ -81,12 +81,12 @@ export function Pagination<T>({ paged, className, unit = "rows" }: { paged: Page
   if (paged.pages <= 1) return null;
 
   return (
-    <nav className={cn("flex items-center gap-3 border-t py-2.5 text-[12px]", className)} aria-label="Pagination">
+    <nav className={cn("flex items-center gap-3 border-t bg-muted/30 px-4 py-2.5 text-[12px]", className)} aria-label="Pagination">
       <span className="text-muted-foreground">
-        <span className="tabular-nums text-foreground">
+        <span className="tabular-nums font-medium text-foreground">
           {paged.from}–{paged.to}
         </span>{" "}
-        of <span className="tabular-nums text-foreground">{paged.total}</span> {unit}
+        of <span className="tabular-nums font-medium text-foreground">{paged.total}</span> {unit}
       </span>
       <span className="ml-auto flex items-center gap-1">
         <Step href={href(1)} disabled={paged.page === 1} label="First page">
@@ -95,8 +95,8 @@ export function Pagination<T>({ paged, className, unit = "rows" }: { paged: Page
         <Step href={href(paged.page - 1)} disabled={paged.page === 1} label="Previous page">
           <Icon.ChevronLeft size={14} />
         </Step>
-        <span className="px-2 text-muted-foreground">
-          <span className="tabular-nums text-foreground">{paged.page}</span> / <span className="tabular-nums">{paged.pages}</span>
+        <span className="px-2.5 text-muted-foreground">
+          <span className="tabular-nums font-semibold text-foreground">{paged.page}</span> / <span className="tabular-nums">{paged.pages}</span>
         </span>
         <Step href={href(paged.page + 1)} disabled={paged.page === paged.pages} label="Next page">
           <Icon.ChevronRight size={14} />
@@ -111,16 +111,16 @@ export function Pagination<T>({ paged, className, unit = "rows" }: { paged: Page
 
 /** A link, unless there is nowhere to go — then the same box, inert. */
 function Step({ href, disabled, label, children }: { href: string; disabled: boolean; label: string; children: React.ReactNode }) {
-  const shape = "flex size-7 items-center justify-center rounded-[4px] border transition-colors";
+  const shape = "flex size-7 items-center justify-center rounded-[5px] border transition-all duration-150";
   if (disabled) {
     return (
-      <span aria-hidden className={cn(shape, "border-transparent text-line-2")}>
+      <span aria-hidden className={cn(shape, "border-transparent text-line-2 opacity-40")}>
         {children}
       </span>
     );
   }
   return (
-    <Link href={href} aria-label={label} scroll={false} className={cn(shape, "border-line text-muted-foreground hover:border-line-2 hover:text-foreground")}>
+    <Link href={href} aria-label={label} scroll={false} className={cn(shape, "border-line text-muted-foreground hover:border-brand hover:bg-brand-tint hover:text-brand-deep active:scale-95")}>
       {children}
     </Link>
   );

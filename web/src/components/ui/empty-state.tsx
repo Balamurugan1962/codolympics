@@ -19,13 +19,13 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center px-6 text-center", compact ? "py-9" : "py-14", className)}>
+    <div className={cn("flex flex-col items-center justify-center px-6 text-center animate-rise-in", compact ? "py-9" : "py-14", className)}>
       {icon && (
-        <div className="mb-3.5 flex size-11 items-center justify-center rounded-full border bg-muted text-faint [&_svg]:size-[18px]">
+        <div className="mb-3.5 flex size-12 items-center justify-center rounded-full border border-border/60 bg-gradient-to-b from-brand-tint to-card text-faint shadow-xs [&_svg]:size-[18px]">
           {icon}
         </div>
       )}
-      <div className="text-[14px] font-semibold">{title}</div>
+      <div className="text-[14px] font-semibold tracking-[-0.01em]">{title}</div>
       {body && <div className="mt-1.5 max-w-sm text-[12.5px] leading-relaxed text-muted-foreground">{body}</div>}
       {action && <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{action}</div>}
     </div>
