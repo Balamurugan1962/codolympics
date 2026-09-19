@@ -179,14 +179,20 @@ correct code fixes bad pricing.
 |---|---|---|
 | 62 | **Redis dropped** — four services, not six | Sessions are in Postgres via Better Auth, the queue is a database poller, SSE fanout is in-process. One fewer thing to fail on the day |
 | 63 | **Better Auth**, self-hosted, username + admin plugins | Database-backed sessions are revocable, which is what single-session enforcement needs; JWTs cannot be revoked. Works with no internet |
-| 64 | **Next.js route handlers** for the backend, not NestJS | One deployable, Better Auth first-class, shared types with the UI for free |
+| 64 | ~~**Next.js route handlers** for the backend, not NestJS~~ → superseded by 72 | One deployable, Better Auth first-class, shared types with the UI for free |
 | 65 | Solve time is **derived from submissions, never stored** | Satisfies "first AC always counts" and "recompute after a rejudge" simultaneously; no column can go stale |
 | 66 | Auction deadlines are **database columns**, polled by a scheduler — never `setTimeout` | An in-memory timer cannot survive the restart NFR-B-10 requires |
-| 67 | Realtime is **SSE**, not WebSockets | Every realtime flow is server→client; SSE brings reconnection with `Last-Event-ID` for free, which the reconnect stories require |
+| 67 | ~~Realtime is **SSE**, not WebSockets~~ → superseded by 75 | Every realtime flow is server→client; SSE brings reconnection with `Last-Event-ID` for free, which the reconnect stories require |
 | 68 | Problems live on **one volume: backend read-write, judge read-only** | Publishing is the symlink swap the judge already treats as atomic. Amends judge assumption 4 |
 | 69 | Samples are the **first K testcases**; the administrator sets K, the text is read from the package | A displayed sample can never drift from the testcase actually judged |
 | 70 | **Automatic database backups with a tested restore** | Every other recovery story covers a *client* failing; this is the only cover for the *server* failing |
 | 71 | Phase 1 needs **two new judge endpoints** — `/hack` and `/validate-answers` | Both are "run something in the sandbox against data supplied in the request", the one shape the judge did not offer |
+| 72 | The contest engine is a **standalone Python service** (`engine/`) behind a thin FastAPI layer; Next.js is only a client | All rules and state in one readable place, testable without the UI, and the scheduler no longer depends on how a web server starts. Five services |
+| 73 | The engine **publishes no port**; the web app forwards `/api/*` with a service token | Nothing on the network but the web app can reach contest logic |
+| 74 | **Better Auth stays in Next.js** for sign-in; the engine verifies the signed session cookie against Postgres and writes accounts in Better Auth's scrypt format | Revocable sessions and single-session enforcement keep working unchanged, with no second auth system |
+| 75 | Realtime is **1 s polling** of a Postgres event table (`/api/poll?after=`) | Works across several engine processes and restarts; delivers the same events SSE did |
+| 76 | **Correctness lives in the database**: row locks in a fixed order, partial unique indexes (one open lot, one current judgement), SKIP LOCKED job claims, conditional result writes, advisory-locked scheduler ticks | Double clicks, concurrent organisers, several schedulers and late judge results cannot corrupt state. Detail in `engine/README.md` |
+| 77 | **SQLAlchemy Core + Alembic**, not an ORM; the baseline migration is the Drizzle schema, stamped on existing databases | Queries stay explicit; an existing contest database migrates in place |
 
 ## Settled defaults
 
