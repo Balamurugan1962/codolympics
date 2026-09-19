@@ -10,16 +10,27 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from engine.accounts import wallet
+from engine.contest.rules import get_contest
 from engine.core import clock, db, events
 from engine.core.audit import audit
-from engine.schema import p1_advancement, participant
+from engine.schema import ledger, p1_advancement, participant
 
 
 def set_advancement(actor_id: str, participant_ids: list[str], reason: str) -> None:
-    """Select who advances to Phase 2. The whole set each time; revisable until Phase 2 opens."""
+    """Select who advances to Phase 2. The whole set each time; revisable until Phase 2 opens.
+
+    Selection is also when coins appear. Everyone plays Phase 1 with none,
+    because there is nothing to spend them on until the auction, so the starting
+    balance is granted here, to the people who are through. Revising the
+    selection moves the coins with it: granted once to anyone newly through,
+    taken back from anyone dropped, both written to their ledger.
+    """
     chosen = set(participant_ids)
     with db.transaction() as conn:
+        starting_balance = get_contest(conn).starting_balance
         everyone = conn.execute(sa.select(participant.c.user_id)).scalars().all()
+        already_paid = _paid_already(conn)
         for pid in everyone:
             values = {
                 "advanced": pid in chosen,
@@ -29,6 +40,9 @@ def set_advancement(actor_id: str, participant_ids: list[str], reason: str) -> N
             }
             stmt = pg_insert(p1_advancement).values(participant_id=pid, **values)
             conn.execute(stmt.on_conflict_do_update(index_elements=["participant_id"], set_=values))
+            wallet.settle_starting_balance(
+                conn, pid, pid in chosen, starting_balance, held=pid in already_paid
+            )
         audit(
             conn,
             actor_id=actor_id,
@@ -42,6 +56,17 @@ def set_advancement(actor_id: str, participant_ids: list[str], reason: str) -> N
         else:
             body = "You were not selected for Phase 2. Thank you for taking part."
         events.publish("notify", {"body": body}, pid)
+
+
+def _paid_already(conn: sa.Connection) -> set[str]:
+    """Who is holding their starting coins, for everyone, in one read."""
+    net = sa.func.coalesce(sa.func.sum(ledger.c.delta), 0)
+    rows_ = conn.execute(
+        sa.select(ledger.c.participant_id, net.label("net"))
+        .where(ledger.c.reason.in_((wallet.STARTING_GRANT, wallet.STARTING_CLAWBACK)))
+        .group_by(ledger.c.participant_id)
+    ).all()
+    return {r.participant_id for r in rows_ if r.net > 0}
 
 
 def has_advanced(conn: sa.Connection, participant_id: str) -> bool:

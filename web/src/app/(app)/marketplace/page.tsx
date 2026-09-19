@@ -14,6 +14,7 @@
  * with the same id and are collapsed onto the first attempt by the server, so
  * nobody is charged twice for a fumbled tap.
  */
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { useContest, useEngineEvent } from "@/components/contest-provider";
@@ -24,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Hint } from "@/components/ui/hint";
 import { Modal } from "@/components/ui/modal";
-import { PageBody, PageHeader } from "@/components/ui/page";
+import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { OfferSkeleton, StatStripSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { useToast } from "@/components/ui/toast";
@@ -53,7 +54,7 @@ type Item = {
 
 type Target = { id: string; name: string; disqualified: boolean; shielded: boolean; blacked_out: boolean };
 
-type Market = { open: boolean; phase: string; balance: number; items: Item[]; targets: Target[] };
+type Market = { open: boolean; in_phase2: boolean; phase: string; balance: number; items: Item[]; targets: Target[] };
 
 /** One id per attempt, so a retry is the same attempt rather than a new one. */
 const newRequestId = () =>
@@ -142,6 +143,28 @@ export default function MarketplacePage() {
           <OfferSkeleton />
           <OfferSkeleton actions={1} />
         </div>
+      </PageBody>
+    );
+  }
+
+  // Before Phase 2 there is no shop at all: nothing on sale, nobody to aim at,
+  // and no coins yet either. Saying so is the whole page.
+  if (!market.in_phase2) {
+    return (
+      <PageBody width="narrow" className="animate-fade-in">
+        <PageHeader title="Marketplace" info={ABOUT} />
+        <Section padded={false}>
+          <EmptyState
+            icon={<Icon.Lock size={20} />}
+            title="The marketplace opens in Phase 2"
+            body="Powerups are aimed at the people you are bidding and solving against, so nothing is on sale until the auction. Your coins arrive then too."
+            action={
+              <Button variant="outline" asChild>
+                <Link href="/dashboard">Back to the contest</Link>
+              </Button>
+            }
+          />
+        </Section>
       </PageBody>
     );
   }

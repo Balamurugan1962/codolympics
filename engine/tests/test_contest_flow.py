@@ -18,6 +18,7 @@ from engine.accounts import credentials, registration
 from engine.coding import hints
 from engine.contest import phases
 from engine.core import db, events
+from engine.phase1 import selection
 from engine.phase1.answers import distinct_entries, normalise_answer, score_auto
 from engine.schema import contest, hint, ownership, user
 
@@ -111,7 +112,28 @@ def test_two_people_registering_one_name_at_once_get_one_account() -> None:
     assert set(codes(results)) == {"name_taken"}
     person = rows(sa.select(user).where(user.c.username == "same_name"))[0]
     assert (person.display_username, person.role) == ("Same Name", "participant")
-    assert balance_of(person.id) == 1000
+    # Coins arrive with Phase 2, not with the account.
+    assert balance_of(person.id) == 0
+
+
+def test_coins_arrive_when_phase_2_selection_is_made() -> None:
+    through = registration.register_participant("Through", "password123", "cpp")
+    out = registration.register_participant("Out", "password123", "cpp")
+    assert balance_of(through) == balance_of(out) == 0
+
+    selection.set_advancement("admin", [through], "top of the board")
+    assert balance_of(through) == 1000
+    assert balance_of(out) == 0
+
+    # Revising the same selection pays nobody twice.
+    selection.set_advancement("admin", [through], "unchanged")
+    assert balance_of(through) == 1000
+
+    # Dropped, so the coins go back; put through again, and they return.
+    selection.set_advancement("admin", [out], "swapped")
+    assert (balance_of(through), balance_of(out)) == (0, 1000)
+    selection.set_advancement("admin", [through, out], "both after all")
+    assert (balance_of(through), balance_of(out)) == (1000, 1000)
 
 
 def test_registration_is_refused_once_closed() -> None:

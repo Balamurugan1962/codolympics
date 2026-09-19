@@ -94,8 +94,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
     );
   }
   const { viewer, contest, me } = state;
-  // Nothing to buy or aim at if you are not competing.
-  const nav = viewer.role === "participant" ? NAV : NAV.filter((n) => n.href !== "/marketplace");
+  // Nothing to buy or aim at if you are not competing, and nothing to buy at
+  // all until Phase 2: powerups are spent against the people you are bidding
+  // and solving against, so the shop is not even listed in Phase 1.
+  const shopping = viewer.role === "participant" && contest.in_phase2;
+  const nav = shopping ? NAV : NAV.filter((n) => n.href !== "/marketplace");
   const home = "/dashboard";
   const workspace = pathname.startsWith("/question/");
   // The workspace is opened from the contest screen, so it keeps that item lit.
@@ -154,7 +157,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-2.5">
-            {me && (
+            {/* Coins only exist in Phase 2, so the wallet appears with them
+                rather than sitting at zero all through Phase 1. */}
+            {me && shopping && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="flex items-center gap-1.5 rounded-none bg-brand-bright/15 px-2.5 py-1 text-[12px] font-semibold text-brand-bright">
@@ -162,7 +167,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                     <span className="tabular-nums">{me.balance.toLocaleString()}</span>
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>Your coins — spent on questions, hints and powerups</TooltipContent>
+                <TooltipContent>Your coins. Spent on questions, hints and powerups</TooltipContent>
               </Tooltip>
             )}
 

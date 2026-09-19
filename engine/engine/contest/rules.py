@@ -52,6 +52,29 @@ def is_phase2(phase: str) -> bool:
     return phase in ("auction1", "coding1", "auction2", "final", "ended")
 
 
+def in_phase2(phase: str) -> bool:
+    """Phase 2 while it is still being played.
+
+    Coins and powerups both belong here and nowhere else: in Phase 1 nobody owns
+    a question to be blacked out of and there is nothing to spend on, and once
+    the contest has ended there is nothing left to buy.
+    """
+    return is_phase2(phase) and phase != "ended"
+
+
+def marketplace_closed_reason(c: sa.Row) -> str | None:
+    """Why the shop cannot be used right now, as a sentence, or None if it can.
+
+    One gate, so the storefront's explanation and the refusal a buy gets can
+    never disagree, and a new way to buy something cannot check only half of it.
+    """
+    if not in_phase2(c.phase):
+        return "The marketplace opens in Phase 2."
+    if not c.marketplace_open:
+        return "The marketplace is closed."
+    return None
+
+
 def auction_round(phase: str) -> int:
     """Which auction round a phase belongs to; round 2 from auction2 on."""
     return 2 if phase == "auction2" else 1
@@ -77,5 +100,9 @@ def phase_snapshot(c: sa.Row) -> dict[str, Any]:
         "phase_ends_at": clock.iso(c.phase_ends_at),
         "registration_open": c.registration_open,
         "leaderboard_mode": c.leaderboard_mode,
+        # Sent rather than worked out from the phase name in the browser: which
+        # phases carry coins and a shop is the engine's rule, and a copy of the
+        # list in the frontend is a copy that can disagree with the refusals.
+        "in_phase2": in_phase2(c.phase),
         "server_now": clock.now_ms(),
     }

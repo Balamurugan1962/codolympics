@@ -16,7 +16,7 @@ from typing import Any
 import sqlalchemy as sa
 
 from engine.accounts import wallet
-from engine.contest.rules import lock_contest
+from engine.contest.rules import lock_contest, marketplace_closed_reason
 from engine.core import db, errors, events
 from engine.marketplace.inventory import add_to_inventory, event_for, holdings
 from engine.schema import participant, powerup, powerup_event
@@ -37,8 +37,8 @@ def buy(participant_id: str, powerup_id: int, request_id: str) -> dict[str, Any]
 def _buy(
     conn: sa.Connection, participant_id: str, powerup_id: int, request_id: str
 ) -> dict[str, Any]:
-    if not lock_contest(conn).marketplace_open:
-        raise errors.conflict("marketplace_closed", "the marketplace is closed")
+    if closed := marketplace_closed_reason(lock_contest(conn)):
+        raise errors.conflict("marketplace_closed", closed[0].lower() + closed[1:].rstrip("."))
     p = wallet.lock_participant(conn, participant_id)
     if p is None:
         raise errors.forbidden("not a participant")
