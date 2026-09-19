@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { authClient } from "@/lib/auth-client";
 
 export default function LoginPage() {
@@ -39,7 +40,7 @@ export default function LoginPage() {
           <Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" required placeholder="e.g. Bala" />
         </Field>
         <Field label="Password">
-          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required placeholder="••••••••" />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required placeholder="Your password" />
         </Field>
         <Button type="submit" className="w-full" loading={busy}>Sign in</Button>
       </form>
