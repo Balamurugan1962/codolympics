@@ -70,23 +70,45 @@ function DropdownMenuGroup({
   )
 }
 
+/**
+ * A menu item.
+ *
+ * `onSelect` is accepted as well as `onClick`, and both fire when the item is
+ * chosen. Radix named this handler `onSelect` and Base UI names it `onClick`;
+ * `onSelect` is also a real DOM event on a `<div>` (text selection), so the
+ * forty call sites written against Radix type-checked perfectly and did
+ * nothing at all — Edit, Void, Delete and Sign out were dead. Translating it
+ * here fixes every one of them and keeps the spelling the rest of this app
+ * uses.
+ */
 function DropdownMenuItem({
   className,
   inset,
   variant = "default",
   asChild,
   children,
+  onSelect,
+  onClick,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
   inset?: boolean
   variant?: "default" | "destructive"
   asChild?: boolean
 }) {
+  type Chosen = NonNullable<React.ComponentProps<typeof DropdownMenuPrimitive.Item>["onClick"]>
+  const choose: Chosen | undefined =
+    onSelect || onClick
+      ? (event) => {
+          onClick?.(event)
+          onSelect?.(event)
+        }
+      : undefined
   return (
     <DropdownMenuPrimitive.Item
       data-slot="dropdown-menu-item"
       data-inset={inset}
       data-variant={variant}
+      onClick={choose}
       className={cn(
         "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[variant=destructive]:*:[svg]:text-destructive!",
         className
@@ -158,15 +180,25 @@ function DropdownMenuRadioItem({
   )
 }
 
+/**
+ * A heading inside a menu — "Signed in as", or the name of a group of items.
+ *
+ * A plain element, not Base UI's `Menu.GroupLabel`, which throws unless it is
+ * wrapped in a `Menu.Group`. Every call site here writes the heading as a
+ * sibling of the items it introduces (what Radix allowed), and one of them was
+ * the account menu in both shells: the throw took the whole menu down, so
+ * there was no way to sign out. Where a heading really does name a group, wrap
+ * that group in `DropdownMenuGroup` and give it an `aria-label`.
+ */
 function DropdownMenuLabel({
   className,
   inset,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.GroupLabel> & {
+}: React.ComponentProps<"div"> & {
   inset?: boolean
 }) {
   return (
-    <DropdownMenuPrimitive.GroupLabel
+    <div
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(
