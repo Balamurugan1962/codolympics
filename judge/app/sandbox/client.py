@@ -1,24 +1,21 @@
 """Thin client for the go-judge REST API.
 
 go-judge is the sandbox. It runs one command under limits and reports what
-happened. It knows nothing about problems, testcases or verdicts -- that is
-judge.py's job.
+happened. It knows nothing about problems, testcases or verdicts; that is the
+judging package's job.
 
 The feature the whole design rests on is the file cache: a command can write a
 file, go-judge keeps it server-side and returns a fileId, and later commands
 mount it by that id. That is how we compile once and run many (US-J1-04).
-
-Every duration in the go-judge API is nanoseconds.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Protocol
 
 import httpx
 
-from .config import settings
-
-NS_PER_MS = 1_000_000
+from app.sandbox.command import NS_PER_MS
 
 
 class SandboxUnavailable(RuntimeError):
@@ -40,13 +37,24 @@ class Result:
     def accepted(self) -> bool:
         """The command ran to completion within its limits.
 
-        This says nothing about whether the output was *correct* -- that is
-        compare.py's decision.
+        This says nothing about whether the output was *correct*; that is a
+        comparator's decision.
         """
         return self.status == "Accepted"
 
+    @property
+    def exited(self) -> bool:
+        """The command ran and returned an exit code of its own choosing, as
+        opposed to being stopped by a limit or a signal. Scripts that report
+        through their exit code are read this way."""
+        return self.status in ("Accepted", "Nonzero Exit Status")
+
+    def stopped_by(self, what: str) -> str:
+        """How to say that `what` (a checker, a compiler) hit a limit."""
+        return f"{what} {self.status.lower()}"
+
     @classmethod
-    def from_json(cls, d: dict) -> "Result":
+    def from_json(cls, d: dict) -> Result:
         files = d.get("files") or {}
         return cls(
             status=d.get("status", "Internal Error"),
@@ -60,53 +68,25 @@ class Result:
         )
 
 
-def command(
-    *,
-    args: list[str],
-    env: list[str],
-    stdin: str = "",
-    time_limit_ms: int,
-    memory_mb: int,
-    copy_in: dict[str, dict] | None = None,
-    cache_outputs: list[str] | None = None,
-    proc_limit: int = 64,
-    stdout_max: int | None = None,
-) -> dict:
-    """Build one go-judge command.
+class Sandbox(Protocol):
+    """What the rest of the service needs from a sandbox. The test suite's fake
+    implements exactly this."""
 
-    Kept as a plain function returning a dict so the payload we send stays
-    obvious when debugging against the go-judge API docs.
-    """
-    limit = stdout_max if stdout_max is not None else settings.output_limit_mb * 1024 * 1024
-    return {
-        "args": args,
-        "env": env,
-        "files": [
-            {"content": stdin},
-            {"name": "stdout", "max": limit},
-            {"name": "stderr", "max": 65_536},
-        ],
-        "cpuLimit": time_limit_ms * NS_PER_MS,
-        # Wall-clock gets double the CPU budget so a program that blocks or
-        # sleeps is still caught, without failing one that merely gets
-        # descheduled under load.
-        "clockLimit": time_limit_ms * 2 * NS_PER_MS,
-        "memoryLimit": memory_mb * 1024 * 1024,
-        "procLimit": proc_limit,
-        "copyIn": copy_in or {},
-        "copyOutCached": cache_outputs or [],
-    }
+    url: str
+
+    def reachable(self) -> bool: ...
+    def run(self, commands: list[dict]) -> list[Result]: ...
+    def upload(self, content: str | bytes) -> str: ...
+    def delete(self, file_id: str) -> None: ...
+    def close(self) -> None: ...
 
 
 class GoJudge:
     """Synchronous client. Judging runs in worker threads, so sync is simpler."""
 
-    def __init__(self, url: str | None = None, timeout_s: float | None = None):
-        self.url = (url or settings.go_judge_url).rstrip("/")
-        self._client = httpx.Client(
-            base_url=self.url,
-            timeout=timeout_s or settings.go_judge_timeout_s,
-        )
+    def __init__(self, url: str, timeout_s: float):
+        self.url = url.rstrip("/")
+        self._client = httpx.Client(base_url=self.url, timeout=timeout_s)
 
     def close(self) -> None:
         self._client.close()
@@ -119,23 +99,14 @@ class GoJudge:
             return False
 
     def run(self, commands: list[dict]) -> list[Result]:
-        try:
-            response = self._client.post("/run", json={"cmd": commands})
-            response.raise_for_status()
-        except httpx.HTTPError as exc:
-            raise SandboxUnavailable(f"cannot reach go-judge at {self.url}: {exc}") from exc
+        response = self._post("/run", json={"cmd": commands})
         return [Result.from_json(item) for item in response.json()]
 
     def upload(self, content: str | bytes) -> str:
         """Store a file server-side and return its fileId."""
         if isinstance(content, str):
             content = content.encode()
-        try:
-            response = self._client.post("/file", files={"file": ("f", content)})
-            response.raise_for_status()
-        except httpx.HTTPError as exc:
-            raise SandboxUnavailable(f"cannot reach go-judge at {self.url}: {exc}") from exc
-        return response.json()
+        return self._post("/file", files={"file": ("f", content)}).json()
 
     def delete(self, file_id: str) -> None:
         """Release a cached artefact.
@@ -147,3 +118,11 @@ class GoJudge:
             self._client.delete(f"/file/{file_id}")
         except httpx.HTTPError:
             pass
+
+    def _post(self, path: str, **payload) -> httpx.Response:
+        try:
+            response = self._client.post(path, **payload)
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise SandboxUnavailable(f"cannot reach go-judge at {self.url}: {exc}") from exc
+        return response

@@ -21,35 +21,20 @@ must then treat every entry as unchecked, never as invalid.
 """
 from __future__ import annotations
 
-import importlib.util
 import json
 import sys
 
-from checker_runtime import ReadError, Reader
+from checker_runtime import Reader, ReadError, finish, load_function
 
 EXIT_OK = 0
 EXIT_IE = 3
 
 
-def _load(path: str, module_name: str):
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"cannot load {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def main() -> None:
     try:
-        validator = _load("validator.py", "answer_validator")
-    except Exception as exc:
-        print(f"validator failed to load: {exc!r}", file=sys.stderr)
-        sys.exit(EXIT_IE)
-
-    if not hasattr(validator, "check"):
-        print("validator.py does not define check(entry)", file=sys.stderr)
-        sys.exit(EXIT_IE)
+        check = load_function("validator.py", "answer_validator", "check")
+    except ImportError as exc:
+        finish(EXIT_IE, f"validator failed to load: {exc}")
 
     with open("entries.json", encoding="utf-8") as handle:
         entries = json.load(handle)
@@ -57,7 +42,7 @@ def main() -> None:
     results = []
     for entry in entries:
         try:
-            valid = bool(validator.check(Reader(str(entry), "answer")))
+            valid = bool(check(Reader(str(entry), "answer")))
             results.append({"valid": valid, "error": None})
         except ReadError as exc:
             # The entry did not have the shape the validator asked for. That is

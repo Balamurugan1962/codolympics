@@ -1,6 +1,6 @@
 """Where testcase bytes come from (US-J5-05).
 
-The interface is deliberately tiny -- read a key, list a prefix -- so that
+The interface is deliberately tiny, read a key and list a prefix, so that
 swapping local disk for S3 later touches this file and nothing else. Judging
 logic never opens a path.
 
@@ -31,13 +31,22 @@ class Storage(ABC):
     def modified_at(self, key: str) -> float:
         """Unix timestamp."""
 
+    @abstractmethod
+    def resolve_symlink(self, key: str) -> str | None:
+        """Name a pointer points at, or None. Used to read `current`.
+
+        A local filesystem has symlinks; an object store would keep the
+        pointer as a small object instead. Callers treat None as "no
+        versioned layout".
+        """
+
     def read_text(self, key: str) -> str:
         """Testcases are UTF-8 text; this service only judges stdin/stdout problems."""
         return self.read(key).decode("utf-8")
 
 
 class LocalStorage(Storage):
-    """Reads straight off disk -- no network round trip, no cache to invalidate."""
+    """Reads straight off disk: no network round trip, no cache to invalidate."""
 
     def __init__(self, root: str | Path):
         self.root = Path(root).resolve()
@@ -75,12 +84,6 @@ class LocalStorage(Storage):
         return self._path(key).stat().st_mtime
 
     def resolve_symlink(self, key: str) -> str | None:
-        """Name a symlink points at, or None. Used to read the `current` pointer.
-
-        This is the one thing a local filesystem offers that object storage
-        does not; an S3 backend would store the pointer as a small object
-        instead. Callers treat a None result as "no versioned layout".
-        """
         # Deliberately not _path(): that resolves the whole path, which follows
         # the symlink and would leave nothing to read.
         path = self.root / key

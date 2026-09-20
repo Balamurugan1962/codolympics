@@ -38,21 +38,18 @@ CASES = [("2 3\n", "5\n"), ("10 20\n", "30\n"), ("-1 1\n", "0\n")]
 
 
 @pytest.fixture
-def e2e_client(tmp_path: Path, monkeypatch):
+def e2e_client(tmp_path: Path):
     from fastapi.testclient import TestClient
 
-    from app import main
-    from app.config import settings
+    from app.config import Settings
+    from app.main import create_app
 
     root = tmp_path / "problems"
     root.mkdir()
     write_problem(root, "sum", CASES)
 
-    monkeypatch.setattr(settings, "problems_dir", str(root))
-    monkeypatch.setattr(settings, "service_token", TOKEN)
-    monkeypatch.setattr(settings, "go_judge_url", E2E_URL)
-
-    with TestClient(main.app) as client:
+    app = create_app(Settings(problems_dir=str(root), service_token=TOKEN, go_judge_url=E2E_URL))
+    with TestClient(app) as client:
         client.headers.update({"Authorization": f"Bearer {TOKEN}"})
         yield client, root
 

@@ -6,7 +6,7 @@ calling out.int() without defending against garbage.
 """
 import pytest
 
-from app.checker_runtime import CONTESTANT, ReadError, Reader
+from app.sandbox.runtime.checker_runtime import CONTESTANT, Reader, ReadError
 
 
 def contestant(text: str) -> Reader:

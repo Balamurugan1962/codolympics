@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from app.gojudge import Result
+from app.sandbox.client import Result
 
 TOKEN = "test-token"
 
@@ -203,17 +203,14 @@ def sandbox() -> FakeSandbox:
 
 
 @pytest.fixture
-def client(problems_dir: Path, sandbox: FakeSandbox, monkeypatch):
+def client(problems_dir: Path, sandbox: FakeSandbox):
     from fastapi.testclient import TestClient
 
-    from app import main
-    from app.config import settings
+    from app.config import Settings
+    from app.main import create_app
 
-    monkeypatch.setattr(settings, "problems_dir", str(problems_dir))
-    monkeypatch.setattr(settings, "service_token", TOKEN)
-    monkeypatch.setattr(main, "GoJudge", lambda *a, **k: sandbox)
-
-    with TestClient(main.app) as test_client:
+    app = create_app(Settings(problems_dir=str(problems_dir), service_token=TOKEN), sandbox)
+    with TestClient(app) as test_client:
         test_client.headers.update({"Authorization": f"Bearer {TOKEN}"})
         yield test_client
 

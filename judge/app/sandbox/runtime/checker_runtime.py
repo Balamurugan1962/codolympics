@@ -145,13 +145,20 @@ class Reader:
             raise ReadError(self._source, f"{value} is above the maximum {high}")
 
 
-def _load(path: str, module_name: str):
+def load_function(path: str, module_name: str, function: str):
+    """The setter's `function` from the file at `path`, or an ImportError
+    saying why it could not be had."""
     spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load {path}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        raise ImportError(f"{path} failed to load: {exc!r}") from exc
+    if not hasattr(module, function):
+        raise ImportError(f"{path} does not define {function}")
+    return getattr(module, function)
 
 
 def _read(path: str) -> str:
@@ -159,44 +166,40 @@ def _read(path: str) -> str:
         return handle.read()
 
 
-def _finish(code: int, message: str) -> None:
+def finish(code: int, message: str) -> None:
     print(message, file=sys.stderr)
     sys.exit(code)
 
 
+def _unpack(outcome) -> tuple[bool, str]:
+    """Accept either `True` or `(True, "message")`."""
+    if isinstance(outcome, tuple):
+        return outcome[0], str(outcome[1]) if len(outcome) > 1 else ""
+    return outcome, ""
+
+
 def main() -> None:
     try:
-        checker = _load("checker.py", "problem_checker")
-    except Exception as exc:
-        _finish(EXIT_IE, f"checker failed to load: {exc!r}")
-
-    if not hasattr(checker, "check"):
-        _finish(EXIT_IE, "checker.py does not define check(inp, out, ans)")
-
+        check = load_function("checker.py", "problem_checker", "check")
+    except ImportError as exc:
+        finish(EXIT_IE, f"checker failed to load: {exc}")
     inp = Reader(_read("input.txt"), "input")
     out = Reader(_read("output.txt"), CONTESTANT)
     ans = Reader(_read("answer.txt"), "answer")
 
     try:
-        outcome = checker.check(inp, out, ans)
+        accepted, message = _unpack(check(inp, out, ans))
     except ReadError as exc:
         # Where the bad data came from decides whose fault it is.
         if exc.source == CONTESTANT:
-            _finish(EXIT_WA, exc.message)
-        _finish(EXIT_IE, f"jury data is malformed ({exc.source}): {exc.message}")
+            finish(EXIT_WA, exc.message)
+        finish(EXIT_IE, f"jury data is malformed ({exc.source}): {exc.message}")
     except Exception as exc:
-        _finish(EXIT_IE, f"checker raised {type(exc).__name__}: {exc}")
-
-    # Accept either `True` or `(True, "message")`.
-    message = ""
-    if isinstance(outcome, tuple):
-        accepted, message = outcome[0], str(outcome[1]) if len(outcome) > 1 else ""
-    else:
-        accepted = outcome
+        finish(EXIT_IE, f"checker raised {type(exc).__name__}: {exc}")
 
     if accepted:
-        _finish(EXIT_AC, message or "accepted")
-    _finish(EXIT_WA, message or "rejected by checker")
+        finish(EXIT_AC, message or "accepted")
+    finish(EXIT_WA, message or "rejected by checker")
 
 
 if __name__ == "__main__":

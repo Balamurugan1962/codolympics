@@ -1,7 +1,8 @@
 """Request and response bodies, mirroring openapi.yaml exactly.
 
-If you change a field here, change it in openapi.yaml too -- tests/test_contract.py
-compares the two and will fail if they drift.
+The results a job carries live in app.core.results; this file holds what only
+the HTTP layer sees. If you change a field here, change it in openapi.yaml
+too. tests/test_contract.py compares the two and will fail if they drift.
 """
 from __future__ import annotations
 
@@ -9,34 +10,19 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Verdict = Literal["AC", "WA", "TLE", "MLE", "OLE", "RE", "CE", "IE"]
-CompareMode = Literal["tokens", "exact", "float", "yesno", "checker"]
+from app.core.comparison import CompareMode
+from app.core.problem import ID_PATTERN
+from app.core.results import AnswersResult, HackResult, Judgement
+from app.jobs.control import POLL_QUEUED_MS
+
 JobStateName = Literal["queued", "running", "done"]
 
 
 class SubmitRequest(BaseModel):
-    problem_id: str = Field(pattern=r"^[A-Za-z0-9._-]+$")
+    problem_id: str = Field(pattern=ID_PATTERN)
     language: str
     source: str
     submission_id: str | None = Field(default=None, max_length=64)
-
-
-class Judgement(BaseModel):
-    submission_id: str | None = None
-    verdict: Verdict
-    passed: int
-    total: int
-    first_fail: int | None = None
-    max_time_ms: float = 0.0
-    max_memory_kb: int = 0
-    compile_output: str = ""
-    message: str = ""
-    # Contains the expected answer for the failing test. Admin dashboard only --
-    # showing this to a contestant hands them the answer they would otherwise
-    # have to buy as a hint.
-    jury_detail: str = ""
-    problem_version: str = ""
-    duration_ms: int = 0
 
 
 class HackRequest(BaseModel):
@@ -47,7 +33,7 @@ class HackRequest(BaseModel):
     yet. Without it, proving a hack would require publishing first, which is the
     wrong way round -- publishing is what you do *after* the proof.
     """
-    problem_id: str = Field(pattern=r"^[A-Za-z0-9._-]+$")
+    problem_id: str = Field(pattern=ID_PATTERN)
     language: str
     source: str
     input: str
@@ -55,41 +41,11 @@ class HackRequest(BaseModel):
     submission_id: str | None = Field(default=None, max_length=64)
 
 
-class HackResult(BaseModel):
-    submission_id: str | None = None
-    # False means the input broke a constraint and nothing was run.
-    valid_input: bool
-    invalid_reason: str = ""
-    # None when the input was invalid or the problem itself is broken (IE).
-    hacked: bool | None = None
-    # The given solution's verdict on this input. Never show a participant this;
-    # it turns the judge into an oracle for probing the solution.
-    verdict: Verdict | None = None
-    message: str = ""
-    problem_version: str = ""
-    duration_ms: int = 0
-
-
 class AnswersRequest(BaseModel):
     """Score a list of entries with a supplied validator (US-J7-03)."""
     validator: str
     entries: list[str]
     submission_id: str | None = Field(default=None, max_length=64)
-
-
-class EntryResult(BaseModel):
-    valid: bool
-    error: str | None = None
-
-
-class AnswersResult(BaseModel):
-    submission_id: str | None = None
-    # "ok" or "IE". On IE, `results` is empty: nothing was checked, and the
-    # caller must not treat that as every entry being invalid.
-    status: Literal["ok", "IE"]
-    results: list[EntryResult] = Field(default_factory=list)
-    message: str = ""
-    duration_ms: int = 0
 
 
 class Progress(BaseModel):
@@ -101,7 +57,7 @@ class JobHandle(BaseModel):
     job_id: str
     submission_id: str | None = None
     state: Literal["queued"] = "queued"
-    poll_after_ms: int = 500
+    poll_after_ms: int = POLL_QUEUED_MS
 
 
 class JobState(BaseModel):
@@ -163,29 +119,6 @@ class ValidateRequest(BaseModel):
     reference_source: str | None = None
     language: str | None = None
     wrong_source: str | None = None
-
-
-class CheckerReport(BaseModel):
-    compiled: bool
-    output: str = ""
-
-
-class SolutionReport(BaseModel):
-    verdict: Verdict
-    first_fail: int | None = None
-    passed: int = 0
-    max_time_ms: float = 0.0
-
-
-class ValidationReport(BaseModel):
-    problem_id: str
-    ok: bool
-    testcases: int
-    version: str = ""
-    issues: list[str] = Field(default_factory=list)
-    checker: CheckerReport | None = None
-    reference: SolutionReport | None = None
-    wrong_solution: SolutionReport | None = None
 
 
 class ErrorBody(BaseModel):

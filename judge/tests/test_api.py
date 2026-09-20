@@ -1,5 +1,5 @@
 """The HTTP contract, end to end against a fake sandbox."""
-from tests.conftest import TOKEN, wait_for_job, write_problem
+from tests.conftest import wait_for_job, write_problem
 
 SOURCE = "int main(){}"
 
@@ -58,7 +58,7 @@ class TestMetadata:
         assert {"c", "cpp", "python", "pypy", "java", "javascript"} == keys
 
     def test_languages_mark_compiled(self, client):
-        by_key = {l["key"]: l for l in client.get("/languages").json()["languages"]}
+        by_key = {lang["key"]: lang for lang in client.get("/languages").json()["languages"]}
         assert by_key["cpp"]["compiled"] is True
         assert by_key["python"]["compiled"] is False
 
@@ -121,8 +121,7 @@ class TestSubmit:
         assert sandbox.runs == 0
 
     def test_queue_full_is_429_with_retry_after(self, client, monkeypatch):
-        from app import main
-        monkeypatch.setattr(main.services.queue, "has_room", lambda: False)
+        monkeypatch.setattr(client.app.state.services.queue, "has_room", lambda: False)
         response = submit(client)
         assert response.status_code == 429
         assert response.json()["error"] == "busy"
@@ -286,12 +285,11 @@ class TestJobs:
         assert client.delete("/jobs/job_missing").status_code == 404
 
     def test_expired_job_is_forgotten(self, client, sandbox, monkeypatch):
-        from app.config import settings
         sandbox.solve = lambda stdin: str(sum(int(x) for x in stdin.split()))
         job_id = submit(client).json()["job_id"]
         wait_for_job(client, job_id)
 
-        monkeypatch.setattr(settings, "job_ttl_s", -1)
+        monkeypatch.setattr(client.app.state.services.queue, "ttl_s", -1)
         assert client.get(f"/jobs/{job_id}").status_code == 404
 
 
@@ -338,8 +336,7 @@ class TestTestcaseAccess:
         assert historical["version"] == "v1"
 
     def test_large_testcase_is_truncated_and_flagged(self, client, problems_dir, monkeypatch):
-        from app.config import settings
-        monkeypatch.setattr(settings, "testcase_response_bytes", 4)
+        monkeypatch.setattr(client.app.state.services.settings, "testcase_response_bytes", 4)
         body = client.get("/problems/sum/testcases/1").json()
         assert body["truncated"] is True
         assert len(body["input"]) == 4
