@@ -1,7 +1,8 @@
 """Every tunable in one place, all overridable by environment variable.
 
 Nothing else in the service reads os.environ, so this file is the complete
-list of knobs an operator has.
+list of knobs an operator has. `Settings()` is built once, in create_app, and
+handed to the container; nothing reads it as a global.
 """
 from __future__ import annotations
 
@@ -50,6 +51,7 @@ class Settings(BaseSettings):
     # --- checkers and validators ------------------------------------------
     checker_time_limit_ms: int = 10_000
     checker_memory_mb: int = 512
+    script_output_bytes: int = 65_536      # what a checker or validator may print
 
     model_config = {"env_prefix": "JUDGE_", "env_file": ".env"}
 
@@ -59,5 +61,3 @@ class Settings(BaseSettings):
     def resolved_queue_limit(self) -> int:
         return self.queue_limit if self.queue_limit > 0 else self.resolved_concurrency() * 2
 
-
-settings = Settings()

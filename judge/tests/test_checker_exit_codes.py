@@ -4,12 +4,13 @@ This is the bug that would have broken every checker problem: a checker says
 "wrong answer" by exiting 1, which go-judge reports as "Nonzero Exit Status".
 Reading that as a sandbox failure turns every WA into an IE.
 """
-from app.checker import SandboxedPython
-from app.gojudge import Result
+from app.core.verdict import clean_stderr
+from app.sandbox.client import Result
+from app.sandbox.scripts import SandboxedPython
 
 
 def interpret(status: str, exit_status: int, stderr: str = ""):
-    return SandboxedPython._interpret(
+    return SandboxedPython.interpret_checker(
         Result(status, exit_status, 1.0, 1.0, 1024, "", stderr, {})
     )
 
@@ -56,18 +57,12 @@ class TestStderrNoise:
     """PyPy prints a cache warning on every run; it must not bury a real error."""
 
     def test_pypy_cache_warning_is_dropped(self):
-        from app.judge import _clean_stderr
-
         noisy = ("Warning: cannot find your CPU L2 & L3 cache size in "
                  "/sys/devices/system/cpu/cpuX/cache\nTraceback: real error here")
-        assert _clean_stderr(noisy) == "Traceback: real error here"
+        assert clean_stderr(noisy) == "Traceback: real error here"
 
     def test_a_clean_error_is_untouched(self):
-        from app.judge import _clean_stderr
-
-        assert _clean_stderr("segmentation fault") == "segmentation fault"
+        assert clean_stderr("segmentation fault") == "segmentation fault"
 
     def test_only_noise_leaves_nothing(self):
-        from app.judge import _clean_stderr
-
-        assert _clean_stderr("Warning: cannot find your CPU L2 & L3 cache size in x") == ""
+        assert clean_stderr("Warning: cannot find your CPU L2 & L3 cache size in x") == ""

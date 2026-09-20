@@ -1,6 +1,6 @@
 """Loading problems and their testcases.
 
-On-disk layout, versioned (recommended -- required for mid-contest edits):
+On-disk layout, versioned (recommended; required for mid-contest edits):
 
     problems/
       hard-03/
@@ -29,71 +29,19 @@ A judgement resolves the version once, at the start, and holds it. Re-pointing
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+import posixpath
 from datetime import datetime, timezone
 
-from .config import settings
-from .storage import LocalStorage, Storage
+from app.core import languages
+from app.core.languages import Language
+from app.core.problem import Problem, ProblemBroken, ProblemNotFound, Reference, SetterFile, Testcase
+from app.problems.storage import Storage
 
 # A testcase is an input file plus the expected answer. Both spellings are
 # accepted because both are common in problem archives.
 ANSWER_SUFFIXES = (".ans", ".out")
 
 UNVERSIONED = "v1"
-
-
-@dataclass(frozen=True)
-class Testcase:
-    index: int          # zero-based, matching first_fail in a judgement
-    input_key: str
-    answer_key: str
-
-
-@dataclass(frozen=True)
-class Problem:
-    problem_id: str
-    version: str
-    root: str                       # storage prefix of the resolved version
-    time_limit_ms: int
-    memory_limit_mb: int
-    compare: str
-    early_exit: bool
-    float_tolerance: float
-    # A stored correct solution: `"reference": {"language": "cpp", "file": "solution.cpp"}`.
-    # Nothing ever serves its source (US-J7-02).
-    reference_language: str | None = None
-    reference_file: str | None = None
-    # A problem that exists only to be hacked has no testcases of its own.
-    hack_only: bool = False
-    testcases: list[Testcase] = field(default_factory=list)
-
-    @property
-    def total(self) -> int:
-        return len(self.testcases)
-
-    @property
-    def checker_key(self) -> str:
-        return f"{self.root}/checker.py"
-
-    @property
-    def validator_key(self) -> str:
-        return f"{self.root}/validator.py"
-
-    @property
-    def has_reference(self) -> bool:
-        return bool(self.reference_language and self.reference_file)
-
-    @property
-    def reference_key(self) -> str:
-        return f"{self.root}/{self.reference_file}"
-
-
-class ProblemNotFound(Exception):
-    pass
-
-
-class ProblemBroken(Exception):
-    """The problem exists but cannot be loaded -- bad JSON, missing tests."""
 
 
 class ProblemStore:
@@ -104,13 +52,13 @@ class ProblemStore:
     version never has to restart the judge to see it.
     """
 
-    def __init__(self, storage: Storage | None = None):
-        self.storage = storage or LocalStorage(settings.problems_dir)
+    def __init__(self, storage: Storage):
+        self.storage = storage
 
     # --- discovery ---------------------------------------------------------
 
     def ids(self) -> list[str]:
-        return [key.split("/")[-1] for key in self.storage.list("")]
+        return [posixpath.basename(key) for key in self.storage.list("")]
 
     def count(self) -> int:
         return len(self.ids())
@@ -118,7 +66,7 @@ class ProblemStore:
     def resolve_version(self, problem_id: str, version: str | None = None) -> str:
         """Which version directory to read.
 
-        An explicit version wins -- that is how jury inspection reads the
+        An explicit version wins: that is how jury inspection reads the
         testcase a submission actually failed on, rather than whatever is
         current now (US-J5-03).
         """
@@ -146,16 +94,7 @@ class ProblemStore:
     def load(self, problem_id: str, version: str | None = None) -> Problem:
         version = self.resolve_version(problem_id, version)
         root = self._root_for(problem_id, version)
-
-        config_key = f"{root}/problem.json"
-        if not self.storage.exists(config_key):
-            raise ProblemNotFound(problem_id)
-
-        try:
-            config = json.loads(self.storage.read_text(config_key))
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise ProblemBroken(f"{config_key} is not valid JSON: {exc}") from exc
-
+        config = self._config(problem_id, f"{root}/problem.json")
         reference = config.get("reference") or {}
         return Problem(
             problem_id=problem_id,
@@ -166,57 +105,97 @@ class ProblemStore:
             compare=str(config.get("compare", "tokens")),
             early_exit=bool(config.get("early_exit", True)),
             float_tolerance=float(config.get("float_tolerance", 1e-6)),
-            reference_language=reference.get("language"),
-            reference_file=reference.get("file"),
+            reference=Reference(reference["language"], reference["file"])
+            if reference.get("language") and reference.get("file") else None,
             hack_only=bool(config.get("hack_only", False)),
             testcases=self._testcases(root),
         )
+
+    def _config(self, problem_id: str, key: str) -> dict:
+        if not self.storage.exists(key):
+            raise ProblemNotFound(problem_id)
+        try:
+            return json.loads(self.storage.read_text(key))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise ProblemBroken(f"{key} is not valid JSON: {exc}") from exc
 
     def _testcases(self, root: str) -> list[Testcase]:
         """Input files paired with their answers, ordered by filename.
 
         Zero-padded names make lexical order equal numeric order, so "test 12"
-        means the same testcase on every run (US-J1-06).
+        means the same testcase on every run (US-J1-06). An input with no
+        answer is a broken problem, and validation reports it by name; judging
+        simply skips it rather than failing a contest submission over the
+        setter's mistake.
         """
-        present = set(self.storage.list(f"{root}/tests"))
-        found = []
-        for input_key in sorted(k for k in present if k.endswith(".in")):
-            stem = input_key[: -len(".in")]
-            answer_key = next(
-                (stem + suffix for suffix in ANSWER_SUFFIXES if stem + suffix in present),
-                None,
-            )
-            # An input with no answer is a broken problem, and validate()
-            # reports it by name. Judging simply skips it rather than failing a
-            # contest submission over the setter's mistake.
-            if answer_key:
-                found.append((input_key, answer_key))
-
-        return [
-            Testcase(index=i, input_key=inp, answer_key=ans)
-            for i, (inp, ans) in enumerate(found)
-        ]
+        pairs = [(inp, ans) for inp, ans in self._pairs(root) if ans]
+        return [Testcase(index, inp, ans) for index, (inp, ans) in enumerate(pairs)]
 
     def unmatched_inputs(self, root: str) -> list[str]:
-        """Input files with no answer file -- reported by validation (US-J4-01)."""
+        """Input files with no answer file, reported by validation (US-J4-01)."""
+        return [posixpath.basename(inp) for inp, ans in self._pairs(root) if not ans]
+
+    def _pairs(self, root: str) -> list[tuple[str, str | None]]:
+        """Every input key with its answer key, or None when it has none."""
         present = set(self.storage.list(f"{root}/tests"))
-        orphans = []
+        pairs = []
         for input_key in sorted(k for k in present if k.endswith(".in")):
             stem = input_key[: -len(".in")]
-            if not any(stem + suffix in present for suffix in ANSWER_SUFFIXES):
-                orphans.append(input_key.split("/")[-1])
-        return orphans
+            answer_key = next((stem + s for s in ANSWER_SUFFIXES if stem + s in present), None)
+            pairs.append((input_key, answer_key))
+        return pairs
+
+    # --- reading what a problem ships --------------------------------------
+
+    def read_testcase(self, testcase: Testcase) -> tuple[str, str]:
+        """The input and the expected answer. Unreadable test data is our
+        problem, never the contestant's, so it is reported as ProblemBroken."""
+        try:
+            return self.storage.read_text(testcase.input_key), self.storage.read_text(testcase.answer_key)
+        except (OSError, UnicodeDecodeError) as exc:
+            raise ProblemBroken(f"cannot read testcase {testcase.index}: {exc}") from exc
+
+    def checker(self, problem: Problem) -> SetterFile | None:
+        return self._setter_file(problem.checker_key)
+
+    def validator(self, problem: Problem) -> SetterFile | None:
+        """None when the problem has no validator, which means every input is
+        taken as legal."""
+        return self._setter_file(problem.validator_key)
+
+    def _setter_file(self, key: str) -> SetterFile | None:
+        if not self.storage.exists(key):
+            return None
+        return SetterFile(key, lambda: self.storage.read_text(key))
+
+    def reference_solution(self, problem: Problem) -> tuple[Language, str]:
+        """The language and source of the problem's reference solution.
+
+        Raises ProblemBroken saying what is wrong with it, so a hack can report
+        the problem as broken and validation can list it as an issue.
+        """
+        if problem.reference is None:
+            raise ProblemBroken("no reference solution is stored with the problem")
+        language = languages.get(problem.reference.language)
+        if language is None:
+            raise ProblemBroken(f"reference language {problem.reference.language!r} is not offered")
+        key = f"{problem.root}/{problem.reference.file}"
+        if not self.storage.exists(key):
+            raise ProblemBroken(f"reference solution {problem.reference.file} is missing")
+        try:
+            return language, self.storage.read_text(key)
+        except (OSError, UnicodeDecodeError) as exc:
+            raise ProblemBroken(f"cannot read the reference solution: {exc}") from exc
 
     # --- the admin dashboard view -----------------------------------------
 
-    def describe(self, problem_id: str, validated: bool = False) -> dict:
+    def describe(self, problem: Problem, validated: bool) -> dict:
         """Everything GET /problems needs for one problem (US-J5-01).
 
         `validated` is passed in rather than read from disk: the problems
         volume is mounted read-only, so the judge records validation results in
-        memory. See validate.py.
+        memory. See judging/validation.py.
         """
-        problem = self.load(problem_id)
         total_bytes = 0
         newest = 0.0
         for testcase in problem.testcases:

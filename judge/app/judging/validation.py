@@ -19,15 +19,19 @@ marker file someone copied along with the testcases.
 """
 from __future__ import annotations
 
+import posixpath
 import threading
+from dataclasses import dataclass
 
-from . import languages
-from .checker import SandboxedPython
-from .judge import Judge
-from .languages import Language
-from .models import CheckerReport, SolutionReport, ValidationReport
-from .problems import Problem, ProblemStore
-from .storage import Storage
+from app.core.comparison import CompareMode
+from app.core.languages import Language
+from app.core.problem import Problem, ProblemBroken
+from app.core.results import CheckerReport, SolutionReport, ValidationReport
+from app.judging.judge import Judge, Submission
+from app.problems.store import ProblemStore
+from app.sandbox.scripts import SandboxedPython
+
+_MODES = set(CompareMode.__args__)
 
 
 class ValidationRegistry:
@@ -50,65 +54,32 @@ class ValidationRegistry:
             return (problem_id, version) in self._passed
 
 
+@dataclass(frozen=True)
+class Solutions:
+    """What the request supplied for layer 3. A stored reference solution is
+    used when none is given (US-J7-02)."""
+
+    language: Language | None = None
+    reference: str | None = None
+    wrong: str | None = None
+
+
 class Validator:
-    def __init__(
-        self,
-        store: ProblemStore,
-        storage: Storage,
-        judge: Judge,
-        python: SandboxedPython,
-        registry: ValidationRegistry,
-    ):
+    def __init__(self, store: ProblemStore, judge: Judge, python: SandboxedPython, registry: ValidationRegistry):
         self.store = store
-        self.storage = storage
         self.judge = judge
         self.python = python
         self.registry = registry
 
-    def validate(
-        self,
-        problem: Problem,
-        reference_source: str | None = None,
-        wrong_source: str | None = None,
-        language: Language | None = None,
-    ) -> ValidationReport:
+    def validate(self, problem: Problem, solutions: Solutions = Solutions()) -> ValidationReport:
         issues: list[str] = []
-
         issues.extend(self._structural_issues(problem))
         checker_report = self._check_checker(problem, issues)
         issues.extend(self._input_issues(problem))
-
-        # A stored reference solution is used when the request does not supply
-        # one (US-J7-02). Hack-only problems have no testcases to run it over,
-        # so for them the check is simply that it exists and is readable.
-        if reference_source is None and problem.has_reference:
-            language = languages.get(problem.reference_language or "")
-            if language is None:
-                issues.append(f"reference language {problem.reference_language!r} is not offered")
-            elif not self.storage.exists(problem.reference_key):
-                issues.append(f"reference solution {problem.reference_file} is missing")
-            else:
-                reference_source = self.storage.read_text(problem.reference_key)
-
-        reference = None
-        if reference_source and language and problem.testcases:
-            reference = self._run_solution(problem, language, reference_source)
-            if reference.verdict != "AC":
-                issues.append(_reference_issue(reference))
-
-        wrong = None
-        if wrong_source and language:
-            wrong = self._run_solution(problem, language, wrong_source)
-            if wrong.verdict == "AC":
-                # A test set that accepts a known-wrong answer proves nothing.
-                issues.append(
-                    "the known-incorrect solution was accepted; the testcases "
-                    "do not discriminate"
-                )
+        reference, wrong = self._solution_reports(problem, solutions, issues)
 
         ok = not issues
         self.registry.record(problem.problem_id, problem.version, ok)
-
         return ValidationReport(
             problem_id=problem.problem_id,
             ok=ok,
@@ -123,14 +94,12 @@ class Validator:
     # --- layer 1: structure ------------------------------------------------
 
     def _structural_issues(self, problem: Problem) -> list[str]:
-        issues = []
-        for orphan in self.store.unmatched_inputs(problem.root):
-            issues.append(f"{orphan} has no matching answer file")
+        issues = [f"{orphan} has no matching answer file" for orphan in self.store.unmatched_inputs(problem.root)]
         if problem.total == 0 and not problem.hack_only:
             issues.append("problem has no testcases")
         if problem.hack_only and not problem.has_reference:
             issues.append("a hack-only problem must store a reference solution")
-        if problem.compare not in {"tokens", "exact", "float", "yesno", "checker"}:
+        if problem.compare not in _MODES:
             issues.append(f"unknown compare mode: {problem.compare!r}")
         if problem.time_limit_ms <= 0:
             issues.append("time_limit_ms must be positive")
@@ -141,7 +110,8 @@ class Validator:
     def _check_checker(self, problem: Problem, issues: list[str]) -> CheckerReport | None:
         if problem.compare != "checker":
             return None
-        loaded, detail = self.python.checker_loads(problem)
+        checker = self.store.checker(problem)
+        loaded, detail = self.python.checker_loads(checker) if checker else (False, "checker.py not found")
         if not loaded:
             issues.append(f"checker.py could not be loaded: {detail}")
         return CheckerReport(compiled=loaded, output=detail)
@@ -150,23 +120,49 @@ class Validator:
 
     def _input_issues(self, problem: Problem) -> list[str]:
         """Run the optional validator.py over every input file."""
-        if not self.storage.exists(problem.validator_key):
+        validator = self.store.validator(problem)
+        if validator is None:
             return []
-
         issues = []
         for testcase in problem.testcases:
-            name = testcase.input_key.split("/")[-1]
+            name = posixpath.basename(testcase.input_key)
             try:
-                text = self.storage.read_text(testcase.input_key)
-            except (OSError, UnicodeDecodeError) as exc:
+                text, _ = self.store.read_testcase(testcase)
+            except ProblemBroken as exc:
                 issues.append(f"{name} could not be read: {exc}")
                 continue
-            valid, message = self.python.validate_input(problem, text)
+            valid, message = self.python.validate_input(validator, text)
             if not valid:
                 issues.append(f"{name} is invalid: {message}")
         return issues
 
     # --- layer 3: solutions ------------------------------------------------
+
+    def _solution_reports(
+        self, problem: Problem, solutions: Solutions, issues: list[str]
+    ) -> tuple[SolutionReport | None, SolutionReport | None]:
+        language, reference_source = solutions.language, solutions.reference
+        # Hack-only problems have no testcases to run the stored reference
+        # over, so for them the check is simply that it exists and is readable.
+        if reference_source is None and problem.has_reference:
+            try:
+                language, reference_source = self.store.reference_solution(problem)
+            except ProblemBroken as exc:
+                issues.append(str(exc))
+
+        reference = None
+        if reference_source and language and problem.testcases:
+            reference = self._run_solution(problem, language, reference_source)
+            if reference.verdict != "AC":
+                issues.append(_reference_issue(reference))
+
+        wrong = None
+        if solutions.wrong and language:
+            wrong = self._run_solution(problem, language, solutions.wrong)
+            if wrong.verdict == "AC":
+                # A test set that accepts a known-wrong answer proves nothing.
+                issues.append("the known-incorrect solution was accepted; the testcases do not discriminate")
+        return reference, wrong
 
     def _run_solution(self, problem: Problem, language: Language, source: str) -> SolutionReport:
         """Run a solution over every testcase, ignoring early_exit.
@@ -174,12 +170,7 @@ class Validator:
         Stopping at the first failure would hide later broken answer files,
         which is exactly what this endpoint exists to find.
         """
-        judgement = self.judge.run(
-            problem=problem,
-            language=language,
-            source=source,
-            run_all=True,
-        )
+        judgement = self.judge.run(Submission(problem, language, source), run_all=True)
         return SolutionReport(
             verdict=judgement.verdict,
             first_fail=judgement.first_fail,

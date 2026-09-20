@@ -3,10 +3,10 @@
 Answers one question: **does this source code pass this problem?**
 
 It knows nothing about auctions, virtual money, question ownership, hints or
-scoring — all of that belongs to the backend. That boundary is what makes this
+scoring: all of that belongs to the backend. That boundary is what makes this
 independently testable and releasable on its own.
 
-- **Contract:** [openapi.yaml](openapi.yaml) — the backend builds against this
+- **Contract:** [openapi.yaml](openapi.yaml), which the backend builds against
 - **Requirements:** [../docs/requirements-judge.md](../docs/requirements-judge.md)
 - **Why it is built this way:** [../docs/decisions.md](../docs/decisions.md)
 
@@ -35,11 +35,11 @@ curl localhost:8000/jobs/job_ab12cd34 -H "Authorization: Bearer $TOKEN"
 ```
 
 Poll until `state` is `done`. **A failing verdict is a completed job, not an
-error** — `WA`, `TLE` and `CE` all come back as `200` with `state: done`.
+error**: `WA`, `TLE` and `CE` all come back as `200` with `state: done`.
 
 ## How a problem is laid out
 
-Versioned — use this if the problem might ever be edited:
+Versioned, use this if the problem might ever be edited:
 
 ```
 problems/hard-03/
@@ -52,7 +52,7 @@ problems/hard-03/
     validator.py         optional, run by POST /validate
 ```
 
-Unversioned — fine for problems that will not change:
+Unversioned, fine for problems that will not change:
 
 ```
 problems/easy-01/
@@ -83,7 +83,7 @@ Testcase files must be **zero-padded** so lexical order equals numeric order.
 | `exact` | byte-exact, trailing whitespace tolerated |
 | `float` | numeric within `float_tolerance`, absolute or relative |
 | `yesno` | case-insensitive YES/NO |
-| `checker` | `checker.py` decides — for problems with more than one valid answer |
+| `checker` | `checker.py` decides, for problems with more than one valid answer |
 
 ### Writing a checker
 
@@ -132,7 +132,7 @@ curl -X POST localhost:8000/problems/hard-03/validate \
 
 The `reference_source` is the part that matters: it runs against **every**
 testcase, ignoring `early_exit`. A `reference.first_fail` of 61 means testcase
-61's answer file is wrong — found on a Tuesday rather than during the contest.
+61's answer file is wrong, found on a Tuesday rather than during the contest.
 
 Do this for all 25 problems as the last deployment step.
 
@@ -141,7 +141,7 @@ Do this for all 25 problems as the last deployment step.
 Two endpoints exist for the qualifying round. Both run *something supplied in the
 request* in the sandbox, rather than a submission against stored testcases.
 
-**`POST /hack`** — does this input break the given solution? The problem's
+**`POST /hack`**: does this input break the given solution? The problem's
 package must store a reference solution:
 
 ```json
@@ -151,17 +151,17 @@ package must store a reference solution:
 
 The validator runs first (an invalid input is not a hack), then the reference to
 get the correct answer, then the given solution against it. **`verdict` is for
-administrators only** — telling a participant it was a timeout rather than a
+administrators only**: telling a participant it was a timeout rather than a
 wrong answer tells them the shape of the bug.
 
-**`POST /validate-answers`** — score a list of entries with a Python
+**`POST /validate-answers`**: score a list of entries with a Python
 `check(entry)`; `entry` is a reader over one answer. `status: IE` means the
-validator itself failed and **nothing was checked** — never treat it as every
+validator itself failed and **nothing was checked**; never treat it as every
 entry being invalid.
 
 ## Adding a language
 
-One entry in [app/languages.py](app/languages.py), plus its toolchain in
+One entry in [app/core/languages.py](app/core/languages.py), plus its toolchain in
 [../worker/Dockerfile](../worker/Dockerfile). Nothing in the judging logic
 knows any language by name, and `/languages` is generated from the table so the
 UI cannot drift.
@@ -170,14 +170,14 @@ UI cannot drift.
 
 ```bash
 python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/pytest                       # 135 tests, no Docker needed
+.venv/bin/python -m pytest             # 136 tests, no Docker needed
 
 docker run -d --name gj --privileged --cgroupns=host \
   --cpuset-cpus=0-3 -p 5050:5050 fyp-judge-worker:1.0
-JUDGE_E2E_URL=http://localhost:5050 .venv/bin/pytest    # + 31 real ones
+JUDGE_E2E_URL=http://localhost:5050 .venv/bin/python -m pytest    # + 31 real ones
 ```
 
-The end-to-end file is the one that runs real code in the real sandbox —
+The end-to-end file is the one that runs real code in the real sandbox:
 every language, every verdict, sandbox containment, checkers and validation.
 **Run it on the contest machine before the contest.**
 
@@ -189,7 +189,7 @@ released in a `finally` whatever the outcome.
 
 **Testcases run serially within a judgement**, and judgements run in parallel up
 to `JUDGE_CONCURRENCY`. That caps total parallelism at the core count, which is
-what keeps repeated timings comparable — measured spread goes from 27% to 6.6%
+what keeps repeated timings comparable; measured spread goes from 27% to 6.6%
 purely from pinning `cpuset`. If you change one thing about the deployment,
 do not remove that pinning.
 
@@ -197,7 +197,7 @@ do not remove that pinning.
 sandbox failure all produce `IE`. Never score it against a participant.
 
 **`jury_detail` leaks the answer.** It contains the expected output for the
-failing test. Admin dashboard only — showing it to a contestant hands them what
+failing test. Admin dashboard only; showing it to a contestant hands them what
 they would otherwise have to buy as a hint.
 
 **Nothing is persisted.** Jobs live in memory with a 10-minute TTL. A restart
@@ -206,20 +206,36 @@ own database. The problems volume is mounted read-only.
 
 ## Layout
 
-| File | Responsibility |
-|---|---|
-| `app/main.py` | HTTP routes, auth, error shaping |
-| `app/jobs.py` | queue, worker pool, job TTL |
-| `app/judge.py` | compile once, run many, verdict decisions |
-| `app/compare.py` | the four built-in comparison modes (pure functions) |
-| `app/checker.py` | running checkers and validators in the sandbox |
-| `app/checker_runtime.py` | the reader API — **runs inside the sandbox** |
-| `app/validator_runtime.py` | validator harness — **runs inside the sandbox** |
-| `app/validate.py` | problem validation |
-| `app/problems.py` | problem loading, testcase pairing, versions |
-| `app/storage.py` | key-based reads; swap `LocalStorage` for S3 here |
-| `app/gojudge.py` | the sandbox client |
-| `app/languages.py` | the language table |
-| `app/config.py` | every tunable, all `JUDGE_`-prefixed env vars |
+Six packages, each with one job, and the dependencies only point inwards:
+`api` knows the services, the services know `core`, and `core` knows nothing.
+`jobs` defines the contract a unit of work must meet; `judging` implements it.
+
+```
+app/
+  main.py            create_app(settings, sandbox): services built at startup, routers mounted
+  container.py       the composition root: the one place that turns Settings into objects
+  config.py          every tunable, all `JUDGE_`-prefixed env vars
+  api/               HTTP only: routes, auth, error shaping, request bodies
+  core/              the rules, with no I/O behind them
+    verdict.py         what a run's result means; contestant vs jury wording
+    comparison.py      the four built-in comparators (pure)
+    problem.py         Problem, Testcase, Reference, SetterFile
+    results.py         what judging produces, mirroring openapi.yaml
+    languages.py       the language table
+  sandbox/           go-judge and what runs inside it
+    client.py          the sandbox client and the Sandbox protocol
+    command.py         building one command under explicit Limits
+    scripts.py         running setters' checkers and validators, uploaded once
+    runtime/           the files copied in: **run inside the sandbox**, stdlib only
+  problems/          key-based Storage (swap LocalStorage for S3 here) and the ProblemStore
+  judging/           what turns a submission into a result
+    program.py         compile once, run many; the artefact is released on exit
+    judge.py           the testcase loop, verdict decisions, the checker comparator
+    hack.py            does this input break the given solution?
+    validation.py      proving a problem before it is auctioned
+    answers.py         scoring a list of entries
+    tasks.py           each of the above as a Task the queue can run
+  jobs/              the Task contract, the queue, the worker pool and the job TTL
+```
 
 MIT licensed. go-judge is MIT, which is what makes that possible.

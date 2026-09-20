@@ -624,6 +624,6 @@ against a **supplied** testcase.
 - Job TTL: 10 minutes after completion
 - Testcase response cap: 1 MB, truncated with a flag
 - Supplied hack input cap: 256 KB, matching the source cap
-- Python reader API for checkers and validators: implemented as `app/checker_runtime.py`;
+- Python reader API for checkers and validators: implemented as `app/sandbox/runtime/checker_runtime.py`;
   `int(lo, hi)`, `float()`, `word()`, `line()`, `ints(n)`, `rest()`, `eof()`, with
   malformed contestant output producing `WA` and malformed jury data producing `IE`

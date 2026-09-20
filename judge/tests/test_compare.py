@@ -1,9 +1,9 @@
-"""Comparison modes (US-J3-01). Pure functions, no sandbox needed."""
-from app import compare
+"""Comparison modes (US-J3-01). Pure comparators, no sandbox needed."""
+from app.core import comparison
 
 
 def ok(mode, output, answer, tolerance=1e-6):
-    return compare.compare(mode, output, answer, tolerance).ok
+    return comparison.for_mode(mode, tolerance).compare("", output, answer).ok
 
 
 class TestTokens:
@@ -29,7 +29,7 @@ class TestTokens:
         assert ok("tokens", "", "")
 
     def test_detail_names_expected_value(self):
-        detail = compare.compare_tokens("1 9 3", "1 2 3").detail
+        detail = comparison.TokenComparator().compare("", "1 9 3", "1 2 3").detail
         assert "expected '2'" in detail and "got '9'" in detail
 
 

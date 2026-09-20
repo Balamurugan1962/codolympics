@@ -3,8 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from app.problems import ProblemNotFound, ProblemStore
-from app.storage import LocalStorage
+from app.core.problem import ProblemNotFound
+from app.problems.storage import LocalStorage
+from app.problems.store import ProblemStore
 from tests.conftest import write_problem
 
 
