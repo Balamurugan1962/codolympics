@@ -18,6 +18,7 @@ import { Icon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { boardShown } from "@/lib/boards";
 import { cn } from "@/lib/utils";
 
 import { useContest } from "../contest-provider";
@@ -58,6 +59,7 @@ export function Waiting() {
 export function Reviewing() {
   const { state } = useContest();
   const advanced = state?.me?.advanced ?? false;
+  const standings = state ? boardShown(state.contest) : false;
 
   return (
     <div className="animate-fade-in">
@@ -78,11 +80,13 @@ export function Reviewing() {
                 <Icon.List size={14} /> See how you did
               </Link>
             </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/phase1/leaderboard">
-                <Icon.Trophy size={14} /> Standings
-              </Link>
-            </Button>
+            {standings && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/leaderboard">
+                  <Icon.Trophy size={14} /> Standings
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </Hold>
@@ -92,6 +96,8 @@ export function Reviewing() {
 
 /** Not selected, while Phase 2 runs around them. */
 export function NotSelected() {
+  const { state } = useContest();
+  const standings = state ? boardShown(state.contest) : false;
   return (
     <div className="animate-fade-in">
       <Hold
@@ -105,11 +111,13 @@ export function NotSelected() {
               <Icon.List size={14} /> My Phase 1 results
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/leaderboard">
-              <Icon.Trophy size={14} /> Leaderboard
-            </Link>
-          </Button>
+          {standings && (
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/leaderboard">
+                <Icon.Trophy size={14} /> Leaderboard
+              </Link>
+            </Button>
+          )}
         </div>
       </Hold>
     </div>
@@ -120,13 +128,14 @@ export function NotSelected() {
 export function Ended() {
   const { state } = useContest();
   const rank = state?.rank;
+  const standings = state ? boardShown(state.contest) : false;
 
   return (
     <div className="animate-fade-in">
       <Hold
         eyebrow="The contest has ended"
         title="That's the contest"
-        body="Nothing more will be judged. Final standings below."
+        body={standings ? "Nothing more will be judged. Final standings below." : "Nothing more will be judged. The organisers will announce the results."}
       >
         <div className="flex flex-col items-center gap-5">
           {rank && (
@@ -140,11 +149,13 @@ export function Ended() {
               </div>
             </div>
           )}
-          <Button asChild>
-            <Link href="/leaderboard">
-              <Icon.Trophy size={15} /> Final standings
-            </Link>
-          </Button>
+          {standings && (
+            <Button asChild>
+              <Link href="/leaderboard">
+                <Icon.Trophy size={15} /> Final standings
+              </Link>
+            </Button>
+          )}
         </div>
       </Hold>
     </div>

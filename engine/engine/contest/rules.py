@@ -100,6 +100,7 @@ def phase_snapshot(c: sa.Row) -> dict[str, Any]:
         "phase_ends_at": clock.iso(c.phase_ends_at),
         "registration_open": c.registration_open,
         "leaderboard_mode": c.leaderboard_mode,
+        "p1_leaderboard_mode": c.p1_leaderboard_mode,
         # Sent rather than worked out from the phase name in the browser: which
         # phases carry coins and a shop is the engine's rule, and a copy of the
         # list in the frontend is a copy that can disagree with the refusals.

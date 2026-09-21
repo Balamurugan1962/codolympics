@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { AnnouncementOverlay } from "./announcement-overlay";
 import { BlackoutOverlay } from "./contest/blackout-overlay";
 import { PhaseRail, WHERE } from "./contest/phase-rail";
+import { boardShown } from "@/lib/boards";
 import { ContestLoading } from "./contest/waiting";
 import { useContest, useEngineEvent } from "./contest-provider";
 import { Icon } from "./icons";
@@ -98,7 +99,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // all until Phase 2: powerups are spent against the people you are bidding
   // and solving against, so the shop is not even listed in Phase 1.
   const shopping = viewer.role === "participant" && contest.in_phase2;
-  const nav = shopping ? NAV : NAV.filter((n) => n.href !== "/marketplace");
+  // A hidden board is not listed either: a tab that opens "hidden" is a tease.
+  const hidden = [...(shopping ? [] : ["/marketplace"]), ...(boardShown(contest) ? [] : ["/leaderboard"])];
+  const nav = NAV.filter((n) => !hidden.includes(n.href));
   const home = "/dashboard";
   const workspace = pathname.startsWith("/question/");
   // The workspace is opened from the contest screen, so it keeps that item lit.
