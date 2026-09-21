@@ -43,8 +43,11 @@ export const WHERE: Record<string, { step: number; started: string; todo: string
 };
 
 export type ShieldState = { active: boolean; ends_at: string | null; queued: number };
+export type BreakState = { active: boolean; ends_at: string | null; number: number };
 
-export function PhaseRail({ phase, endsAt, shield }: { phase: string; endsAt: string | null; shield?: ShieldState | null }) {
+export function PhaseRail({ phase, endsAt, shield, attackBreak }: {
+  phase: string; endsAt: string | null; shield?: ShieldState | null; attackBreak?: BreakState | null;
+}) {
   const here = WHERE[phase] ?? { step: 0, started: "", todo: "" };
   return (
     <div className="border-b bg-card">
@@ -73,6 +76,7 @@ export function PhaseRail({ phase, endsAt, shield }: { phase: string; endsAt: st
           <span className="font-medium text-foreground sm:hidden">{STEPS[Math.max(0, here.step - 1)]} · </span>
           {here.todo}
         </p>
+        {attackBreak?.active && attackBreak.ends_at && <BreakChip until={attackBreak.ends_at} />}
         {shield && (shield.active || shield.queued > 0) && <ShieldChip shield={shield} />}
         {endsAt && (
           <span className="shrink-0 text-[12.5px] font-semibold tabular-nums">
@@ -107,6 +111,24 @@ function ShieldChip({ shield }: { shield: ShieldState }) {
       <Icon.Shield size={12} />
       <span className="tabular-nums">{label}</span>
       {shield.queued > 0 && <span className="text-brand-deep/70 tabular-nums">+{shield.queued}</span>}
+    </span>
+  );
+}
+
+/** Nobody can attack you until this ends: the break after the cap was reached. */
+function BreakChip({ until }: { until: string }) {
+  const { serverNow, refresh } = useContest();
+  useEffect(() => {
+    const id = setTimeout(() => void refresh(), remainingMs(until, serverNow) + 300);
+    return () => clearTimeout(id);
+  }, [until, serverNow, refresh]);
+  return (
+    <span
+      className="flex shrink-0 items-center gap-1.5 rounded-full border border-amber/40 bg-amber-tint px-2.5 py-0.5 text-[12px] font-medium text-amber"
+      title="You were attacked as often as the rules allow. Nobody can attack you until this runs out."
+    >
+      <Icon.Ban size={12} />
+      <span className="tabular-nums">no attacks <Countdown until={until} warnUnderMs={0} /></span>
     </span>
   );
 }

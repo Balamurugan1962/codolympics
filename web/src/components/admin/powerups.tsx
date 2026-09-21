@@ -136,57 +136,138 @@ export function PowerupList() {
 
 // ---------------------------------------------------------------------------
 
-type Reveal = { revealAttacker: boolean; revealShields: boolean };
+type Rules = {
+  revealAttacker: boolean;
+  revealShields: boolean;
+  attackCap: number;
+  attackBreakSeconds: number;
+  countAbsorbedAttacks: boolean;
+};
+type Switches = "revealAttacker" | "revealShields" | "countAbsorbedAttacks";
+
+const SWITCH: Record<Switches, { field: string; label: string; help: string; on: string; off: string }> = {
+  revealAttacker: {
+    field: "reveal_attacker",
+    label: "Tell the target who attacked them",
+    help: "Off, and a blackout arrives from \"someone\", on the overlay and in the notification.",
+    on: "Targets are told who attacked them.",
+    off: "Targets are not told who attacked them.",
+  },
+  revealShields: {
+    field: "reveal_shields",
+    label: "Attackers can see who has a shield up",
+    help: "Off, and the target list shows no shields, so an attack on a shielded person is a gamble.",
+    on: "Attackers can see who has a shield up.",
+    off: "Attackers cannot see who has a shield up.",
+  },
+  countAbsorbedAttacks: {
+    field: "count_absorbed_attacks",
+    label: "An attack a shield absorbed counts toward the cap",
+    help: "Off, and only blackouts that land bring the break closer.",
+    on: "Absorbed attacks count toward the cap.",
+    off: "Only landed attacks count toward the cap.",
+  },
+};
 
 /**
- * What an attack gives away, decided by the organisers for the whole contest.
- * Two switches; each saves the moment it is flipped.
+ * The rules of attacking, decided by the organisers for the whole contest:
+ * what an attack gives away, and how often one person can be attacked. The
+ * switches save the moment they are flipped; the numbers save on Save.
  */
 export function AttackRules() {
   const { toast } = useToast();
-  const [rules, setRules] = useState<Reveal | null>(null);
+  const [rules, setRules] = useState<Rules | null>(null);
+  const [draft, setDraft] = useState<{ attackCap?: number; attackBreakSeconds?: number }>({});
   const load = useCallback(async () => {
-    const c = await api.get<Reveal>("/api/admin/contest");
-    setRules({ revealAttacker: c.revealAttacker, revealShields: c.revealShields });
+    const c = await api.get<Rules>("/api/admin/contest");
+    setRules({
+      revealAttacker: c.revealAttacker,
+      revealShields: c.revealShields,
+      attackCap: c.attackCap,
+      attackBreakSeconds: c.attackBreakSeconds,
+      countAbsorbedAttacks: c.countAbsorbedAttacks,
+    });
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  const flip = async (key: keyof Reveal, on: boolean) => {
+  const flip = async (key: Switches, on: boolean) => {
     if (!rules) return;
     setRules({ ...rules, [key]: on });
     try {
-      await api.patch("/api/admin/contest", {
-        reason: key === "revealAttacker" ? (on ? "Targets are told who attacked them." : "Targets are not told who attacked them.") : on ? "Attackers can see who has a shield up." : "Attackers cannot see who has a shield up.",
-        reveal_attacker: key === "revealAttacker" ? on : undefined,
-        reveal_shields: key === "revealShields" ? on : undefined,
-      });
+      await api.patch("/api/admin/contest", { reason: on ? SWITCH[key].on : SWITCH[key].off, [SWITCH[key].field]: on });
     } catch {
       toast({ title: "Not saved", tone: "error" });
       await load();
     }
   };
 
-  const ROWS: { key: keyof Reveal; label: string; help: string }[] = [
-    { key: "revealAttacker", label: "Tell the target who attacked them", help: "Off, and a blackout arrives from \"someone\", on the overlay and in the notification." },
-    { key: "revealShields", label: "Attackers can see who has a shield up", help: "Off, and the target list shows no shields, so an attack on a shielded person is a gamble." },
-  ];
+  const saveNumbers = async () => {
+    await api.patch("/api/admin/contest", {
+      reason: "Changed how often one person can be attacked.",
+      attack_cap: draft.attackCap,
+      attack_break_seconds: draft.attackBreakSeconds,
+    });
+    toast({ title: "Attack cap saved", description: "Recorded in the audit log.", tone: "success" });
+    setDraft({});
+    await load();
+  };
+
+  if (!rules) return <SectionSkeleton lines={5} />;
+  const cap = draft.attackCap ?? rules.attackCap;
+  const seconds = draft.attackBreakSeconds ?? rules.attackBreakSeconds;
+  const dirty = Object.keys(draft).length > 0;
 
   return (
-    <Section title="What an attack reveals" description="For the whole contest. Each switch saves at once and is recorded in the audit log.">
-      {!rules ? <Skeleton className="h-10 w-full" /> : (
-        <ul className="divide-y">
-          {ROWS.map((r) => (
-            <li key={r.key} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
-              <div>
-                <div className="text-[13px] font-medium">{r.label}</div>
-                <div className="mt-0.5 text-[12px] text-muted-foreground">{r.help}</div>
-              </div>
-              <Switch checked={rules[r.key]} onCheckedChange={(on) => void flip(r.key, on)} aria-label={r.label} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </Section>
+    <>
+      <Section title="What an attack reveals" description="For the whole contest. Each switch saves at once and is recorded in the audit log.">
+        <SwitchRows keys={["revealAttacker", "revealShields"]} rules={rules} onFlip={flip} />
+      </Section>
+
+      <Section
+        title="How often one person can be attacked"
+        description="Without a cap, everybody attacks whoever is in front."
+        info="After the cap is reached, nobody can attack that person for the break; an attack in a break is refused and costs nothing. Each break for the same person is twice as long as their last, so the most-hunted person gets ever-longer peace. Counting starts afresh after each break."
+        footer={dirty && (
+          <>
+            <Button variant="ghost" onClick={() => setDraft({})}>Discard</Button>
+            <ActionButton label="Save changes" variant="default" icon={<Icon.Save size={14} />} onAct={saveNumbers} />
+          </>
+        )}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Attacks before a break" hint="0 for no cap">
+            <Input type="number" min={0} value={cap} onChange={(e) => setDraft((d) => ({ ...d, attackCap: Number(e.target.value) }))} />
+          </Field>
+          <Field label="First break" hint="seconds; doubles each time">
+            <Input type="number" min={1} max={7200} value={seconds} onChange={(e) => setDraft((d) => ({ ...d, attackBreakSeconds: Number(e.target.value) }))} />
+          </Field>
+        </div>
+        {cap > 0 && (
+          <p className="mt-3 text-[12px] text-muted-foreground">
+            After {cap} attack{cap === 1 ? "" : "s"}: {seconds}s of peace, then {seconds * 2}s the next time, then {seconds * 4}s.
+          </p>
+        )}
+        <div className="mt-4 border-t pt-1">
+          <SwitchRows keys={["countAbsorbedAttacks"]} rules={rules} onFlip={flip} />
+        </div>
+      </Section>
+    </>
+  );
+}
+
+function SwitchRows({ keys, rules, onFlip }: { keys: Switches[]; rules: Rules; onFlip: (key: Switches, on: boolean) => void }) {
+  return (
+    <ul className="divide-y">
+      {keys.map((key) => (
+        <li key={key} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+          <div>
+            <div className="text-[13px] font-medium">{SWITCH[key].label}</div>
+            <div className="mt-0.5 text-[12px] text-muted-foreground">{SWITCH[key].help}</div>
+          </div>
+          <Switch checked={rules[key]} onCheckedChange={(on) => onFlip(key, on)} aria-label={SWITCH[key].label} />
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -42,6 +42,8 @@ export type ContestState = {
   blackout?: { active: boolean; ends_at: string | null; count: number; by: string[]; server_now: number };
   /** The shield that is up, if any (ends_at null means until it absorbs an attack), and how many wait behind it. */
   shield?: { active: boolean; ends_at: string | null; queued: number; server_now: number };
+  /** A break from being attacked, after the cap was reached: nobody can attack them until it ends. */
+  attack_break?: { active: boolean; ends_at: string | null; number: number; server_now: number };
 };
 
 export type AuctionSnapshot = {

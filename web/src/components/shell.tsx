@@ -217,7 +217,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <PhaseRail phase={contest.phase} endsAt={contest.phase_ends_at} shield={viewer.role === "participant" ? state.shield ?? null : null} />
+      <PhaseRail
+        phase={contest.phase}
+        endsAt={contest.phase_ends_at}
+        shield={viewer.role === "participant" ? state.shield ?? null : null}
+        attackBreak={viewer.role === "participant" ? state.attack_break ?? null : null}
+      />
 
       <Sheet open={mobile} onOpenChange={setMobile}>
         <SheetContent
