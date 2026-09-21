@@ -17,10 +17,10 @@ from conftest import (
 from engine.accounts import credentials, registration
 from engine.coding import hints
 from engine.contest import phases
-from engine.core import db, events
+from engine.core import clock, db, events
 from engine.phase1 import selection
 from engine.phase1.answers import distinct_entries, normalise_answer, score_auto
-from engine.schema import contest, hint, ownership, user
+from engine.schema import announcement, contest, hint, ownership, user
 
 # --- phases -----------------------------------------------------------------------
 
@@ -39,6 +39,28 @@ def test_two_organisers_advancing_together_move_the_contest_one_phase() -> None:
 def test_advancing_is_blocked_while_registration_is_open() -> None:
     add_user("alice")
     raises_code("blocked", lambda: phases.advance("admin", "go"))
+
+
+def test_extending_a_round_moves_the_deadline_and_tells_everyone() -> None:
+    set_contest(phase="coding1", phase_ends_at=clock.seconds_from_now(60))
+    with db.transaction() as conn:
+        start = events.cursor(conn)
+
+    phases.extend("admin", 10, "more time")
+
+    ends_at = rows(sa.select(contest.c.phase_ends_at))[0].phase_ends_at
+    assert 600 < (ends_at - clock.now()).total_seconds() <= 660
+    posted = rows(sa.select(announcement.c.body_md))
+    assert len(posted) == 1
+    assert posted[0].body_md.startswith("**Coding round 1 has been extended by 10 minutes.**")
+    names = [e["name"] for e in events.since("alice", start)["events"]]
+    assert names == ["phase", "announce"]
+
+
+def test_a_round_without_a_deadline_cannot_be_extended() -> None:
+    set_contest(phase="registration", phase_ends_at=None)
+    raises_code("no_deadline", lambda: phases.extend("admin", 10, "more time"))
+    assert rows(sa.select(announcement.c.id)) == []
 
 
 # --- the event feed ----------------------------------------------------------------
