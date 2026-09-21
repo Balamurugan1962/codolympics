@@ -15,11 +15,22 @@ import { Icon } from "@/components/icons";
 
 export type WorkKind = "submission" | "run" | "hack" | "validator";
 
+/**
+ * The page that shows this job in full. A hack attempt is read alongside the
+ * participant's other attempts on the same question, so it opens their
+ * timeline; a submission or validator run has a page of its own.
+ */
+export function hrefOf(w: Work): string | null {
+  if (w.kind === "hack" && w.question_id !== null) return `/admin/participants/${w.participant_id}/hacks/${w.question_id}`;
+  return w.ref ? `/admin/judge/${w.ref}` : null;
+}
+
 export type Work = {
   kind: WorkKind;
   key: string;
   // Where the detail lives; null for a kind that keeps nothing to open.
   ref: string | null;
+  question_id: string | number | null;
   job_id: string | null;
   state: "pending" | "queued" | "running" | "done" | "error";
   live: boolean;

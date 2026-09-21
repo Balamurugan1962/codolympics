@@ -16,6 +16,7 @@ import { PageBody, Section } from "@/components/ui/page";
 import { AsideBlock, Facts, RecordBody, RecordHeader } from "@/components/ui/record";
 import { DetailSkeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/client";
+import { fromHere, useCameFrom, useHere } from "@/lib/came-from";
 import { languageName } from "@/lib/languages";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +36,7 @@ type Data = {
 
 export default function ParticipantHackPage() {
   const { id, qid } = useParams<{ id: string; qid: string }>();
+  const here = useHere();
   const [d, setD] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copy, setCopy] = useState<string>("");
@@ -43,6 +45,8 @@ export default function ParticipantHackPage() {
     catch { setError("That hacking question could not be loaded."); }
   }, [id, qid]);
   useEffect(() => { void load(); }, [load]);
+
+  const back = useCameFrom({ href: `/admin/participants/${id}`, label: d?.participant.name ?? "Participant" });
 
   if (error) return <PageBody><Alert variant="destructive"><Icon.Alert /><AlertDescription>{error}</AlertDescription></Alert></PageBody>;
   if (!d) return <PageBody width="wide"><DetailSkeleton tabs={0} stats={4} /></PageBody>;
@@ -56,7 +60,7 @@ export default function ParticipantHackPage() {
   return (
     <PageBody width="wide">
       <RecordHeader
-        back={{ href: `/admin/participants/${id}`, label: d.participant.name }}
+        back={back}
         title={q.title}
         chips={broke ? <Badge variant="success">Broke it</Badge> : q.attempts.length ? <Badge variant="neutral">Never broke it</Badge> : <Badge variant="outline">No attempt</Badge>}
         meta={`${d.participant.name}'s attempts on this question, in the order they were sent.`}
@@ -102,7 +106,7 @@ export default function ParticipantHackPage() {
                     withDate={dated}
                     tone={tone}
                     title={`Attempt ${i + 1}`}
-                    href={`/admin/judge/hack/${a.id}`}
+                    href={fromHere(`/admin/judge/hack/${a.id}`, here)}
                     chips={
                       <>
                         {!done ? <Badge variant="info">judging</Badge> : a.valid_input === false ? <Badge variant="warning">invalid input</Badge> : a.hacked ? <Badge variant="success">hacked</Badge> : <Badge variant="destructive">did not break it</Badge>}
