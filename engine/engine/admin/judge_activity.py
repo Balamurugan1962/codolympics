@@ -1,9 +1,10 @@
 """Everything the judge is being asked to do, in one list, for staff.
 
-Three things become judge jobs: a code submission (a judgement row per
-attempt), a hack (a p1_hack_attempt row), and a validator run (a p1_answer row,
-scored at section close). They are normalised into one shape and merged, with
-whatever is still in flight first -- that is the part that can still go wrong.
+Four things become judge jobs: a code submission (a judgement row per
+attempt), a practice run (a practice_run row), a hack (a p1_hack_attempt row),
+and a validator run (a p1_answer row, scored at section close). They are
+normalised into one shape and merged, with whatever is still in flight first
+-- that is the part that can still go wrong.
 """
 
 from __future__ import annotations
@@ -20,7 +21,9 @@ from engine.schema import (
     p1_answer,
     p1_hack_attempt,
     p1_hack_question,
+    p1_hack_solution,
     p1_question,
+    practice_run,
     question,
     submission,
     user,
@@ -36,7 +39,12 @@ def activity(limit: int = 200) -> list[dict[str, Any]]:
     hack off the list.
     """
     with db.transaction() as conn:
-        work = _submissions(conn, limit) + _hacks(conn, limit) + _validators(conn, limit)
+        work = (
+            _submissions(conn, limit)
+            + _runs(conn, limit)
+            + _hacks(conn, limit)
+            + _validators(conn, limit)
+        )
     live = [w for w in work if w["live"]]
     done = [w for w in work if not w["live"]]
     live.sort(key=lambda w: w["created_at"])
@@ -73,12 +81,23 @@ def summarise(work: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def _shape(**w: Any) -> dict[str, Any]:
-    """Finish one job row: whether it is live, how long it took, and ISO timestamps."""
+    """Finish one job row: whether it is live, how long it took, and ISO timestamps.
+
+    A job the judge finished with IE is shown as an error: it is ours to fix.
+    """
+    if w["state"] == "done" and w["verdict"] == "IE":
+        w["state"] = "error"
     started, ended = w["created_at"], w["ended_at"]
     w["live"] = w["state"] in LIVE
     w["duration_ms"] = clock.ms(ended) - clock.ms(started) if ended else None
     w["created_at"], w["ended_at"] = clock.iso(started), clock.iso(ended)
     return w
+
+
+def _verdict_tone(verdict: str | None) -> str:
+    if verdict == "AC":
+        return "success"
+    return "destructive" if verdict else "neutral"
 
 
 def _submissions(conn: sa.Connection, limit: int) -> list[dict[str, Any]]:
@@ -102,18 +121,12 @@ def _submissions(conn: sa.Connection, limit: int) -> list[dict[str, Any]]:
         progress = None
         if j.progress_total > 0:
             progress = {"done": j.progress_done, "total": j.progress_total}
-        if j.verdict == "AC":
-            tone = "success"
-        elif j.verdict:
-            tone = "destructive"
-        else:
-            tone = "neutral"
         row = _shape(
             kind="submission",
             key=f"submission:{j.id}",
             ref=f"submission/{j.id}",
             job_id=j.job_id,
-            state="error" if j.state == "done" and j.verdict == "IE" else j.state,
+            state=j.state,
             participant_id=j.participant_id,
             name=j.name or j.participant_id,
             target=j.title,
@@ -122,7 +135,7 @@ def _submissions(conn: sa.Connection, limit: int) -> list[dict[str, Any]]:
             progress=progress,
             verdict=j.verdict,
             label=None,
-            tone=tone,
+            tone=_verdict_tone(j.verdict),
             outcome="Cancelled" if j.cancelled else j.message,
             retries=j.retries,
             attempt=j.attempt,
@@ -134,16 +147,53 @@ def _submissions(conn: sa.Connection, limit: int) -> list[dict[str, Any]]:
     return out
 
 
+def _runs(conn: sa.Connection, limit: int) -> list[dict[str, Any]]:
+    """Practice runs keep no source and no output; the row is all there is to show."""
+    found = conn.execute(
+        sa.select(practice_run, user.c.name, question.c.title)
+        .join(user, user.c.id == practice_run.c.participant_id)
+        .join(question, question.c.id == practice_run.c.question_id)
+        .order_by(practice_run.c.id.desc())
+        .limit(limit)
+    ).all()
+    return [
+        _shape(
+            kind="run",
+            key=f"run:{r.id}",
+            ref=None,
+            job_id=r.job_id,
+            state=r.state,
+            participant_id=r.participant_id,
+            name=r.name or r.participant_id,
+            target=r.title,
+            problem_id=r.question_id,
+            language=r.language,
+            progress=None,
+            verdict=r.verdict,
+            label=None,
+            tone=_verdict_tone(r.verdict),
+            outcome=r.message,
+            retries=0,
+            attempt=None,
+            superseded=False,
+            created_at=r.created_at,
+            ended_at=r.ended_at,
+        )
+        for r in found
+    ]
+
+
 def _hacks(conn: sa.Connection, limit: int) -> list[dict[str, Any]]:
     found = conn.execute(
         sa.select(
             p1_hack_attempt,
             p1_hack_question.c.title,
             p1_hack_question.c.problem_id,
-            p1_hack_question.c.given_language,
+            p1_hack_solution.c.language,
             user.c.name,
         )
         .join(p1_hack_question, p1_hack_question.c.id == p1_hack_attempt.c.question_id)
+        .outerjoin(p1_hack_solution, p1_hack_solution.c.id == p1_hack_attempt.c.solution_id)
         .join(user, user.c.id == p1_hack_attempt.c.participant_id)
         .order_by(p1_hack_attempt.c.id.desc())
         .limit(limit)
@@ -154,12 +204,12 @@ def _hacks(conn: sa.Connection, limit: int) -> list[dict[str, Any]]:
             key=f"hack:{a.id}",
             ref=f"hack/{a.id}",
             job_id=a.job_id,
-            state="error" if a.state == "done" and a.verdict == "IE" else a.state,
+            state=a.state,
             participant_id=a.participant_id,
             name=a.name or a.participant_id,
             target=a.title,
             problem_id=a.problem_id,
-            language=a.given_language,
+            language=a.language,
             progress=None,
             verdict=a.verdict,
             **hack_chip(a),
@@ -306,7 +356,7 @@ def _submission_detail(judgement_id: int) -> dict[str, Any]:
         "kind": "submission",
         "who": {"id": j.participant_id, "name": j.name or j.participant_id},
         "submitted_at": clock.iso(j.submitted_at),
-        "target": {"title": j.title, "problem_id": j.question_id},
+        "target": {"title": j.title, "problem_id": j.question_id, "question_id": j.question_id},
         "source": j.source,
         "language": j.language,
         "request": _request(
@@ -369,13 +419,14 @@ def _hack_detail(attempt_id: int) -> dict[str, Any]:
                 p1_hack_attempt,
                 p1_hack_question.c.title,
                 p1_hack_question.c.problem_id,
-                p1_hack_question.c.given_source,
-                p1_hack_question.c.given_language,
+                p1_hack_solution.c.source,
+                p1_hack_solution.c.language,
                 p1_hack_question.c.hack_points,
                 p1_hack_question.c.fail_penalty,
                 user.c.name,
             )
             .join(p1_hack_question, p1_hack_question.c.id == p1_hack_attempt.c.question_id)
+            .outerjoin(p1_hack_solution, p1_hack_solution.c.id == p1_hack_attempt.c.solution_id)
             .join(user, user.c.id == p1_hack_attempt.c.participant_id)
             .where(p1_hack_attempt.c.id == attempt_id)
         ).one_or_none()
@@ -392,11 +443,12 @@ def _hack_detail(attempt_id: int) -> dict[str, Any]:
         "kind": "hack",
         "who": {"id": a.participant_id, "name": a.name or a.participant_id},
         "submitted_at": clock.iso(a.created_at),
-        "target": {"title": a.title, "problem_id": a.problem_id},
-        # A hack sends an input, not code; the code is the solution under attack.
+        "target": {"title": a.title, "problem_id": a.problem_id, "question_id": a.question_id},
+        # A hack sends an input, not code; the code is the copy under attack,
+        # which is gone if an organiser removed that language afterwards.
         "input": a.input,
-        "source": a.given_source,
-        "language": a.given_language,
+        "source": a.source or "",
+        "language": a.language,
         "request": _request(a.job_id, a.state, a.created_at, a.ended_at, retries=a.retries),
         "result": {
             "valid_input": a.valid_input,
@@ -436,7 +488,7 @@ def _validator_detail(ref: str) -> dict[str, Any]:
         "kind": "validator",
         "who": {"id": a.participant_id, "name": a.name or a.participant_id},
         "submitted_at": clock.iso(a.updated_at),
-        "target": {"title": a.title, "problem_id": None},
+        "target": {"title": a.title, "problem_id": None, "question_id": a.question_id},
         # The validator is an answer key: not returned, even here.
         "entries": entries,
         "language": "python",

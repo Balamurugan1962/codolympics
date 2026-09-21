@@ -69,6 +69,18 @@ def read_participant(_: Staff, participant_id: str) -> dict[str, Any]:
     return dossier.dossier(participant_id)
 
 
+@router.get("/participants/{participant_id}/questions/{question_id}")
+def read_participant_question(_: Staff, participant_id: str, question_id: str) -> dict[str, Any]:
+    """One question they own, with every submission's code and every hint's time."""
+    return dossier.owned_question(participant_id, question_id)
+
+
+@router.get("/participants/{participant_id}/hacks/{question_id}")
+def read_participant_hack(_: Staff, participant_id: str, question_id: int) -> dict[str, Any]:
+    """One hacking question, with every input they sent."""
+    return dossier.hack_question(participant_id, question_id)
+
+
 @router.delete("/participants/{participant_id}")
 def remove_participant(viewer: Admin, participant_id: str, body: ReasonBody) -> dict[str, bool]:
     management.remove(viewer.id, participant_id, body.reason)
