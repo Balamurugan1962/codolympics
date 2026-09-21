@@ -40,6 +40,8 @@ export type ContestState = {
   notifications?: { id: number; body_md: string; created_at: string }[];
   /** Server-decided. Present from the first paint so the overlay is never late. */
   blackout?: { active: boolean; ends_at: string | null; count: number; by: string[]; server_now: number };
+  /** The shield that is up, if any (ends_at null means until it absorbs an attack), and how many wait behind it. */
+  shield?: { active: boolean; ends_at: string | null; queued: number; server_now: number };
 };
 
 export type AuctionSnapshot = {
@@ -151,7 +153,7 @@ export function ContestProvider({ initial, children }: { initial: ContestState; 
       // one moves anything else -- the score, the cooldown, the leaderboard -- so
       // only that re-reads the contest; the workspace polls its own submission.
       if (data.state === "done" || data.cancelled || data.rejudge) void refresh().catch(() => undefined);
-    } else if (["balance", "notify", "announce", "hack"].includes(name)) void refresh().catch(() => undefined);
+    } else if (["balance", "notify", "announce", "hack", "powerup"].includes(name)) void refresh().catch(() => undefined);
   }, [refresh]);
 
   useEventPolling(initial.event_cursor, { apply, refresh, setConnection, noteServerNow });
