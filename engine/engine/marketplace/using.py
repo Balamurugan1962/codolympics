@@ -162,11 +162,15 @@ def _count_attack(conn: sa.Connection, c: sa.Row, target_id: str, absorbed: bool
     started = breaks.note_attack(conn, c, target_id, absorbed)
     if started is None:
         return
+    peace = (
+        "for the rest of the contest"
+        if started.ends_at is None
+        else f"for the next {started.seconds} seconds"
+    )
     notify(
         conn,
         target_id,
-        f"You have been attacked {c.attack_cap} times. "
-        f"Nobody can attack you for the next {started.seconds} seconds.",
+        f"You have been attacked {c.attack_cap} times. Nobody can attack you {peace}.",
     )
 
 

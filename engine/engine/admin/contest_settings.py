@@ -21,6 +21,7 @@ SETTINGS = (
     "attack_cap",
     "attack_break_seconds",
     "count_absorbed_attacks",
+    "after_cap",
     "starting_balance",
     "bid_increment",
     "countdown_seconds",

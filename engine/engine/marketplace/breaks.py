@@ -3,8 +3,9 @@
 Left alone, everybody attacks whoever is in front. So after `attack_cap`
 attacks on one person, nobody can attack them for a while, and the while
 doubles each time it happens to the same person: the more they are hunted,
-the longer their breaks. An attack that arrives during a break is refused
-before anything is spent.
+the longer their breaks. Or, if the organisers prefer, the cap is the end of
+it: after that nobody can attack them for the rest of the contest. An attack
+that arrives during a break is refused before anything is spent.
 
 Counting starts afresh after each break. What counts is every blackout aimed
 at the person, landed or absorbed by a shield, unless the organisers say only
@@ -27,16 +28,19 @@ import sqlalchemy as sa
 from engine.core import clock, errors
 from engine.schema import attack_break, powerup_event
 
+FOREVER = "forever"
+
+
+def _still_on() -> sa.ColumnElement[bool]:
+    return sa.or_(attack_break.c.ends_at.is_(None), attack_break.c.ends_at > clock.now())
+
 
 def current(conn: sa.Connection, participant_id: str) -> sa.Row | None:
     """The break this person is in right now, if any."""
     return conn.execute(
         sa.select(attack_break)
-        .where(
-            attack_break.c.participant_id == participant_id,
-            attack_break.c.ends_at > clock.now(),
-        )
-        .order_by(attack_break.c.ends_at.desc())
+        .where(attack_break.c.participant_id == participant_id, _still_on())
+        .order_by(attack_break.c.number.desc())
         .limit(1)
     ).one_or_none()
 
@@ -46,8 +50,12 @@ def assert_attackable(conn: sa.Connection, target_id: str, target_name: str | No
     on_break = current(conn, target_id)
     if on_break is None:
         return
-    left = math.ceil((on_break.ends_at - clock.now()).total_seconds())
     who = target_name or "they"
+    if on_break.ends_at is None:
+        raise errors.conflict(
+            "target_on_break", f"{who} cannot be attacked again for the rest of the contest"
+        )
+    left = math.ceil((on_break.ends_at - clock.now()).total_seconds())
     raise errors.conflict(
         "target_on_break",
         f"{who} cannot be attacked for another {left} second{'s' if left != 1 else ''}",
@@ -79,7 +87,8 @@ def note_attack(conn: sa.Connection, c: sa.Row, target_id: str, absorbed: bool) 
     if earlier + 1 < cap:
         return None
     number = (last.number if last else 0) + 1
-    seconds = (c.attack_break_seconds or 0) * 2 ** (number - 1)
+    forever = c.after_cap == FOREVER
+    seconds = 0 if forever else (c.attack_break_seconds or 0) * 2 ** (number - 1)
     now = clock.now()
     return conn.execute(
         sa.insert(attack_break)
@@ -88,28 +97,35 @@ def note_attack(conn: sa.Connection, c: sa.Row, target_id: str, absorbed: bool) 
             number=number,
             seconds=seconds,
             starts_at=now,
-            ends_at=now + timedelta(seconds=seconds),
+            ends_at=None if forever else now + timedelta(seconds=seconds),
         )
         .returning(attack_break)
     ).one()
 
 
 def break_state(conn: sa.Connection, participant_id: str) -> dict[str, Any]:
-    """What the person sees next to the clock: whether they are in a break, and until when."""
+    """What the person sees next to the clock: whether they are in a break, and until when.
+
+    `ends_at` is null for a break that lasts the rest of the contest.
+    """
     on_break = current(conn, participant_id)
     return {
         "active": on_break is not None,
-        "ends_at": clock.iso(on_break.ends_at) if on_break else None,
+        "ends_at": clock.iso(on_break.ends_at) if on_break and on_break.ends_at else None,
         "number": on_break.number if on_break else 0,
         "server_now": clock.now_ms(),
     }
 
 
-def on_break_now(conn: sa.Connection) -> dict[str, str]:
-    """Everyone in a break, with when it ends, for the attacker's list of targets."""
+def on_break_now(conn: sa.Connection) -> dict[str, str | None]:
+    """Everyone in a break, with when it ends (None: never), for the attacker's list of targets."""
     found = conn.execute(
-        sa.select(attack_break.c.participant_id, sa.func.max(attack_break.c.ends_at))
-        .where(attack_break.c.ends_at > clock.now())
-        .group_by(attack_break.c.participant_id)
+        sa.select(attack_break.c.participant_id, attack_break.c.ends_at).where(_still_on())
     ).all()
-    return {pid: clock.iso(ends) for pid, ends in found}
+    out: dict[str, str | None] = {}
+    for pid, ends in found:
+        # A break with no end outranks any timed one.
+        if pid in out and out[pid] is None:
+            continue
+        out[pid] = None if ends is None else clock.iso(ends)
+    return out

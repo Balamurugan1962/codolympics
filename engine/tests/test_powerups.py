@@ -350,10 +350,11 @@ def break_of(who: str) -> dict:
 
 
 def end_break(who: str) -> None:
+    """Every timed break this person has is over now. One with no end has none to reach."""
     with db.transaction() as conn:
         conn.execute(
             sa.update(attack_break)
-            .where(attack_break.c.participant_id == who)
+            .where(attack_break.c.participant_id == who, attack_break.c.ends_at.is_not(None))
             .values(ends_at=clock.now() - timedelta(seconds=1))
         )
 
@@ -405,6 +406,20 @@ def test_each_break_for_the_same_person_is_twice_as_long(market: dict[str, int])
     end_break("bob")
     attack("alice", "bob", market)
     assert rows(sa.select(attack_break).order_by(attack_break.c.number.desc()))[0].seconds == 240
+
+
+def test_the_cap_can_be_the_end_of_it(market: dict[str, int]) -> None:
+    set_contest(attack_cap=1, after_cap="forever")
+    give("alice", market["blackout"], 2)
+    attack("alice", "bob", market)
+    b = break_of("bob")
+    assert (b["active"], b["ends_at"], b["number"]) == (True, None, 1)
+    assert "rest of the contest" in last_notice("bob")
+    end_break("bob")  # a timed break would be over; this one has no end to reach
+    raises_code("target_on_break", lambda: attack("alice", "bob", market))
+    assert qty("alice", market["blackout"]) == 1
+    targets = {t["id"]: t for t in storefront.marketplace_for("carol")["targets"]}
+    assert (targets["bob"]["off_limits"], targets["bob"]["break_until"]) == (True, None)
 
 
 def test_whether_an_absorbed_attack_counts_is_a_setting(market: dict[str, int]) -> None:

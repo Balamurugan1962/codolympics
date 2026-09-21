@@ -82,6 +82,7 @@ def clean(schema: None) -> Iterator[None]:
                 attack_cap=0,
                 attack_break_seconds=300,
                 count_absorbed_attacks=True,
+                after_cap="break",
                 bid_increment=10,
                 countdown_seconds=60,
                 opening_window_seconds=60,
