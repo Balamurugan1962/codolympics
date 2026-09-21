@@ -20,7 +20,7 @@ import { Hint } from "@/components/ui/hint";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
-import { SimpleSelect } from "@/components/ui/select";
+import { SimpleCombobox } from "@/components/ui/combobox";
 import { SectionSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
@@ -173,7 +173,7 @@ export default function SettingsPage() {
             />
           </SettingRow>
           <SettingRow label="Phase 1 standings" description="Whether participants can watch it.">
-            <SimpleSelect className="w-full" size="default" value={c.p1LeaderboardMode} onValueChange={(v) => set("p1LeaderboardMode", v)} options={VISIBILITY} />
+            <SimpleCombobox className="w-full" size="default" value={c.p1LeaderboardMode} onValueChange={(v) => set("p1LeaderboardMode", v)} options={VISIBILITY} />
           </SettingRow>
         </Section>
 
@@ -200,7 +200,7 @@ export default function SettingsPage() {
             label="Marketplace"
             description="Powerups are bought with the same money they bid with. Prices and durations are on the Powerups page."
           >
-            <SimpleSelect
+            <SimpleCombobox
               className="w-full"
               size="default"
               value={c.marketplaceOpen ? "open" : "closed"}
@@ -209,7 +209,7 @@ export default function SettingsPage() {
             />
           </SettingRow>
           <SettingRow label="Phase 2 leaderboard" description="Announce before the first auction. It changes how people bid.">
-            <SimpleSelect className="w-full" size="default" value={c.leaderboardMode} onValueChange={(v) => set("leaderboardMode", v)} options={VISIBILITY} />
+            <SimpleCombobox className="w-full" size="default" value={c.leaderboardMode} onValueChange={(v) => set("leaderboardMode", v)} options={VISIBILITY} />
           </SettingRow>
         </Section>
 
@@ -222,7 +222,7 @@ export default function SettingsPage() {
                 : "Online: participants bid from their seats and the countdown settles each question."
             }
           >
-            <SimpleSelect
+            <SimpleCombobox
               className="w-full"
               size="default"
               value={c.auctionMode}
