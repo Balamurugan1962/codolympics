@@ -198,16 +198,7 @@ export function HackBody({ d }: { d: HackDetail }) {
             {r.valid_input === false ? <span className="text-faint">never run. The input was rejected</span> : <VerdictBadge verdict={r.verdict} />}
           </SummaryItem>
         </Summary>
-        {r.verdict === "IE" && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-red/30 bg-red-tint px-3 py-2.5 text-[13px]">
-            <Icon.Alert size={15} className="mt-0.5 shrink-0 text-red" />
-            <div>
-              <div className="font-semibold text-red">The judge could not run this</div>
-              <div className="mt-0.5 text-muted-foreground">{r.message || "It gave no reason. The judge's own log will have it."}</div>
-              <div className="mt-1 text-[12px] text-faint">Nothing was scored; the fault is in the question or the judge, not the attempt.</div>
-            </div>
-          </div>
-        )}
+        {r.verdict === "IE" && <JudgeErrorNote message={r.message} note="Nothing was scored; the fault is in the question or the judge, not the attempt." />}
         <p className="mt-3 text-[12.5px] text-muted-foreground">
           A hit is worth {d.stakes.hack_points}; a miss costs {d.stakes.fail_penalty}.
         </p>
@@ -235,15 +226,7 @@ export function RunBody({ d }: { d: RunDetail }) {
           <VerdictBadge verdict={d.request.state === "done" ? r.verdict : null} />
           {r.message && <span className="text-[13px]">{r.message}</span>}
         </div>
-        {r.verdict === "IE" && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-red/30 bg-red-tint px-3 py-2.5 text-[13px]">
-            <Icon.Alert size={15} className="mt-0.5 shrink-0 text-red" />
-            <div>
-              <div className="font-semibold text-red">The judge could not run this</div>
-              <div className="mt-0.5 text-muted-foreground">{r.message || "It gave no reason. The judge's own log will have it."}</div>
-            </div>
-          </div>
-        )}
+        {r.verdict === "IE" && <JudgeErrorNote message={r.message} />}
       </Section>
 
       {r.compile_output && (
@@ -349,6 +332,20 @@ export function DetailSkeleton() {
           <Skeleton className="h-3.5 w-36" />
         </div>
         <Skeleton className="h-56 rounded-none" />
+      </div>
+    </div>
+  );
+}
+
+/** A judge error is ours to fix, so its message is shown in full, with what it means for the person. */
+function JudgeErrorNote({ message, note }: { message: string | null; note?: string }) {
+  return (
+    <div className="mt-3 flex items-start gap-2 rounded-md border border-red/30 bg-red-tint px-3 py-2.5 text-[13px]">
+      <Icon.Alert size={15} className="mt-0.5 shrink-0 text-red" />
+      <div>
+        <div className="font-semibold text-red">The judge could not run this</div>
+        <div className="mt-0.5 text-muted-foreground">{message || "It gave no reason. The judge's own log will have it."}</div>
+        {note && <div className="mt-1 text-[12px] text-faint">{note}</div>}
       </div>
     </div>
   );
