@@ -56,6 +56,7 @@ def _buy(
     if item.kind == "shield":
         # Nothing up yet: this one starts now. Otherwise it waits its turn.
         shields.settle(conn, participant_id)
+        owned, _ = holdings(conn, participant_id, item.id)
     # Last, so a replayed request collides here and rolls everything above back.
     conn.execute(
         sa.insert(powerup_event).values(

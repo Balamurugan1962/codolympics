@@ -31,6 +31,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PageHeader, Section } from "@/components/ui/page";
 import { ListSkeleton, SectionSkeleton, Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/client";
@@ -63,7 +64,7 @@ const PHASE_LABEL = new Map(PHASE_CHOICES);
 
 const KIND_BLURB: Record<Powerup["kind"], string> = {
   blackout: "Aimed at another competitor.",
-  shield: "Protects whoever holds it. Nothing to activate.",
+  shield: "One is up at a time, for the duration set here; the rest wait in a queue and start on their own. Nothing to activate.",
 };
 
 function KindIcon({ kind }: { kind: Powerup["kind"] }) {
@@ -88,7 +89,8 @@ function terms(p: Powerup): string {
     ? p.usablePhases.map((k) => PHASE_LABEL.get(k) ?? k).join(", ")
     : "nowhere, no phases picked";
   const bits = [`${p.price} coins`];
-  if (p.durationSeconds) bits.push(`${p.durationSeconds}s`);
+  if (p.durationSeconds === -1) bits.push("up until it absorbs an attack");
+  else if (p.durationSeconds) bits.push(`${p.durationSeconds}s`);
   bits.push(where);
   return bits.join(" · ");
 }
@@ -127,6 +129,62 @@ export function PowerupList() {
           <Icon.ChevronRight size={15} className="shrink-0 text-muted-foreground" />
         </Link>
       ))}
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+type Reveal = { revealAttacker: boolean; revealShields: boolean };
+
+/**
+ * What an attack gives away, decided by the organisers for the whole contest.
+ * Two switches; each saves the moment it is flipped.
+ */
+export function AttackRules() {
+  const { toast } = useToast();
+  const [rules, setRules] = useState<Reveal | null>(null);
+  const load = useCallback(async () => {
+    const c = await api.get<Reveal>("/api/admin/contest");
+    setRules({ revealAttacker: c.revealAttacker, revealShields: c.revealShields });
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const flip = async (key: keyof Reveal, on: boolean) => {
+    if (!rules) return;
+    setRules({ ...rules, [key]: on });
+    try {
+      await api.patch("/api/admin/contest", {
+        reason: key === "revealAttacker" ? (on ? "Targets are told who attacked them." : "Targets are not told who attacked them.") : on ? "Attackers can see who has a shield up." : "Attackers cannot see who has a shield up.",
+        reveal_attacker: key === "revealAttacker" ? on : undefined,
+        reveal_shields: key === "revealShields" ? on : undefined,
+      });
+    } catch {
+      toast({ title: "Not saved", tone: "error" });
+      await load();
+    }
+  };
+
+  const ROWS: { key: keyof Reveal; label: string; help: string }[] = [
+    { key: "revealAttacker", label: "Tell the target who attacked them", help: "Off, and a blackout arrives from \"someone\", on the overlay and in the notification." },
+    { key: "revealShields", label: "Attackers can see who has a shield up", help: "Off, and the target list shows no shields, so an attack on a shielded person is a gamble." },
+  ];
+
+  return (
+    <Section title="What an attack reveals" description="For the whole contest. Each switch saves at once and is recorded in the audit log.">
+      {!rules ? <Skeleton className="h-10 w-full" /> : (
+        <ul className="divide-y">
+          {ROWS.map((r) => (
+            <li key={r.key} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+              <div>
+                <div className="text-[13px] font-medium">{r.label}</div>
+                <div className="mt-0.5 text-[12px] text-muted-foreground">{r.help}</div>
+              </div>
+              <Switch checked={rules[r.key]} onCheckedChange={(on) => void flip(r.key, on)} aria-label={r.label} />
+            </li>
+          ))}
+        </ul>
+      )}
     </Section>
   );
 }
@@ -201,7 +259,7 @@ export function PowerupDetail({ id }: { id: number }) {
           </>
         }
         description={KIND_BLURB[row.kind] + " Nothing saves until you press Save."}
-        info="Changes govern the next purchase and the next use. A blackout already sitting on somebody keeps the duration it landed with, so shortening this never cuts a block short and lengthening it never extends one."
+        info="Changes govern the next purchase and the next use. A blackout already sitting on somebody, or a shield already up, keeps the duration it started with, so shortening this never cuts one short and lengthening it never extends one."
         actions={
           <ActionButton
             label={on ? "Take off sale" : "Put on sale"}
@@ -253,16 +311,14 @@ function PowerupFields({ row, draft, onEdit }: { row: Powerup; draft: Partial<Po
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {row.kind === "blackout" && (
-          <NumberField
-            label="Duration"
-            hint="seconds"
-            min={1}
-            max={3600}
-            value={valueOf("durationSeconds")}
-            onChange={(v) => onEdit({ durationSeconds: v })}
-          />
-        )}
+        <NumberField
+          label={row.kind === "shield" ? "Up for" : "Duration"}
+          hint={row.kind === "shield" ? "seconds, or -1 for until it absorbs an attack" : "seconds"}
+          min={row.kind === "shield" ? -1 : 1}
+          max={3600}
+          value={valueOf("durationSeconds")}
+          onChange={(v) => onEdit({ durationSeconds: v })}
+        />
         <NumberField label="Hold at most" hint="blank for no limit" value={valueOf("maxHeld")} onChange={(v) => onEdit({ maxHeld: v })} />
         <NumberField
           label="Buy at most"

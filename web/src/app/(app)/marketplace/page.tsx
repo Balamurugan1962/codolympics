@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { useContest, useEngineEvent } from "@/components/contest-provider";
+import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +55,13 @@ type Item = {
 
 type Target = { id: string; name: string; disqualified: boolean; shielded: boolean; blacked_out: boolean };
 
-type Market = { open: boolean; in_phase2: boolean; phase: string; balance: number; items: Item[]; targets: Target[] };
+type Shield = { active: boolean; ends_at: string | null; queued: number };
+type Market = {
+  open: boolean; in_phase2: boolean; phase: string; balance: number; items: Item[]; targets: Target[];
+  shield: Shield;
+  /** Whether the organisers let attackers see who has a shield up. */
+  reveal_shields: boolean;
+};
 
 /** One id per attempt, so a retry is the same attempt rather than a new one. */
 const newRequestId = () =>
@@ -202,12 +209,12 @@ export default function MarketplacePage() {
                     </span>
                     <h2 className="text-[15px] font-semibold">{item.name}</h2>
                     <Hint>{item.description}</Hint>
-                    {item.owned > 0 && <Badge variant="success">{item.owned} held</Badge>}
+                    {item.owned > 0 && <Badge variant="success">{item.owned} {item.kind === "shield" ? "waiting" : "held"}</Badge>}
                     {!item.usable_now && <Badge variant="neutral">not usable now</Badge>}
                   </div>
                   <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-faint">
                     <span className="font-semibold tabular-nums text-foreground">{item.price.toLocaleString()} coins</span>
-                    {item.duration_seconds !== null && <span>lasts {item.duration_seconds}s</span>}
+                    {item.duration_seconds !== null && <span>{item.duration_seconds === -1 ? "up until it absorbs a Blackout" : `lasts ${item.duration_seconds}s`}</span>}
                     {item.max_held !== null && <span>hold up to {item.max_held}</span>}
                     {item.max_purchases !== null && (
                       <span>
@@ -234,9 +241,15 @@ export default function MarketplacePage() {
                   {item.buy_blocked ?? item.use_blocked}
                 </p>
               )}
-              {item.kind === "shield" && item.owned > 0 && (
-                <p className="border-t bg-green-tint/60 px-5 py-2.5 text-[12px] text-green-dark">
-                  Protected. The next {item.owned === 1 ? "Blackout aimed at you is" : `${item.owned} Blackouts aimed at you are`} absorbed automatically.
+              {item.kind === "shield" && (market.shield.active || market.shield.queued > 0) && (
+                <p className="flex flex-wrap items-center gap-x-1.5 border-t bg-green-tint/60 px-5 py-2.5 text-[12px] text-green-dark">
+                  <Icon.Shield size={12} />
+                  {market.shield.active
+                    ? market.shield.ends_at
+                      ? <>Protected for another <Countdown until={market.shield.ends_at} warnUnderMs={0} className="font-semibold" />.</>
+                      : <>Protected until a Blackout is absorbed.</>
+                    : <>Your next shield is starting.</>}
+                  {market.shield.queued > 0 && <span>{market.shield.queued} more {market.shield.queued === 1 ? "waits" : "wait"} behind it and {market.shield.queued === 1 ? "starts" : "start"} on {market.shield.queued === 1 ? "its" : "their"} own.</span>}
                 </p>
               )}
             </div>
@@ -248,7 +261,9 @@ export default function MarketplacePage() {
         open={Boolean(aiming)}
         onClose={() => setAiming(null)}
         title={aiming ? `Use ${aiming.name} on…` : ""}
-        description="They lose their screen for the duration. If they hold a Shield it absorbs this instead, and your powerup is still spent."
+        description={market.reveal_shields
+          ? "They lose their screen for the duration. If they have a Shield up it absorbs this instead, and your powerup is still spent."
+          : "They lose their screen for the duration. If they have a Shield up it absorbs this instead, and your powerup is still spent. Shields are hidden in this contest, so you will not know until you try."}
       >
         {market.targets.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">There is nobody else in the contest to aim at.</p>
