@@ -27,18 +27,19 @@ IN_FLIGHT = ("pending", "queued", "running")
 
 
 def submit(participant_id: str, question_id: str, language: str, source: str) -> int:
-    # Read before the transaction: it may ask the judge, which must never happen
-    # while holding locks.
-    offered = {lang["key"] for lang in languages.offered()}
+    offered = offered_languages()
     with db.transaction() as conn:
         c = lock_contest(conn)
         assert_not_blacked_out(conn, participant_id)
-        _check_round_open(c)
-        if language not in offered:
-            raise errors.invalid(f"language '{language}' is not offered")
-        if len(source.encode()) > MAX_SOURCE_BYTES:
-            raise errors.invalid("source is larger than 256 KB")
-        _check_may_submit(conn, participant_id, question_id)
+        check_round_open(c)
+        check_code(language, source, offered)
+        p = check_participant(conn, participant_id, question_id)
+        if in_flight(conn, participant_id):
+            raise errors.conflict("in_flight", "your previous submission is still being judged")
+        wait_ms = cooldown_ms(p)
+        if wait_ms > 0:
+            wait_s = -(-wait_ms // 1000)  # rounded up
+            raise errors.conflict("cooldown", f"wait {wait_s} s before submitting again")
         submission_id = conn.execute(
             sa.insert(submission)
             .values(
@@ -56,7 +57,16 @@ def submit(participant_id: str, question_id: str, language: str, source: str) ->
     return submission_id
 
 
-def _check_round_open(c: sa.Row) -> None:
+# The checks in front of putting code on the judge, shared with practice runs.
+
+
+def offered_languages() -> set[str]:
+    """Read before a transaction: it may ask the judge, which must never happen
+    while holding locks."""
+    return {lang["key"] for lang in languages.offered()}
+
+
+def check_round_open(c: sa.Row) -> None:
     if not is_phase2(c.phase) or c.phase == "ended":
         raise errors.conflict("not_open", "submissions are not open")
     timed_round = c.phase in ("coding1", "final")
@@ -64,8 +74,18 @@ def _check_round_open(c: sa.Row) -> None:
         raise errors.conflict("round_closed", "this round has closed")
 
 
-def _check_may_submit(conn: sa.Connection, participant_id: str, question_id: str) -> None:
-    # Serialises this participant's submissions: see the module docstring.
+def check_code(language: str, source: str, offered: set[str]) -> None:
+    if language not in offered:
+        raise errors.invalid(f"language '{language}' is not offered")
+    if len(source.encode()) > MAX_SOURCE_BYTES:
+        raise errors.invalid("source is larger than 256 KB")
+
+
+def check_participant(conn: sa.Connection, participant_id: str, question_id: str) -> sa.Row:
+    """Lock the participant and confirm they may work on this question.
+
+    The lock serialises this participant's requests: see the module docstring.
+    """
     p = wallet.lock_participant(conn, participant_id)
     if p is None:
         raise errors.forbidden("not a participant")
@@ -73,12 +93,7 @@ def _check_may_submit(conn: sa.Connection, participant_id: str, question_id: str
         raise errors.forbidden("your account is disqualified")
     if not owns(conn, participant_id, question_id):
         raise errors.forbidden("you do not own this question")
-    if in_flight(conn, participant_id):
-        raise errors.conflict("in_flight", "your previous submission is still being judged")
-    wait_ms = cooldown_ms(p)
-    if wait_ms > 0:
-        wait_s = -(-wait_ms // 1000)  # rounded up
-        raise errors.conflict("cooldown", f"wait {wait_s} s before submitting again")
+    return p
 
 
 def owns(conn: sa.Connection, participant_id: str, question_id: str) -> sa.Row | None:

@@ -1,4 +1,4 @@
-"""Coding tables: submissions, their judgements, and editor drafts.
+"""Coding tables: submissions, their judgements, practice runs and editor drafts.
 
 Judging a submission, and every rejudge of it, adds a judgement row; a partial
 unique index keeps exactly one of them current.
@@ -72,6 +72,28 @@ judgement = Table(
     ),
 )
 
+# A practice run: the participant's code on the samples or their own input,
+# with nothing at stake. Only what the Judge page needs is kept: neither the
+# source nor the outputs are stored.
+practice_run = Table(
+    "practice_run",
+    metadata,
+    Column("id", BigInteger, primary_key=True, autoincrement=True),
+    participant_ref("participant_id"),
+    Column("question_id", Text, ForeignKey("question.id"), nullable=False),
+    Column("language", Text, nullable=False),
+    # pending | queued | running | done
+    Column("state", Text, nullable=False, server_default=text("'pending'")),
+    Column("job_id", Text),
+    Column("verdict", Text),
+    Column("message", Text),
+    created_at(),
+    timestamp("ended_at"),
+    Index("practice_run_participant_idx", "participant_id", "state"),
+)
+
+# One draft per language: switching language brings back what was written in
+# it, the way an IDE keeps a buffer per file.
 draft = Table(
     "draft",
     metadata,
@@ -81,6 +103,6 @@ draft = Table(
     Column("language", Text, nullable=False),
     created_at("updated_at"),
     PrimaryKeyConstraint(
-        "participant_id", "question_id", name="draft_participant_id_question_id_pk"
+        "participant_id", "question_id", "language", name="draft_participant_question_language_pk"
     ),
 )
