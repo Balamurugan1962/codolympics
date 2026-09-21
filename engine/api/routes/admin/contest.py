@@ -31,6 +31,9 @@ class ContestPatch(Body):
     marketplace_open: bool | None = None
     reveal_attacker: bool | None = None
     reveal_shields: bool | None = None
+    attack_cap: Annotated[int | None, Field(ge=0)] = None  # 0 is no cap
+    attack_break_seconds: Annotated[int | None, Field(ge=1, le=7200)] = None
+    count_absorbed_attacks: bool | None = None
     starting_balance: Annotated[int | None, Field(ge=0)] = None
     bid_increment: Annotated[int | None, Field(ge=1)] = None
     countdown_seconds: Annotated[int | None, Field(ge=0)] = None  # 0 disables the countdown

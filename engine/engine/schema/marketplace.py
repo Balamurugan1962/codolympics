@@ -105,3 +105,19 @@ shield = Table(
     created_at(),
     Index("shield_participant_idx", "participant_id", "ends_at"),
 )
+
+
+# A break from being attacked, after the cap was reached. `number` is how many
+# this person has had, counting this one; the length doubles with it.
+attack_break = Table(
+    "attack_break",
+    metadata,
+    Column("id", BigInteger, primary_key=True, autoincrement=True),
+    participant_ref("participant_id", cascade=True),
+    Column("number", Integer, nullable=False),
+    Column("seconds", Integer, nullable=False),
+    timestamp("starts_at", nullable=False),
+    timestamp("ends_at", nullable=False),
+    created_at(),
+    Index("attack_break_participant_idx", "participant_id", "ends_at"),
+)
