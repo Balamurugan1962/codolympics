@@ -127,6 +127,8 @@ p1_hack_attempt = Table(
     Column("invalid_reason", Text),
     Column("hacked", Boolean),
     Column("verdict", Text),  # staff only
+    # The judge's own words: the only account of a judge error.
+    Column("message", Text),
     Column("points_awarded", Integer, nullable=False, server_default=text("0")),
     Column("retries", Integer, nullable=False, server_default=text("0")),
     created_at(),

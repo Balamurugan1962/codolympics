@@ -19,6 +19,7 @@ from sqlalchemy import (
     Text,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 
 from engine.schema.base import created_at, metadata, participant_ref, timestamp
 
@@ -73,8 +74,8 @@ judgement = Table(
 )
 
 # A practice run: the participant's code on the samples or their own input,
-# with nothing at stake. Only what the Judge page needs is kept: neither the
-# source nor the outputs are stored.
+# with nothing at stake. What was run and what came out is kept, so an
+# organiser can open a run from the Judge monitor like a submission.
 practice_run = Table(
     "practice_run",
     metadata,
@@ -87,6 +88,11 @@ practice_run = Table(
     Column("job_id", Text),
     Column("verdict", Text),
     Column("message", Text),
+    Column("source", Text),
+    Column("custom_input", Text),
+    Column("sample_count", Integer, nullable=False, server_default=text("0")),
+    # The judge's RunResult once it is done: compile_output and the outputs.
+    Column("result", JSONB),
     created_at(),
     timestamp("ended_at"),
     Index("practice_run_participant_idx", "participant_id", "state"),

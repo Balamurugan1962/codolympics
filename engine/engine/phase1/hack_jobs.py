@@ -73,7 +73,7 @@ def send_one() -> bool:
 
 def _send_failed(conn: sa.Connection, attempt_id: int, err: JudgeError) -> bool:
     if err.judge_status in (400, 404):
-        _broken(conn, attempt_id)
+        _broken(conn, attempt_id, err.message)
         return True
     conn.execute(
         sa.update(p1_hack_attempt)
@@ -83,9 +83,9 @@ def _send_failed(conn: sa.Connection, attempt_id: int, err: JudgeError) -> bool:
     return False
 
 
-def _broken(conn: sa.Connection, attempt_id: int) -> None:
+def _broken(conn: sa.Connection, attempt_id: int, message: str) -> None:
     """The question, not the participant, is at fault: neither a hack nor a failure,
-    and nothing scored."""
+    and nothing scored. The judge's refusal is kept, as the one account of why."""
     conn.execute(
         sa.update(p1_hack_attempt)
         .where(p1_hack_attempt.c.id == attempt_id)
@@ -95,6 +95,7 @@ def _broken(conn: sa.Connection, attempt_id: int) -> None:
             hacked=None,
             verdict="IE",
             invalid_reason=None,
+            message=message,
             ended_at=clock.now(),
         )
     )
@@ -176,6 +177,7 @@ def settle(row: sa.Row, result: dict[str, Any]) -> str | None:
                 invalid_reason=None if result["valid_input"] else result["invalid_reason"],
                 hacked=result["hacked"],
                 verdict=result["verdict"],
+                message=result.get("message") or None,
                 points_awarded=_points(conn, attempt, result),
                 ended_at=clock.now(),
             )

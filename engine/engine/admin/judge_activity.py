@@ -149,7 +149,6 @@ def _submissions(conn: sa.Connection, limit: int) -> list[dict[str, Any]]:
 
 
 def _runs(conn: sa.Connection, limit: int) -> list[dict[str, Any]]:
-    """Practice runs keep no source and no output; the row is all there is to show."""
     found = conn.execute(
         sa.select(practice_run, user.c.name, question.c.title)
         .join(user, user.c.id == practice_run.c.participant_id)
@@ -161,7 +160,7 @@ def _runs(conn: sa.Connection, limit: int) -> list[dict[str, Any]]:
         _shape(
             kind="run",
             key=f"run:{r.id}",
-            ref=None,
+            ref=f"run/{r.id}",
             job_id=r.job_id,
             state=r.state,
             participant_id=r.participant_id,
@@ -312,6 +311,8 @@ def detail(kind: str, ref: str) -> dict[str, Any]:
         return _submission_detail(int(ref))
     if kind == "hack":
         return _hack_detail(int(ref))
+    if kind == "run":
+        return _run_detail(int(ref))
     if kind == "validator":
         return _validator_detail(ref)
     raise errors.not_found("job")
@@ -459,10 +460,42 @@ def _hack_detail(attempt_id: int) -> dict[str, Any]:
             "invalid_reason": a.invalid_reason,
             "hacked": a.hacked,
             "verdict": a.verdict,
+            "message": a.message,
             "points_awarded": a.points_awarded,
             "outcome": outcome,
         },
         "stakes": {"hack_points": a.hack_points, "fail_penalty": a.fail_penalty},
+    }
+
+
+def _run_detail(run_id: int) -> dict[str, Any]:
+    with db.transaction() as conn:
+        r = conn.execute(
+            sa.select(practice_run, user.c.name, question.c.title)
+            .join(user, user.c.id == practice_run.c.participant_id)
+            .join(question, question.c.id == practice_run.c.question_id)
+            .where(practice_run.c.id == run_id)
+        ).one_or_none()
+    if r is None:
+        raise errors.not_found("job")
+    result = r.result or {}
+    return {
+        "kind": "run",
+        "who": {"id": r.participant_id, "name": r.name or r.participant_id},
+        "submitted_at": clock.iso(r.created_at),
+        "target": {"title": r.title, "problem_id": r.question_id, "question_id": r.question_id},
+        "language": r.language,
+        # A run before 0007 kept neither; the page says so rather than showing nothing.
+        "source": r.source,
+        "custom_input": r.custom_input,
+        "sample_count": r.sample_count,
+        "request": _request(r.job_id, r.state, r.created_at, r.ended_at),
+        "result": {
+            "verdict": r.verdict,
+            "message": r.message,
+            "compile_output": result.get("compile_output", ""),
+            "outputs": result.get("outputs") if r.result else None,
+        },
     }
 
 
