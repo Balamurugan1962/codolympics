@@ -1,38 +1,35 @@
 "use client";
 
 /**
- * Grading written answers — a marking sheet, not a slideshow.
+ * Grading written answers.
  *
- * Thirty-odd people answer the same question, so the work is one question at a
- * time across everybody: read an answer, type a mark, read the next. An
- * earlier version showed one answer per screen with the marks in a far column;
- * that is thirty navigations and thirty eye journeys across the screen for a
- * question whose answers are three lines long.
+ * Thirty-odd people answer the same question, and an answer runs to a couple
+ * of paragraphs. So the work is one question at a time, one answer at a time:
+ * the question and the model answer stay in view, the answer is shown whole,
+ * and the marks are typed right under it. Next takes you to the following
+ * unmarked answer; the aside lists everyone, with how each stands, so you can
+ * jump to any of them and always know how far through you are.
  *
- * So every answer to the selected question is on one page, in one column, with
- * its mark fields on the row itself. Marks save on their own a moment after
- * they are typed — there is no Save button to hunt for thirty times — and the
- * row says when it is saved.
- *
- * The question and the model answer sit above the list and stay there, because
- * marking consistently means re-reading them for every answer.
+ * Marks save on their own a moment after they are typed, and the card says
+ * when it is saved; there is no Save button to hunt for thirty times.
  *
  * Blank answers are their own state, not an empty "to grade": somebody wrote
  * nothing and still needs a zero recorded. They can be marked in one action,
  * because with thirty people that is the difference between a minute and ten.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Icon } from "@/components/icons";
 import { Markdown } from "@/components/markdown";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckField } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageBody, PageHeader, Section } from "@/components/ui/page";
+import { AsideBlock, Figures, FilterChips, RecordBody } from "@/components/ui/record";
+import { PageSkeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 import { cn } from "@/lib/utils";
@@ -49,7 +46,7 @@ type Question = {
 type Group = { question: Question; items: Item[] };
 type Data = { ungraded: number; total: number; groups: Group[] };
 
-/** The four states an answer can be in, in the order they matter to a grader. */
+/** The states an answer can be in, in the order they matter to a grader. */
 type State = "flagged" | "blank" | "todo" | "partial" | "done";
 
 function stateOf(q: Question, it: Item): State {
@@ -71,16 +68,34 @@ function isBlank(q: Question, it: Item): boolean {
   return answerEmpty && reasonEmpty;
 }
 
+/** Marked, one way or another: nothing more to do on this one. */
+const settled = (s: State) => s === "done" || s === "flagged";
+
 const STATE: Record<State, { dot: string; label: string }> = {
   done: { dot: "bg-green", label: "Graded" },
-  partial: { dot: "bg-amber-bg", label: "Half graded" },
+  partial: { dot: "bg-amber", label: "Half graded" },
   todo: { dot: "bg-line-2", label: "To grade" },
-  blank: { dot: "border border-line-2 bg-transparent", label: "Blank" },
+  blank: { dot: "border border-line-2 bg-transparent", label: "Nothing written" },
   flagged: { dot: "bg-brand", label: "Flagged" },
 };
 
+type Row = { it: Item; state: State; seat: number };
+type Filter = "todo" | "flagged" | "all";
 
-type Filter = "todo" | "all" | "flagged";
+/**
+ * A stable order, and a stable number beside each name. The queue arrives
+ * ordered by when an answer was last touched, so marking one answer would
+ * reshuffle the list and "Participant 4" would become somebody else. Sorting
+ * by participant means seat 4 is the same person all the way through.
+ */
+function rowsOf(g: Group): Row[] {
+  return g.items
+    .map((it) => ({ it, state: stateOf(g.question, it) }))
+    .sort((a, b) => a.it.participant_id.localeCompare(b.it.participant_id))
+    .map((r, i) => ({ ...r, seat: i + 1 }));
+}
+
+const matches = (filter: Filter, state: State) => filter === "all" || (filter === "flagged" ? state === "flagged" : !settled(state));
 
 export default function GradePage() {
   const [data, setData] = useState<Data | null>(null);
@@ -88,12 +103,8 @@ export default function GradePage() {
   const [hideNames, setHideNames] = useState(true);
   const [qi, setQi] = useState(0);
   const [filter, setFilter] = useState<Filter>("todo");
-  /*
-   * Which rows are on screen is decided when the question or the filter
-   * changes, and not again. Re-filtering on every save would pull a row out
-   * from under the grader the moment the first digit of a mark lands.
-   */
-  const [shownIds, setShownIds] = useState<string[] | null>(null);
+  // Who is on screen. Kept by id, so a reload after a save does not move it.
+  const [current, setCurrent] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -103,212 +114,189 @@ export default function GradePage() {
       setError(errorMessage(err));
     }
   }, []);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  // The first paint of a question or filter fixes the row set.
-  useEffect(() => {
-    setShownIds(null);
-  }, [qi, filter]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { setCurrent(null); }, [qi]);
 
-  if (error) return <EmptyState icon={<Icon.Alert size={20} />} title="Could not load the queue" body={error} />;
-  if (!data) return <SheetSkeleton />;
-  if (data.groups.length === 0) {
-    return <EmptyState icon={<Icon.Check size={20} />} title="Nothing to grade" body="Answers appear here as they are submitted." />;
+  if (error) return <PageBody><EmptyState icon={<Icon.Alert size={20} />} title="Could not load the queue" body={error} /></PageBody>;
+  if (!data) return <PageBody width="wide"><PageSkeleton stats={4} rows={6} cols={2} /></PageBody>;
+
+  const groups = data.groups.map((g) => ({ g, rows: rowsOf(g) }));
+  const everyRow = groups.flatMap(({ rows }) => rows);
+  const count = (s: State) => everyRow.filter((r) => r.state === s).length;
+  const unmarked = everyRow.filter((r) => !settled(r.state)).length;
+
+  if (groups.length === 0) {
+    return <PageBody><EmptyState icon={<Icon.Check size={20} />} title="Nothing to grade" body="Answers appear here as they are submitted." /></PageBody>;
   }
 
-  const group = data.groups[Math.min(qi, data.groups.length - 1)];
-  /*
-   * A stable order, and a stable number beside each name.
-   *
-   * The queue arrives ordered by when an answer was last touched, so marking
-   * one answer — or a competitor editing theirs — reshuffled the sheet under
-   * the grader, and "Participant 4" became somebody else. Sorting by
-   * participant means row 4 is the same person all the way through.
-   */
-  const rows = group.items
-    .map((it, i) => ({ it, state: stateOf(group.question, it), seat: i }))
-    .sort((a, b) => a.it.participant_id.localeCompare(b.it.participant_id))
-    .map((r, i) => ({ ...r, seat: i + 1 }));
-  const done = rows.filter(({ state }) => state === "done" || state === "flagged").length;
-  const matching = rows.filter(({ state }) => (filter === "all" ? true : filter === "flagged" ? state === "flagged" : state !== "done" && state !== "flagged"));
-  const shown = shownIds ? rows.filter(({ it }) => shownIds.includes(it.participant_id)) : matching;
-  const hidden = matching.filter(({ it }) => !shown.some((r) => r.it.participant_id === it.participant_id)).length;
+  const { g: group, rows } = groups[Math.min(qi, groups.length - 1)];
+  const listed = rows.filter(({ state }) => matches(filter, state));
+  // The one on screen: the chosen one, else the first still to do, else the first.
+  const shown = rows.find((r) => r.it.participant_id === current) ?? listed[0] ?? rows[0];
+  const at = shown ? listed.findIndex((r) => r.it.participant_id === shown.it.participant_id) : -1;
+  // Next is the next listed answer after this seat, whether or not this one is still listed.
+  const after = shown ? listed.find((r) => r.seat > shown.seat) ?? null : null;
+  const before = shown ? [...listed].reverse().find((r) => r.seat < shown.seat) ?? null : null;
+  const marked = rows.filter(({ state }) => settled(state)).length;
 
   return (
-    <div className="flex h-[calc(100vh-56px)] flex-col">
-      <SheetToolbar
-        groups={data.groups}
-        qi={qi}
-        onQuestion={(i) => { setQi(i); setFilter("todo"); setShownIds(null); }}
-        done={done}
-        total={rows.length}
-        filter={filter}
-        onFilter={(f) => { setFilter(f); setShownIds(null); }}
-        hideNames={hideNames}
-        onHideNames={setHideNames}
+    <PageBody width="wide">
+      <PageHeader
+        title="Answers"
+        description="One question at a time, one answer at a time. Marks save on their own as you type."
+        actions={
+          <label className="flex cursor-pointer items-center gap-2 text-[13px]">
+            <Switch checked={hideNames} onCheckedChange={setHideNames} aria-label="Hide names" />
+            Hide names
+          </label>
+        }
       />
-      <div className="pane min-h-0 flex-1 overflow-y-auto bg-muted/20 px-4 py-5 lg:px-6">
-        {/* One framed sheet: the question, the bulk action, the column header
-            and every row share the same edges and the same side padding. */}
-        <div className="mx-auto w-full max-w-5xl border bg-card">
-          <Reference q={group.question} />
-          <BulkBlanks q={group.question} rows={rows} onDone={load} />
-        {hidden > 0 && (
-          <div className="flex items-center gap-3 border-t bg-brand-tint/50 px-5 py-2 text-[12.5px]">
-            <span className="text-muted-foreground">
-              <strong className="font-semibold text-foreground tabular-nums">{hidden}</strong> marked and still listed.
-            </span>
-            <Button variant="ghost" size="sm" onClick={() => setShownIds(matching.map(({ it }) => it.participant_id))}>
-              Clear them
-            </Button>
-          </div>
-        )}
-        {shown.length === 0 ? (
-          <div className="px-6 py-10">
-            <EmptyState compact title="Nothing left here" body="Every answer to this question is marked. Switch the filter to see them." />
-          </div>
-        ) : (
+      <Figures
+        className="mb-5"
+        items={[
+          { label: "To grade", value: unmarked, tone: unmarked > 0 ? "warning" : "success", note: unmarked === 0 ? "all done" : "across every question" },
+          { label: "Graded", value: count("done") },
+          { label: "Flagged", value: count("flagged"), tone: count("flagged") > 0 ? "warning" : "default", note: "for a second look" },
+          { label: "Blank", value: count("blank"), note: "still need a zero" },
+        ]}
+      />
+
+      <RecordBody
+        aside={
           <>
-          <div className="hidden items-center gap-x-4 border-y bg-muted/40 px-5 py-2 text-[10px] font-semibold tracking-[0.06em] text-faint uppercase sm:flex">
-            <span className="w-6" />
-            <span className="min-w-0 flex-1">Answer and reasoning</span>
-            <span className="flex w-[236px] items-center gap-2">
-              <span className="w-[72px] text-center">Answer /{group.question.points}</span>
-              {group.question.explain_points > 0 && <span className="w-[72px] text-center">Reason /{group.question.explain_points}</span>}
-            </span>
-          </div>
-          <ol className="divide-y">
-            {shown.map(({ it, state, seat }) => (
-              <MarkRow
-                key={it.participant_id}
-                q={group.question}
-                item={it}
-                state={state}
-                label={hideNames ? `Participant ${seat}` : it.name}
-                index={seat - 1}
-                onSaved={load}
-              />
-            ))}
-          </ol>
+            {groups.length > 1 && (
+              <AsideBlock title="Questions" className="[&>div]:p-1.5">
+                <ol>
+                  {groups.map(({ g, rows }, i) => {
+                    const left = rows.filter((r) => !settled(r.state)).length;
+                    return (
+                      <li key={g.question.id}>
+                        <AsideRow active={i === qi} onClick={() => { setQi(i); setFilter("todo"); }}>
+                          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{g.question.title}</span>
+                          {left > 0 ? <span className="shrink-0 text-[12px] tabular-nums opacity-80">{left} left</span> : <Icon.Check size={14} className="shrink-0 text-green-dark" />}
+                        </AsideRow>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </AsideBlock>
+            )}
+            <AsideBlock
+              title={
+                <span className="flex items-center justify-between gap-3">
+                  <span>Answers</span>
+                  <span className="text-[12px] font-normal text-muted-foreground tabular-nums">{marked} of {rows.length} marked</span>
+                </span>
+              }
+              className="[&>div]:p-1.5"
+            >
+              <div className="px-1 pt-1 pb-2">
+                <FilterChips
+                  label="Which answers"
+                  value={filter}
+                  onChange={setFilter}
+                  options={[
+                    { value: "todo", label: "To grade", count: rows.filter((r) => !settled(r.state)).length },
+                    { value: "flagged", label: "Flagged", count: rows.filter((r) => r.state === "flagged").length },
+                    { value: "all", label: "All", count: rows.length },
+                  ]}
+                />
+              </div>
+              {listed.length === 0 ? (
+                <p className="px-2.5 py-3 text-[12.5px] text-muted-foreground">Nothing here. Every answer to this question is marked; switch the filter to see them.</p>
+              ) : (
+                <ol className="pane max-h-[50vh] overflow-y-auto">
+                  {listed.map((r) => (
+                    <li key={r.it.participant_id}>
+                      <AsideRow active={r.it.participant_id === shown?.it.participant_id} onClick={() => setCurrent(r.it.participant_id)}>
+                        <span className="w-5 shrink-0 text-[11.5px] text-faint tabular-nums">{r.seat}</span>
+                        <span className={cn("size-1.5 shrink-0 rounded-full", STATE[r.state].dot)} />
+                        <span className="min-w-0 flex-1 truncate text-[13px]">{hideNames ? `Participant ${r.seat}` : r.it.name}</span>
+                        <span className="shrink-0 text-[12px] tabular-nums opacity-80">{marksOf(group.question, r.it)}</span>
+                      </AsideRow>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </AsideBlock>
+            <BulkBlanks q={group.question} rows={rows} onDone={load} />
           </>
-        )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** What is being marked, how far through, and which answers to show. */
-function SheetToolbar({ groups, qi, onQuestion, done, total, filter, onFilter, hideNames, onHideNames }: {
-  groups: Group[]; qi: number; onQuestion: (i: number) => void; done: number; total: number;
-  filter: Filter; onFilter: (f: Filter) => void; hideNames: boolean; onHideNames: (v: boolean) => void;
-}) {
-  const pct = total ? Math.round((100 * done) / total) : 0;
-  return (
-    <div className="shrink-0 border-b bg-card">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 lg:px-6">
-        <h1 className="text-[14px] font-semibold">Grading</h1>
-        <div className="flex items-center gap-2.5">
-          <div className="h-1 w-28 overflow-hidden bg-line" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-            <div className="h-full bg-brand transition-[width]" style={{ width: `${pct}%` }} />
-          </div>
-          <span className="text-[12.5px] tabular-nums text-muted-foreground">{done} of {total} marked</span>
-        </div>
-        <div className="ml-auto flex items-center gap-3">
-          <ToggleRow
-            options={[["todo", "To grade"], ["flagged", "Flagged"], ["all", "All"]]}
-            value={filter}
-            onChange={(v) => onFilter(v as Filter)}
+        }
+      >
+        <Reference q={group.question} />
+        {shown ? (
+          <AnswerCard
+            key={shown.it.participant_id}
+            q={group.question}
+            item={shown.it}
+            state={shown.state}
+            label={hideNames ? `Participant ${shown.seat}` : shown.it.name}
+            place={at >= 0 ? `${at + 1} of ${listed.length}` : null}
+            onSaved={load}
+            onPrev={before ? () => setCurrent(before.it.participant_id) : null}
+            onNext={after ? () => setCurrent(after.it.participant_id) : null}
           />
-          <CheckField label="Hide names" checked={hideNames} onChange={(e) => onHideNames(e.target.checked)} />
-        </div>
-      </div>
-      {groups.length > 1 && (
-        <nav className="flex min-w-0 items-center gap-1 overflow-x-auto border-t px-4 py-1.5 lg:px-6" aria-label="Questions">
-          {groups.map((g, i) => {
-            const left = g.items.filter((it) => !["done", "flagged"].includes(stateOf(g.question, it))).length;
-            return (
-              <button
-                key={g.question.id}
-                onClick={() => onQuestion(i)}
-                aria-current={i === qi ? "true" : undefined}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 border px-2 py-1 text-[12px] font-medium transition-colors",
-                  i === qi ? "border-brand bg-brand-tint text-brand-deep" : "border-transparent text-muted-foreground hover:bg-muted",
-                )}
-              >
-                <span className="max-w-[18ch] truncate">{g.question.title}</span>
-                <span className="tabular-nums opacity-70">{left || "✓"}</span>
-              </button>
-            );
-          })}
-        </nav>
-      )}
-    </div>
+        ) : (
+          <Section>
+            <EmptyState compact icon={<Icon.Check size={18} />} title="Nothing to grade on this question" body="No answers yet." />
+          </Section>
+        )}
+      </RecordBody>
+    </PageBody>
   );
 }
 
-/** A row of mutually exclusive choices, the size of a filter rather than a form. */
-function ToggleRow({ options, value, onChange }: { options: [string, string][]; value: string; onChange: (v: string) => void }) {
+function AsideRow({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <div className="flex items-center border" role="group">
-      {options.map(([v, label]) => (
-        <button
-          key={v}
-          onClick={() => onChange(v)}
-          aria-pressed={v === value}
-          className={cn(
-            "px-2.5 py-1 text-[12px] font-medium transition-colors",
-            v === value ? "bg-navy text-white" : "text-muted-foreground hover:bg-muted",
-          )}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "true" : undefined}
+      className={cn("flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left transition-colors", active ? "bg-brand-tint text-brand-deep" : "hover:bg-muted")}
+    >
+      {children}
+    </button>
   );
 }
 
-/** The question and the model answer, above the sheet and scrolling with it. */
+/** "12/20 · 4/5", or a dash for what is not marked yet. */
+function marksOf(q: Question, it: Item): string {
+  const parts: string[] = [];
+  if (q.grading === "manual") parts.push(`${it.manual_score ?? "–"}/${q.points}`);
+  if (q.explain_points > 0) parts.push(`${it.explain_score ?? "–"}/${q.explain_points}`);
+  return parts.join("  ");
+}
+
+/** The question and the model answer, above the answer being marked. */
 function Reference({ q }: { q: Question }) {
   const [open, setOpen] = useState(true);
+  const worth = [q.grading === "manual" && `${q.points} for the answer`, q.explain_points > 0 && `${q.explain_points} for the reasoning`].filter(Boolean).join(", ");
   return (
-    <div className="bg-card px-4 py-3.5 lg:px-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="text-[14px] leading-snug font-semibold">{q.title}</h2>
-          <div className="mt-0.5 text-[11.5px] tabular-nums text-faint">
-            {q.grading === "manual" && `${q.points} pts for the answer`}
-            {q.grading === "manual" && q.explain_points > 0 && " · "}
-            {q.explain_points > 0 && `${q.explain_points} for the reasoning`}
-          </div>
-        </div>
+    <Section
+      title={q.title}
+      description={worth}
+      actions={
         <Button variant="ghost" size="sm" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
           {open ? "Hide" : "Show"} the question
         </Button>
+      }
+      className={cn(!open && "[&>div:last-child]:hidden")}
+    >
+      <div className="grid gap-6 text-[13px] lg:grid-cols-2">
+        <Markdown className="prose-sm">{q.body_md}</Markdown>
+        {q.model_answer && (
+          <div className="rounded-box border border-dashed border-line-2 bg-muted/30 px-4 py-3">
+            <div className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold"><Icon.Lock size={12} className="text-faint" /> Model answer</div>
+            <div className="text-muted-foreground"><Markdown className="prose-sm">{q.model_answer}</Markdown></div>
+          </div>
+        )}
       </div>
-      {open && (
-        <div className="mt-3 grid gap-5 border-t pt-3 text-[12.5px] lg:grid-cols-2">
-          <Markdown className="prose-sm">{q.body_md}</Markdown>
-          {q.model_answer && (
-            <div>
-              <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase">
-                <Icon.Lock size={11} /> Model answer
-              </div>
-              <div className="text-muted-foreground">
-                <Markdown className="prose-sm">{q.model_answer}</Markdown>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+    </Section>
   );
 }
 
 /** Thirty people means several blanks. Marking them one at a time is the waste. */
-function BulkBlanks({ q, rows, onDone }: { q: Question; rows: { it: Item; state: State }[]; onDone: () => Promise<void> }) {
+function BulkBlanks({ q, rows, onDone }: { q: Question; rows: Row[]; onDone: () => Promise<void> }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   const blanks = rows.filter(({ state }) => state === "blank");
@@ -335,27 +323,27 @@ function BulkBlanks({ q, rows, onDone }: { q: Question; rows: { it: Item; state:
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3 border-t bg-muted/40 px-4 py-2.5 text-[12.5px] lg:px-6">
-      <span className="text-muted-foreground">
-        <strong className="font-semibold text-foreground tabular-nums">{blanks.length}</strong> answered nothing.
-      </span>
-      <Button variant="outline" size="sm" onClick={zeroAll} loading={busy}>
-        Mark all blanks 0
-      </Button>
-    </div>
+    <AsideBlock title="Blank answers">
+      <p className="text-[12.5px] text-muted-foreground">
+        <strong className="font-semibold text-foreground tabular-nums">{blanks.length}</strong> answered nothing. They still need a zero on the record.
+      </p>
+      <Button variant="outline" size="sm" className="mt-2.5" onClick={zeroAll} loading={busy}>Mark all blanks 0</Button>
+    </AsideBlock>
   );
 }
 
+type Marks = { manual?: string; explain?: string; comment?: string; flagged?: boolean };
+
 /**
- * One answer, and the marks for it, on one row.
+ * One answer, whole, and the marks for it.
  *
- * Marks save themselves a moment after the last keystroke: with thirty rows on
- * screen a Save button per row is thirty extra clicks, and a single Save at the
- * bottom is a cliff to fall off. The row says where it is — saving, saved, or
- * not yet marked — so nothing is silent.
+ * Marks save themselves a moment after the last keystroke; the card says
+ * where it is, saving or saved, so nothing is silent. Left and right arrows
+ * move between answers when the focus is not in a field.
  */
-function MarkRow({ q, item, state, label, index, onSaved }: {
-  q: Question; item: Item; state: State; label: string; index: number; onSaved: () => Promise<void>;
+function AnswerCard({ q, item, state, label, place, onSaved, onPrev, onNext }: {
+  q: Question; item: Item; state: State; label: string; place: string | null;
+  onSaved: () => Promise<void>; onPrev: (() => void) | null; onNext: (() => void) | null;
 }) {
   const { toast } = useToast();
   const [manual, setManual] = useState(item.manual_score?.toString() ?? "");
@@ -363,20 +351,16 @@ function MarkRow({ q, item, state, label, index, onSaved }: {
   const [comment, setComment] = useState(item.comment ?? "");
   const [flagged, setFlagged] = useState(item.flagged);
   const [saved, setSaved] = useState<"idle" | "saving" | "saved">("idle");
-  const [open, setOpen] = useState(false);
   const [commenting, setCommenting] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const needsAnswer = q.grading === "manual";
   const needsReason = q.explain_points > 0;
-
   const answer = renderAnswer(item.answer);
   const words = answer.trim() ? answer.trim().split(/\s+/).length : 0;
-  /** Roughly more than the three lines the row shows, or more than a couple of paragraphs. */
-  const long = answer.length > 200 || answer.split("\n").length > 3 || (item.explanation?.length ?? 0) > 160;
 
-  const save = useCallback(async (next: { manual?: string; explain?: string; comment?: string; flagged?: boolean }) => {
-    const body = { manual: manual, explain: explain, comment, flagged, ...next };
+  const save = useCallback(async (next: Marks) => {
+    const body = { manual, explain, comment, flagged, ...next };
     setSaved("saving");
     try {
       await api.post("/api/grade", {
@@ -396,143 +380,125 @@ function MarkRow({ q, item, state, label, index, onSaved }: {
   }, [comment, explain, flagged, item.participant_id, manual, needsAnswer, needsReason, onSaved, q.id, toast]);
 
   /** Typing a mark should not fire a request per keystroke. */
-  const later = (next: Parameters<typeof save>[0]) => {
+  const later = (next: Marks) => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void save(next), 700);
   };
 
-  return (
-    <li
-      className={cn(
-        "relative grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-4 gap-y-3 px-5 py-4 transition-colors",
-        "hover:bg-muted/40 focus-within:bg-brand-tint/40 sm:grid-cols-[1.5rem_minmax(0,1fr)_auto]",
-        // A bar down the left says where the row stands without a badge on every line.
-        "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:content-['']",
-        state === "done" && "before:bg-green",
-        state === "flagged" && "before:bg-brand",
-        state === "partial" && "before:bg-amber-bg",
-        state === "blank" && "before:bg-line-2",
-        (state === "todo") && "before:bg-transparent",
-      )}
-    >
-      <div className="pt-px text-right font-mono text-[11px] text-faint tabular-nums">{index + 1}</div>
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "ArrowRight" && onNext) { e.preventDefault(); onNext(); }
+      if (e.key === "ArrowLeft" && onPrev) { e.preventDefault(); onPrev(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onNext, onPrev]);
 
-      <div className="min-w-0">
-        <div className="flex items-baseline gap-2">
-          <span className="truncate text-[11.5px] font-semibold tracking-[0.02em] text-muted-foreground uppercase">{label}</span>
-          <span className="text-[11px] text-faint">{state === "blank" ? "nothing written" : STATE[state].label}</span>
+  return (
+    <Section padded={false} className={cn(state === "flagged" && "border-brand/40")}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-5 py-3">
+        <h2 className="text-[15px] font-semibold">{label}</h2>
+        <span className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+          <span className={cn("size-1.5 rounded-full", STATE[state].dot)} />
+          {STATE[state].label}
+        </span>
+        {place && <span className="text-[12.5px] text-faint tabular-nums">{place} listed</span>}
+        <div className="ml-auto flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={onPrev ?? undefined} disabled={!onPrev} aria-label="Previous answer"><Icon.ChevronLeft size={15} /> Previous</Button>
+          <Button variant="ghost" size="sm" onClick={onNext ?? undefined} disabled={!onNext} aria-label="Next answer">Next <Icon.ChevronRight size={15} /></Button>
         </div>
-        {/*
-          * The text is text, not a button: a grader selects and re-reads
-          * phrases while marking, and a click that collapsed the answer under
-          * the cursor made that impossible.
-          *
-          * A long answer scrolls inside its own box rather than growing the
-          * row — an open-ended question can run to thousands of characters,
-          * and one of those would otherwise push every other answer off the
-          * sheet.
-          */}
-        <div
-          className={cn(
-            "mt-1 text-[14px] leading-relaxed whitespace-pre-wrap",
-            open ? "pane max-h-[32vh] overflow-y-auto border-l-2 border-line-2 bg-muted/20 py-1.5 pl-3" : "line-clamp-3",
-          )}
-        >
-          {answer || <span className="text-faint italic">no answer</span>}
+      </div>
+
+      {/*
+        * The text is text, not a button: a grader selects and re-reads
+        * phrases while marking. The measure is kept to reading width; an
+        * answer of any length is shown whole, because the point of this
+        * page is to read it.
+        */}
+      <div className="px-5 py-5">
+        <div className="max-w-[72ch] text-[14.5px] leading-[1.7] whitespace-pre-wrap">
+          {answer || <span className="text-faint italic">No answer written.</span>}
         </div>
-        {item.explanation && (
-          <div
-            className={cn(
-              "mt-1.5 border-l-2 border-line pl-3 text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap",
-              open ? "pane max-h-[18vh] overflow-y-auto" : "line-clamp-2",
-            )}
-          >
-            {item.explanation}
+        {words > 0 && <div className="mt-2 text-[11.5px] text-faint tabular-nums">{words} {words === 1 ? "word" : "words"}</div>}
+        {needsReason && (
+          <div className="mt-5 max-w-[72ch]">
+            <div className="mb-1.5 text-[12.5px] font-semibold">Their reasoning</div>
+            {item.explanation?.trim()
+              ? <div className="border-l-2 border-line-2 pl-3.5 text-[13.5px] leading-[1.7] text-muted-foreground whitespace-pre-wrap">{item.explanation}</div>
+              : <div className="text-[13px] text-faint italic">None given.</div>}
           </div>
         )}
-        {long && (
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            aria-expanded={open}
-            className="mt-1.5 text-[11.5px] font-semibold text-brand-deep hover:underline"
-          >
-            {open ? "Show less" : `Show all${words ? ` · ${words} words` : ""}`}
-          </button>
-        )}
+      </div>
+
+      {/* The marks: the one thing the grader is here to type, right under what they just read. */}
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-3 border-t bg-muted/30 px-5 py-4">
+        {needsAnswer && <MarkField label="Answer" max={q.points} value={manual} onChange={(v) => { setManual(v); later({ manual: v }); }} autoFocus />}
+        {needsReason && <MarkField label="Reasoning" max={q.explain_points} value={explain} onChange={(v) => { setExplain(v); later({ explain: v }); }} autoFocus={!needsAnswer} />}
+        <div className="flex items-center gap-1 pb-0.5">
+          <IconButton pressed={flagged} label={flagged ? "Remove the flag" : "Flag for a second look"} onClick={() => { const f = !flagged; setFlagged(f); void save({ flagged: f }); }}>
+            <Icon.Flag size={14} />
+          </IconButton>
+          {!(commenting || comment) && (
+            <IconButton label="Add a comment the competitor will see" onClick={() => setCommenting(true)}>
+              <Icon.Edit size={14} />
+            </IconButton>
+          )}
+        </div>
+        <span className="pb-2 text-[12px] text-faint" aria-live="polite">{saved === "saving" ? "Saving" : saved === "saved" ? "Saved" : ""}</span>
+        <div className="ml-auto flex items-center gap-2 pb-0.5">
+          <span className="hidden items-center gap-1 text-[11.5px] text-faint sm:flex"><Kbd>←</Kbd><Kbd>→</Kbd> to move</span>
+          <Button size="sm" onClick={onNext ?? undefined} disabled={!onNext}>Next answer <Icon.ArrowRight size={14} /></Button>
+        </div>
         {(commenting || comment) && (
           <Textarea
-            rows={1}
+            rows={2}
             autoFocus={commenting && !comment}
             value={comment}
             onChange={(e) => { setComment(e.target.value); later({ comment: e.target.value }); }}
-            placeholder="Comment. The competitor sees this"
+            placeholder="A comment. The competitor sees this."
             aria-label={`Comment for ${label}`}
-            className="mt-2 min-h-8 py-1 text-[12.5px]"
+            className="basis-full text-[13px]"
           />
         )}
       </div>
-
-      {/* The marks: the one thing the grader is here to type, next to what they just read. */}
-      <div className="col-start-2 flex w-full items-start gap-2 self-start sm:col-start-3 sm:w-[236px] sm:pt-0.5">
-        {needsAnswer && <MarkField label="Answer" max={q.points} value={manual} onChange={(v) => { setManual(v); later({ manual: v }); }} />}
-        {needsReason && <MarkField label="Reason" max={q.explain_points} value={explain} onChange={(v) => { setExplain(v); later({ explain: v }); }} />}
-        <RowActions
-          flagged={flagged}
-          onFlag={() => { const f = !flagged; setFlagged(f); void save({ flagged: f }); }}
-          onComment={() => setCommenting(true)}
-          commenting={commenting || Boolean(comment)}
-          saved={saved}
-        />
-      </div>
-    </li>
+    </Section>
   );
 }
 
-/** Flag, comment and the one word that says the row is safe. */
-function RowActions({ flagged, onFlag, onComment, commenting, saved }: {
-  flagged: boolean; onFlag: () => void; onComment: () => void; commenting: boolean; saved: "idle" | "saving" | "saved";
-}) {
+function IconButton({ pressed, label, onClick, children }: { pressed?: boolean; label: string; onClick: () => void; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={onFlag}
-        aria-pressed={flagged}
-        aria-label="Flag for a second look"
-        className={cn("flex size-8 items-center justify-center border transition-colors",
-          flagged ? "border-brand bg-brand-tint text-brand-deep" : "border-transparent text-faint hover:border-line hover:text-muted-foreground")}
-      >
-        <Icon.Flag size={14} />
-      </button>
-      {!commenting && (
-        <button
-          type="button"
-          onClick={onComment}
-          aria-label="Add a comment"
-          className="flex size-8 items-center justify-center border border-transparent text-faint transition-colors hover:border-line hover:text-muted-foreground"
-        >
-          <Icon.Edit size={14} />
-        </button>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={pressed}
+      aria-label={label}
+      title={label}
+      className={cn(
+        "flex size-9 items-center justify-center rounded-md border transition-colors",
+        pressed ? "border-brand bg-brand-tint text-brand-deep" : "border-transparent text-faint hover:border-line hover:text-foreground",
       )}
-      <span className="w-11 text-[11px] text-faint" aria-live="polite">
-        {saved === "saving" ? "Saving" : saved === "saved" ? "Saved" : ""}
-      </span>
-    </div>
+    >
+      {children}
+    </button>
   );
 }
 
-/** One number, bounded, with its range in the label rather than in a tooltip. */
-function MarkField({ label, max, value, onChange }: { label: string; max: number; value: string; onChange: (v: string) => void }) {
+/** One number, bounded, with its range beside the label rather than in a tooltip. */
+function MarkField({ label, max, value, onChange, autoFocus }: { label: string; max: number; value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
   return (
-    <label className="w-[72px] shrink-0">
-      {/* The sheet has a header for these at sm and up; below that each row says it. */}
-      <span className="mb-1 block text-[10px] font-semibold tracking-[0.06em] whitespace-nowrap text-faint uppercase sm:hidden">
-        {label} <span className="font-normal tabular-nums">/{max}</span>
+    <label className="w-[96px] shrink-0">
+      <span className="mb-1 block text-[12px] whitespace-nowrap text-muted-foreground">
+        {label} <span className="text-faint tabular-nums">/ {max}</span>
       </span>
-      <Input type="number" min={0} max={max} inputMode="numeric" value={value} aria-label={`${label} out of ${max}`}
+      <Input
+        type="number" min={0} max={max} inputMode="numeric" value={value} aria-label={`${label} out of ${max}`}
+        autoFocus={autoFocus}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 px-2 text-center text-[16px] font-semibold tabular-nums" />
+        className="h-10 px-2 text-center text-[16px] font-semibold tabular-nums"
+      />
     </label>
   );
 }
@@ -542,37 +508,4 @@ function renderAnswer(answer: unknown): string {
   if (answer === null || answer === undefined) return "";
   if (Array.isArray(answer)) return answer.map((a) => String(a)).join("\n");
   return String(answer);
-}
-
-/** The sheet, waiting: the toolbar, the question, then rows at their real height. */
-function SheetSkeleton() {
-  return (
-    <div className="flex h-[calc(100vh-56px)] flex-col" role="status" aria-label="Loading" aria-busy>
-      <div className="flex shrink-0 items-center gap-4 border-b bg-card px-4 py-3 lg:px-6">
-        <Skeleton className="h-3 w-20" />
-        <Skeleton className="h-1 w-28" />
-        <Skeleton className="ml-auto h-7 w-44" />
-      </div>
-      <div className="bg-card px-4 py-3.5 lg:px-6">
-        <Skeleton className="h-3 w-56" />
-        <Skeleton className="mt-2 h-2.5 w-32" />
-      </div>
-      <ol className="divide-y border-t">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <li key={i} className="grid gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:px-6">
-            <div className="min-w-0 space-y-2">
-              <Skeleton className="h-2.5 w-32" />
-              <Skeleton className="h-2.5 w-4/5" />
-              <Skeleton className="h-2.5 w-3/5" />
-            </div>
-            <div className="flex gap-2">
-              <Skeleton className="h-8 w-[92px]" />
-              <Skeleton className="h-8 w-[92px]" />
-              <Skeleton className="h-8 w-56" />
-            </div>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
 }
