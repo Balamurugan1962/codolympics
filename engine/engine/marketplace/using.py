@@ -25,7 +25,7 @@ from engine.accounts import wallet
 from engine.contest.messages import notify
 from engine.contest.rules import lock_contest
 from engine.core import clock, db, errors, events
-from engine.marketplace import shields
+from engine.marketplace import breaks, shields
 from engine.marketplace.blackouts import blackout_for, blackout_state
 from engine.marketplace.inventory import event_for, holdings, take_one
 from engine.schema import blackout, powerup, powerup_event, user
@@ -44,6 +44,8 @@ def use(actor_id: str, powerup_id: int, target_id: str | None, request_id: str) 
         events.publish("powerup", blackout_for(target_id), target_id)
         events.publish("notify", {}, target_id)
         events.publish("powerup", {"you": "acted"}, actor_id)
+        # Everyone else's list of targets may have changed: a shield went, a break began.
+        events.publish("targets", {"target": target_id})
     return result
 
 
@@ -133,12 +135,15 @@ def _land_blackout(
         raise errors.conflict("target_inactive", "that participant is out of the contest")
     both = [actor_id, target.user_id]
     names = dict(conn.execute(sa.select(user.c.id, user.c.name).where(user.c.id.in_(both))).all())
+    c = lock_contest(conn)
     # Whether the target learns who did this is the organisers' call.
-    reveal = lock_contest(conn).reveal_attacker
-    attacker = (names.get(actor_id) or "Someone") if reveal else "Someone"
+    attacker = (names.get(actor_id) or "Someone") if c.reveal_attacker else "Someone"
     target_name = names.get(target.user_id)
+    # Someone in a break cannot be attacked, and nothing has been spent yet.
+    breaks.assert_attackable(conn, target.user_id, target_name)
 
     if _spend_shield(conn, target.user_id, actor_id, attacker):
+        _count_attack(conn, c, target.user_id, absorbed=True)
         return {"shielded": True, "ends_at": None, "target_name": target_name}
 
     seconds = item.duration_seconds or 0
@@ -148,7 +153,21 @@ def _land_blackout(
         )
     ends_at = _append_blackout(conn, target.user_id, actor_id, seconds)
     notify(conn, target.user_id, f"**{attacker}** blacked you out for {seconds} seconds.")
+    _count_attack(conn, c, target.user_id, absorbed=False)
     return {"shielded": False, "ends_at": ends_at, "target_name": target_name}
+
+
+def _count_attack(conn: sa.Connection, c: sa.Row, target_id: str, absorbed: bool) -> None:
+    """This attack may be the one that reaches the cap and starts the target's break."""
+    started = breaks.note_attack(conn, c, target_id, absorbed)
+    if started is None:
+        return
+    notify(
+        conn,
+        target_id,
+        f"You have been attacked {c.attack_cap} times. "
+        f"Nobody can attack you for the next {started.seconds} seconds.",
+    )
 
 
 def _spend_shield(conn: sa.Connection, target_id: str, actor_id: str, attacker: str) -> bool:

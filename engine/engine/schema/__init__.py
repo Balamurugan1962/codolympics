@@ -24,7 +24,14 @@ from engine.schema.base import (
 from engine.schema.coding import draft, judgement, practice_run, submission
 from engine.schema.contest import announcement, audit_log, contest, event, notification, participant
 from engine.schema.identity import account, session, user, verification
-from engine.schema.marketplace import blackout, powerup, powerup_event, powerup_inventory, shield
+from engine.schema.marketplace import (
+    attack_break,
+    blackout,
+    powerup,
+    powerup_event,
+    powerup_inventory,
+    shield,
+)
 from engine.schema.phase1 import (
     p1_advancement,
     p1_answer,
@@ -46,6 +53,7 @@ __all__ = [
     "announcement",
     "audit_log",
     "bid",
+    "attack_break",
     "blackout",
     "shield",
     "contest",

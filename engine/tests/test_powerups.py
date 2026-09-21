@@ -7,13 +7,14 @@ from datetime import datetime, timedelta
 
 import pytest
 import sqlalchemy as sa
-from conftest import add_user, at_once, balance_of, raises_code, rows, scalar, set_contest
+from conftest import add_user, at_once, balance_of, codes, raises_code, rows, scalar, set_contest
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from engine.coding import submissions
 from engine.core import clock, db
-from engine.marketplace import blackouts, buying, catalogue, shields, storefront, using
+from engine.marketplace import blackouts, breaks, buying, catalogue, shields, storefront, using
 from engine.schema import (
+    attack_break,
     blackout,
     ledger,
     notification,
@@ -338,6 +339,87 @@ def test_organisers_decide_what_an_attack_reveals(market: dict[str, int]) -> Non
     attack("alice", "bob", market)
     assert last_notice("bob").startswith("**Someone** blacked")
     assert state("bob")["by"] == ["someone"]
+
+
+# --- the cap on being attacked ----------------------------------------------------
+
+
+def break_of(who: str) -> dict:
+    with db.transaction() as conn:
+        return breaks.break_state(conn, who)
+
+
+def end_break(who: str) -> None:
+    with db.transaction() as conn:
+        conn.execute(
+            sa.update(attack_break)
+            .where(attack_break.c.participant_id == who)
+            .values(ends_at=clock.now() - timedelta(seconds=1))
+        )
+
+
+def test_the_cap_starts_a_break_and_the_next_attack_is_refused_unspent(
+    market: dict[str, int],
+) -> None:
+    set_contest(attack_cap=2, attack_break_seconds=120)
+    give("alice", market["blackout"], 3)
+    assert attack("alice", "bob", market)["outcome"] == "blackout"
+    assert not break_of("bob")["active"]
+    assert attack("alice", "bob", market)["outcome"] == "blackout"
+    b = break_of("bob")
+    assert (b["active"], b["number"]) == (True, 1)
+    assert "attacked 2 times" in last_notice("bob") and "120 seconds" in last_notice("bob")
+    raises_code("target_on_break", lambda: attack("alice", "bob", market))
+    assert qty("alice", market["blackout"]) == 1
+    # Someone else is still fair game.
+    assert attack("alice", "carol", market)["outcome"] == "blackout"
+    targets = {t["id"]: t for t in storefront.marketplace_for("carol")["targets"]}
+    assert targets["bob"]["break_until"] == b["ends_at"] and targets["alice"]["break_until"] is None
+
+
+def test_n_plus_one_attacks_at_once_land_n_and_refuse_one(market: dict[str, int]) -> None:
+    set_contest(attack_cap=2, attack_break_seconds=120)
+    add_user("dave", "Dave")
+    attackers = ["alice", "carol", "dave"]
+    for who in attackers:
+        give(who, market["blackout"], 1)
+    results = at_once([lambda who=who: attack(who, "bob", market) for who in attackers])
+    landed = [r for r in results if isinstance(r, dict)]
+    assert len(landed) == 2 and codes(results) == ["target_on_break"]
+    assert state("bob")["count"] == 2
+    # The refused attacker keeps their Blackout; the two that landed spent theirs.
+    assert sorted(qty(who, market["blackout"]) for who in attackers) == [0, 0, 1]
+
+
+def test_each_break_for_the_same_person_is_twice_as_long(market: dict[str, int]) -> None:
+    set_contest(attack_cap=1, attack_break_seconds=60)
+    give("alice", market["blackout"], 3)
+    attack("alice", "bob", market)
+    first = rows(sa.select(attack_break))[0]
+    assert (first.number, first.seconds) == (1, 60)
+    end_break("bob")
+    attack("alice", "bob", market)
+    second = rows(sa.select(attack_break).order_by(attack_break.c.number.desc()))[0]
+    assert (second.number, second.seconds) == (2, 120)
+    assert break_of("bob")["number"] == 2
+    end_break("bob")
+    attack("alice", "bob", market)
+    assert rows(sa.select(attack_break).order_by(attack_break.c.number.desc()))[0].seconds == 240
+
+
+def test_whether_an_absorbed_attack_counts_is_a_setting(market: dict[str, int]) -> None:
+    set_contest(attack_cap=1, attack_break_seconds=60, count_absorbed_attacks=False)
+    give("alice", market["blackout"], 2)
+    give("bob", market["shield"], 1)
+    assert attack("alice", "bob", market)["outcome"] == "shielded"
+    assert not break_of("bob")["active"]
+    assert attack("alice", "bob", market)["outcome"] == "blackout"
+    assert break_of("bob")["active"]
+    set_contest(count_absorbed_attacks=True)
+    give("alice", market["blackout"], 1)
+    give("carol", market["shield"], 1)
+    assert attack("alice", "carol", market)["outcome"] == "shielded"
+    assert break_of("carol")["active"]
 
 
 # --- configuration and the participant's view -------------------------------------

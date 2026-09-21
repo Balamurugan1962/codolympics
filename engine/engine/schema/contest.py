@@ -46,6 +46,12 @@ contest = Table(
     # can see that a target has a shield up before spending an attack.
     Column("reveal_attacker", Boolean, nullable=False, server_default=text("true")),
     Column("reveal_shields", Boolean, nullable=False, server_default=text("true")),
+    # After this many attacks on one person, nobody can attack them for a
+    # while (0: no cap). The break doubles each time it happens to the same
+    # person. Whether an attack a shield absorbed counts is a switch.
+    Column("attack_cap", Integer, nullable=False, server_default=text("0")),
+    Column("attack_break_seconds", Integer, nullable=False, server_default=text("300")),
+    Column("count_absorbed_attacks", Boolean, nullable=False, server_default=text("true")),
     CheckConstraint("id = 1", name="contest_single_row"),
 )
 
