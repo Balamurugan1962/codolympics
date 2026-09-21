@@ -281,6 +281,10 @@ function LiveToasts() {
   const { state } = useContest();
   const { toast } = useToast();
   const prevBidder = useRef<string | null | undefined>(undefined);
+  // The phase as last announced, so a repeat is not announced again.
+  const seenPhase = useRef<{ phase: string; registrationOpen: boolean } | null>(
+    state ? { phase: state.contest.phase, registrationOpen: state.contest.registration_open } : null,
+  );
 
   useEngineEvent("*", (event) => {
     const me = state?.viewer.id;
@@ -314,15 +318,27 @@ function LiveToasts() {
         toast({ title: "For you", description: plainText(String(d.body ?? "")).slice(0, 140), tone: "info", duration: 9000 });
         break;
       case "phase": {
-        // "Now: Registration" told a competitor nothing. Say what started and
-        // what they are meant to do, in the words the rail above already uses.
-        const here = WHERE[String(d.phase)];
-        toast({
-          title: here?.started ?? `Now: ${PHASE_LABEL[String(d.phase)] ?? d.phase}`,
-          description: here?.todo,
-          tone: "info",
-          duration: 9000,
-        });
+        // A "phase" event is also sent when a deadline is extended or
+        // registration is opened or closed, so only a change in the phase
+        // itself announces a phase. Closing registration says so instead:
+        // it used to repeat "Registration is open".
+        const phase = String(d.phase);
+        const before = seenPhase.current;
+        seenPhase.current = { phase, registrationOpen: d.registration_open === true };
+        if (before === null) break;
+        if (before.phase !== phase) {
+          // "Now: Registration" told a competitor nothing. Say what started and
+          // what they are meant to do, in the words the rail above already uses.
+          const here = WHERE[phase];
+          toast({ title: here?.started ?? `Now: ${PHASE_LABEL[phase] ?? phase}`, description: here?.todo, tone: "info", duration: 9000 });
+        } else if (phase === "registration" && before.registrationOpen !== (d.registration_open === true)) {
+          toast({
+            title: d.registration_open ? "Registration is open again" : "Registration is closed",
+            description: d.registration_open ? "New accounts can be created." : "No more accounts can be created. Waiting for the organisers to start.",
+            tone: "info",
+            duration: 9000,
+          });
+        }
         break;
       }
     }
