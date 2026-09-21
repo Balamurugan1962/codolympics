@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { PageBody, Section } from "@/components/ui/page";
 import { ContestSkeleton } from "@/components/ui/skeleton";
@@ -35,6 +36,7 @@ export function SectionB() {
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
 
   const load = useCallback(async () => { try { setData(await api.get<Data>("/api/phase1/hacking")); } catch (err) { setError(errorMessage(err)); } }, []);
   useEffect(() => { void load(); }, [load]);
@@ -53,6 +55,19 @@ export function SectionB() {
   const attempts = q ? data.attempts.filter((a) => a.question_id === q.id) : [];
   const inFlight = data.attempts.some((a) => a.state !== "done");
   const hackedIds = new Set(data.attempts.filter((a) => a.hacked).map((a) => a.question_id));
+  const unhacked = data.questions.length - hackedIds.size;
+
+  // Finishing is irreversible and happens once, so it asks first, like Section A.
+  async function finish() {
+    try {
+      await api.post("/api/phase1/finish", { section: "hacking" });
+      setFinishOpen(false);
+      await refresh();
+      toast({ title: "Section B finished", description: "Your submission time is recorded.", tone: "success" });
+    } catch (err) {
+      toast({ title: "Could not finish", description: errorMessage(err), tone: "error" });
+    }
+  }
 
   async function chooseLanguage(id: number) {
     const language = q?.solutions.find((x) => x.id === id)?.language;
@@ -71,6 +86,31 @@ export function SectionB() {
 
   return (
     <PageBody width="wide" className="animate-fade-in">
+      {/* The finish lives up here, away from the list, the same place as in
+          Section A: it is irreversible and happens once. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold tracking-[0.06em] text-faint uppercase">Section B · Hacking</div>
+          <div className="mt-0.5 text-[13px] text-muted-foreground">
+            <span className="font-semibold text-foreground tabular-nums">{hackedIds.size}</span> of{" "}
+            <span className="tabular-nums">{data.questions.length}</span> hacked
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+            <Icon.Clock size={14} />
+            <Countdown until={data.phase_ends_at} className="font-semibold text-ink" />
+          </span>
+          {finished ? (
+            <Badge variant="success">Finished</Badge>
+          ) : (
+            <Button size="sm" disabled={locked} onClick={() => setFinishOpen(true)}>
+              <Icon.Flag size={14} /> Submit &amp; finish
+            </Button>
+          )}
+        </div>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-28 lg:self-start">
           <div className="rounded-box border border-line bg-card">
@@ -80,10 +120,6 @@ export function SectionB() {
                 className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${x.id === q?.id ? "bg-brand-tint font-semibold text-ink" : "text-muted-foreground hover:bg-muted hover:text-ink"}`}>
                 <span className={`h-2 w-2 shrink-0 rounded-full ${hackedIds.has(x.id) ? "bg-green" : "border border-line-2"}`} /><span className="truncate">{i + 1}. {x.title}</span><span className="ml-auto text-[11.5px] tabular-nums text-faint">{x.hack_points}</span></button></li>
             ))}</ol>
-            <div className="border-t border-line p-3">
-              <div className="mb-2 flex items-center justify-center gap-1.5 text-[12px] text-muted-foreground"><Icon.Clock size={13} /><Countdown until={data.phase_ends_at} className="font-semibold text-ink" /> left</div>
-              {finished ? <div className="text-center"><Badge variant="success">Finished</Badge></div> : <Button size="sm" variant="outline" className="w-full" disabled={locked} onClick={async () => { await api.post("/api/phase1/finish", { section: "hacking" }); await refresh(); toast({ title: "Section B finished", tone: "success" }); }}><Icon.Flag size={14} /> Finish section</Button>}
-            </div>
           </div>
         </aside>
 
@@ -119,6 +155,12 @@ export function SectionB() {
           </div>
         ) : <EmptyState icon={<Icon.Bug size={20} />} title="No hacking questions published" body="The organisers have not published any yet." />}
       </div>
+      <Modal open={finishOpen} onClose={() => setFinishOpen(false)} title="Finish Section B?">
+        <p className="text-[13px]">You have hacked <strong>{hackedIds.size}</strong> of <strong>{data.questions.length}</strong>. After finishing you cannot send another attempt. Your submission time, which is the tiebreak, is recorded now.</p>
+        {inFlight && <div className="mt-3"><Alert variant="warning"><AlertDescription>An attempt is still being judged. It will still count.</AlertDescription></Alert></div>}
+        {unhacked > 0 && !inFlight && <div className="mt-3"><Alert variant="warning"><AlertDescription>{unhacked} solution{unhacked === 1 ? "" : "s"} not hacked yet.</AlertDescription></Alert></div>}
+        <div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setFinishOpen(false)}>Keep working</Button><Button onClick={finish}><Icon.Flag size={14} /> Finish</Button></div>
+      </Modal>
     </PageBody>
   );
 }
