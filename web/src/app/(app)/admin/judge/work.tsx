@@ -28,7 +28,7 @@ export function hrefOf(w: Work): string | null {
 export type Work = {
   kind: WorkKind;
   key: string;
-  // Where the detail lives; null for a kind that keeps nothing to open.
+  // Where the detail lives.
   ref: string | null;
   question_id: string | number | null;
   job_id: string | null;

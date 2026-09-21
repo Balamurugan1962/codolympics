@@ -3,11 +3,12 @@
 /**
  * The body of one judge request, by kind.
  *
- * The three kinds do not share a body, because they do not share a question.
- * For a submission you want the code and the testcase it died on; for a hack
- * you want the input the participant crafted and the solution it was aimed at;
- * for a validator run you want the entries it was asked to check. Forcing all
- * three through one layout would mean columns that are empty two times in three.
+ * The kinds do not share a body, because they do not share a question. For a
+ * submission you want the code and the testcase it died on; for a hack you
+ * want the input the participant crafted and the solution it was aimed at;
+ * for a practice run you want each input beside what came out; for a
+ * validator run you want the entries it was asked to check. Forcing them all
+ * through one layout would mean columns that are empty most of the time.
  */
 import { Code } from "@/components/admin/timeline";
 import { Icon } from "@/components/icons";
@@ -18,7 +19,7 @@ import { Summary, SummaryItem } from "@/components/ui/summary";
 import { languageName } from "@/lib/languages";
 
 export type Envelope = {
-  kind: "submission" | "hack" | "validator";
+  kind: "submission" | "hack" | "run" | "validator";
   who: { id: string; name: string };
   submitted_at: string;
   target: { title: string; problem_id: string | null; question_id: string | number | null };
@@ -64,10 +65,22 @@ export type HackDetail = Envelope & {
     invalid_reason: string | null;
     hacked: boolean | null;
     verdict: string | null;
+    /** The judge's own words. When the verdict is a judge error, this is the error. */
+    message: string | null;
     points_awarded: number;
     outcome: string | null;
   };
   stakes: { hack_points: number; fail_penalty: number };
+};
+
+export type RunOutput = { verdict: string; stdout: string; stderr: string; time_ms: number; memory_kb: number };
+export type RunDetail = Envelope & {
+  kind: "run";
+  /** Null for a run from before these were kept. */
+  source: string | null;
+  custom_input: string | null;
+  sample_count: number;
+  result: { verdict: string | null; message: string | null; compile_output: string; outputs: RunOutput[] | null };
 };
 
 export type ValidatorDetail = Envelope & {
@@ -76,7 +89,7 @@ export type ValidatorDetail = Envelope & {
   result: { score: number | null; points_per_entry: number | null; error: string | null };
 };
 
-export type Detail = SubmissionDetail | HackDetail | ValidatorDetail;
+export type Detail = SubmissionDetail | HackDetail | RunDetail | ValidatorDetail;
 
 export function SubmissionBody({ d }: { d: SubmissionDetail }) {
   const r = d.result;
@@ -185,6 +198,16 @@ export function HackBody({ d }: { d: HackDetail }) {
             {r.valid_input === false ? <span className="text-faint">never run. The input was rejected</span> : <VerdictBadge verdict={r.verdict} />}
           </SummaryItem>
         </Summary>
+        {r.verdict === "IE" && (
+          <div className="mt-3 flex items-start gap-2 rounded-md border border-red/30 bg-red-tint px-3 py-2.5 text-[13px]">
+            <Icon.Alert size={15} className="mt-0.5 shrink-0 text-red" />
+            <div>
+              <div className="font-semibold text-red">The judge could not run this</div>
+              <div className="mt-0.5 text-muted-foreground">{r.message || "It gave no reason. The judge's own log will have it."}</div>
+              <div className="mt-1 text-[12px] text-faint">Nothing was scored; the fault is in the question or the judge, not the attempt.</div>
+            </div>
+          </div>
+        )}
         <p className="mt-3 text-[12.5px] text-muted-foreground">
           A hit is worth {d.stakes.hack_points}; a miss costs {d.stakes.fail_penalty}.
         </p>
@@ -196,6 +219,69 @@ export function HackBody({ d }: { d: HackDetail }) {
 
       <Section title="The solution it was aimed at" description={d.language ? `The ${languageName(d.language)} copy, deliberately wrong somewhere.` : undefined} padded={false}>
         <Code source={d.source} language={d.language ?? "plaintext"} maxLines={40} />
+      </Section>
+    </>
+  );
+}
+
+export function RunBody({ d }: { d: RunDetail }) {
+  const r = d.result;
+  const outputs = r.outputs ?? [];
+  const inputs = [...Array.from({ length: d.sample_count }, (_, i) => `Sample ${i + 1}`), ...(d.custom_input !== null ? ["Their own input"] : [])];
+  return (
+    <>
+      <Section title="What happened" description="Nothing was scored. A run is the participant trying their code before submitting it.">
+        <div className="flex flex-wrap items-center gap-2">
+          <VerdictBadge verdict={d.request.state === "done" ? r.verdict : null} />
+          {r.message && <span className="text-[13px]">{r.message}</span>}
+        </div>
+        {r.verdict === "IE" && (
+          <div className="mt-3 flex items-start gap-2 rounded-md border border-red/30 bg-red-tint px-3 py-2.5 text-[13px]">
+            <Icon.Alert size={15} className="mt-0.5 shrink-0 text-red" />
+            <div>
+              <div className="font-semibold text-red">The judge could not run this</div>
+              <div className="mt-0.5 text-muted-foreground">{r.message || "It gave no reason. The judge's own log will have it."}</div>
+            </div>
+          </div>
+        )}
+      </Section>
+
+      {r.compile_output && (
+        <Section title="Compiler output" padded={false}>
+          <pre className="pane max-h-48 overflow-auto bg-muted p-3 text-[11.5px]">{r.compile_output}</pre>
+        </Section>
+      )}
+
+      {outputs.length > 0 && (
+        <Section title="Each input, and what came out" description="The samples from the statement, then the input they typed, if any." padded={false}>
+          <ul className="divide-y">
+            {outputs.map((o, i) => (
+              <li key={i} className="px-5 py-3">
+                <div className="flex flex-wrap items-center gap-2 text-[13px]">
+                  <span className="font-medium">{inputs[i] ?? `Input ${i + 1}`}</span>
+                  <VerdictBadge verdict={o.verdict} />
+                  <span className="text-[12px] text-faint tabular-nums">{Math.round(o.time_ms)} ms, {Math.round(o.memory_kb / 1024)} MB</span>
+                </div>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  {i >= d.sample_count && d.custom_input !== null && <Pane label="Input" body={d.custom_input} />}
+                  <Pane label="Output" body={o.stdout || "(nothing)"} />
+                  {o.stderr && <Pane label="Stderr" body={o.stderr} />}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+      {d.request.state === "done" && r.outputs === null && r.verdict !== "IE" && (
+        <Section title="Each input, and what came out">
+          <p className="text-[13px] text-muted-foreground">Not kept. This run is from before outputs were stored.</p>
+        </Section>
+      )}
+
+      <Section title="What they ran" description={d.language ? `In ${languageName(d.language)}, exactly as sent.` : undefined} padded={false}>
+        {d.source !== null
+          ? <Code source={d.source} language={d.language ?? "plaintext"} maxLines={40} />
+          : <p className="px-5 py-4 text-[13px] text-muted-foreground">Not kept. This run is from before the code was stored.</p>}
       </Section>
     </>
   );

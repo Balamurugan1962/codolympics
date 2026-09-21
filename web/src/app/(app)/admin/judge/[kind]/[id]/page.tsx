@@ -20,7 +20,7 @@ import { useCameFrom } from "@/lib/came-from";
 import { languageName } from "@/lib/languages";
 
 import { KIND, duration, type WorkKind } from "../../work";
-import { DetailSkeleton, HackBody, SubmissionBody, ValidatorBody, type Detail } from "../../work-detail";
+import { DetailSkeleton, HackBody, RunBody, SubmissionBody, ValidatorBody, type Detail } from "../../work-detail";
 
 export default function JudgeWorkPage() {
   const { kind, id } = useParams<{ kind: string; id: string }>();
@@ -46,14 +46,15 @@ export default function JudgeWorkPage() {
   const live = !["done", "error"].includes(d.request.state);
   const took = d.request.ended_at ? duration(new Date(d.request.ended_at).getTime() - new Date(d.request.created_at).getTime()) : null;
   const timeline =
-    d.kind === "submission" && d.target.question_id ? `/admin/participants/${d.who.id}/questions/${d.target.question_id}`
+    (d.kind === "submission" || d.kind === "run") && d.target.question_id ? `/admin/participants/${d.who.id}/questions/${d.target.question_id}`
     : d.kind === "hack" && d.target.question_id ? `/admin/participants/${d.who.id}/hacks/${d.target.question_id}`
     : null;
   const outcome =
-    d.kind === "submission" ? <VerdictBadge verdict={d.request.state === "done" ? d.result.verdict : null} />
+    d.kind === "submission" || d.kind === "run" ? <VerdictBadge verdict={d.request.state === "done" ? d.result.verdict : null} />
     : d.kind === "hack" ? (
       d.request.state !== "done" ? <Badge variant="info">judging</Badge>
       : d.result.valid_input === false ? <Badge variant="warning">invalid input</Badge>
+      : d.result.verdict === "IE" ? <Badge variant="destructive">judge error</Badge>
       : d.result.hacked ? <Badge variant="success">hacked</Badge>
       : <Badge variant="destructive">did not break it</Badge>
     )
@@ -89,7 +90,7 @@ export default function JudgeWorkPage() {
               <Facts
                 items={[
                   { label: "Participant", value: <Link href={`/admin/participants/${d.who.id}`} className="text-brand hover:underline">{d.who.name}</Link> },
-                  { label: "Question", value: d.kind === "submission" && d.target.question_id ? <Link href={`/admin/problems/${d.target.question_id}`} className="text-brand hover:underline">{d.target.title}</Link> : d.target.title },
+                  { label: "Question", value: (d.kind === "submission" || d.kind === "run") && d.target.question_id ? <Link href={`/admin/problems/${d.target.question_id}`} className="text-brand hover:underline">{d.target.title}</Link> : d.target.title },
                   ...(d.target.problem_id ? [{ label: "Package", value: <span className="font-mono text-[12px]">{d.target.problem_id}{d.request.problem_version ? ` @${d.request.problem_version}` : ""}</span> }] : []),
                   { label: "Judge job", value: d.request.job_id ? <span className="font-mono text-[11.5px]">{d.request.job_id}</span> : <span className="font-normal text-faint">not accepted yet</span> },
                 ]}
@@ -105,6 +106,7 @@ export default function JudgeWorkPage() {
       >
         {d.kind === "submission" && <SubmissionBody d={d} />}
         {d.kind === "hack" && <HackBody d={d} />}
+        {d.kind === "run" && <RunBody d={d} />}
         {d.kind === "validator" && <ValidatorBody d={d} />}
       </RecordBody>
     </PageBody>
