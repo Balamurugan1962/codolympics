@@ -16,34 +16,24 @@ import { Icon } from "@/components/icons";
 import { Pagination, usePaged } from "@/components/ui/pagination";
 import { PHASE_LABEL } from "@/components/shell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge, StatusDot } from "@/components/ui/badge";
+import { StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, SearchInput } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/password-input";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
-import { SimpleSelect } from "@/components/ui/select";
+import { SimpleCombobox } from "@/components/ui/combobox";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
+import { LANGUAGES, languageName } from "@/lib/languages";
+import { cn } from "@/lib/utils";
+import { ActionDialog, type Action, type ParticipantRow as P } from "@/components/admin/participant-actions";
 
-type P = {
-  id: string;
-  name: string;
-  username: string | null;
-  balance: number;
-  preferred_language: string | null;
-  owned: number;
-  disqualified: boolean;
-  disqualified_reason: string | null;
-};
-type Action = { kind: "adjust" | "password" | "rename" | "disqualify" | "requalify" | "remove" | "assign"; p: P };
 
 export default function PeoplePage() {
   const { state } = useContest();
@@ -152,12 +142,16 @@ export default function PeoplePage() {
               </TableHeader>
               <TableBody>
                 {paged.rows.map((p) => (
-                  <TableRow key={p.id} className={p.disqualified ? "opacity-60" : ""}>
+                  <TableRow
+                    key={p.id}
+                    className={cn("cursor-pointer", p.disqualified && "opacity-60")}
+                    onClick={() => router.push(`/admin/participants/${p.id}`)}
+                  >
                     <TableCell>
-                      <div className="font-semibold">{p.name}</div>
+                      <Link href={`/admin/participants/${p.id}`} className="font-semibold hover:underline" onClick={(e) => e.stopPropagation()}>{p.name}</Link>
                       <div className="font-mono text-[11.5px] text-faint">{p.username}</div>
                     </TableCell>
-                    <TableCell className="hidden text-muted-foreground sm:table-cell">{p.preferred_language ?? "—"}</TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">{p.preferred_language ? languageName(p.preferred_language) : "not chosen"}</TableCell>
                     <TableCell className="text-right font-medium tabular-nums">{p.balance.toLocaleString()}</TableCell>
                     <TableCell className="hidden text-right tabular-nums sm:table-cell">
                       {p.owned > 0 ? p.owned : <span className="text-faint">0</span>}
@@ -171,7 +165,7 @@ export default function PeoplePage() {
                         <StatusDot tone="success">Active</StatusDot>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Menu
                         label={`Actions for ${p.name}`}
                         items={[
@@ -230,14 +224,6 @@ export default function PeoplePage() {
 const NAME_RULE = /^[A-Za-z0-9 _.-]{2,32}$/;
 
 /** What the worker image ships. Only the language the editor opens in; never a restriction. */
-const LANGUAGES = [
-  { value: "cpp", label: "C++" },
-  { value: "c", label: "C" },
-  { value: "python", label: "Python 3" },
-  { value: "pypy", label: "PyPy 3" },
-  { value: "java", label: "Java 21" },
-  { value: "javascript", label: "JavaScript" },
-];
 
 /** Readable and long enough to be worth using — this is written on paper, not typed from memory. */
 function suggestPassword(): string {
@@ -402,7 +388,7 @@ function CreateParticipantDialog({ onClose, onDone }: { onClose: () => void; onD
           </Field>
 
           <Field label="Language to start in" help="Only the editor's default. They can switch language on any question, at any time.">
-            <SimpleSelect className="w-full sm:w-56" size="default" value={f.language} onValueChange={(v) => setF({ ...f, language: v })} options={LANGUAGES} />
+            <SimpleCombobox className="w-full sm:w-56" size="default" value={f.language} onValueChange={(v) => setF({ ...f, language: v })} options={LANGUAGES} />
           </Field>
         </fieldset>
 
@@ -416,135 +402,3 @@ function CreateParticipantDialog({ onClose, onDone }: { onClose: () => void; onD
     </Modal>
   );
 }
-
-function ActionDialog({
-  action,
-  unsold,
-  onClose,
-  onDone,
-}: {
-  action: Action;
-  unsold: { id: string; title: string; basePrice: number }[];
-  onClose: () => void;
-  onDone: (msg: string) => Promise<void>;
-}) {
-  const { p, kind } = action;
-  const [v, setV] = useState<Record<string, string>>({
-    delta: "",
-    password: "",
-    name: p.name,
-    qid: unsold[0]?.id ?? "",
-    price: String(unsold[0]?.basePrice ?? 0),
-  });
-  const [reason, setReason] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const titles: Record<Action["kind"], string> = {
-    adjust: `Adjust ${p.name}'s balance`,
-    password: `Reset ${p.name}'s password`,
-    rename: `Rename ${p.name}`,
-    disqualify: `Disqualify ${p.name}?`,
-    requalify: `Reverse ${p.name}'s disqualification`,
-    remove: `Remove ${p.name}'s account?`,
-    assign: `Assign a question to ${p.name}`,
-  };
-  const destructive = kind === "disqualify" || kind === "remove";
-
-  async function go() {
-    setBusy(true);
-    setError(null);
-    try {
-      const b = `/api/admin/participants/${p.id}`;
-      if (kind === "adjust") await api.post(`${b}/adjust`, { reason, delta: Number(v.delta) });
-      if (kind === "password") await api.post(`${b}/password`, { reason, password: v.password });
-      if (kind === "rename") await api.post(`${b}/rename`, { reason, name: v.name });
-      if (kind === "disqualify" || kind === "requalify") await api.post(`${b}/${kind}`, { reason });
-      if (kind === "remove") await api.del(b, { reason });
-      if (kind === "assign") await api.post(`/api/admin/questions/${v.qid}/assign`, { reason, participant_id: p.id, price: Number(v.price) });
-      await onDone(titles[kind].replace("?", "") + ", done");
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={titles[kind]}
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant={destructive ? "destructive" : "default"} onClick={go} loading={busy} disabled={reason.trim().length < 3}>
-            Confirm
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        {kind === "adjust" && (
-          <Field label="Change" help="Negative to deduct. The participant is notified.">
-            <Input type="number" value={v.delta} onChange={(e) => setV({ ...v, delta: e.target.value })} autoFocus placeholder="e.g. -50" />
-          </Field>
-        )}
-        {kind === "password" && (
-          <Field label="New password" help="Tell them in person; nothing is emailed.">
-            <PasswordInput value={v.password} onChange={(e) => setV({ ...v, password: e.target.value })} autoFocus />
-          </Field>
-        )}
-        {kind === "rename" && (
-          <Field label="New display name">
-            <Input value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} autoFocus />
-          </Field>
-        )}
-        {kind === "disqualify" && (
-          <Alert variant="warning">
-            <Icon.Alert />
-            <AlertDescription>They leave the leaderboard and cannot advance. Reversible, and their work is kept either way.</AlertDescription>
-          </Alert>
-        )}
-        {kind === "remove" && (
-          <Alert variant="destructive">
-            <Icon.Alert />
-            <AlertDescription>This deletes the account outright. Only possible during registration, afterwards, disqualify instead.</AlertDescription>
-          </Alert>
-        )}
-        {kind === "assign" && (
-          <>
-            <Field label="Unsold question">
-              <SimpleSelect
-                className="w-full"
-                size="default"
-                value={v.qid}
-                onValueChange={(qid: string) => setV({ ...v, qid, price: String(unsold.find((u) => u.id === qid)?.basePrice ?? 0) })}
-                options={unsold.map((u) => ({ value: u.id, label: u.title }))}
-              />
-            </Field>
-            <Field label="Price to charge" help="Deducted from their balance, as if they had won it.">
-              <Input type="number" value={v.price} onChange={(e) => setV({ ...v, price: e.target.value })} />
-            </Field>
-          </>
-        )}
-        <Field label="Reason" help="Recorded in the audit log with your name and the time.">
-          <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
-        </Field>
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-      </div>
-    </Modal>
-  );
-}
-
-/**
- * Staff are a different kind of account from participants: they are created,
- * not registered, and they never appear in the participant list. This is the
- * whole roster of people who run the contest.
- */

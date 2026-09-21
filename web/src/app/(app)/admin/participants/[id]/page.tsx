@@ -16,21 +16,23 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { ActionDialog, type Action, type ActionKind, type ParticipantRow, type UnsoldQuestion } from "@/components/admin/participant-actions";
+import { useContest } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { LocalTime } from "@/components/local-time";
 import { Markdown } from "@/components/markdown";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge, VerdictBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PageBody, PageHeader, Section } from "@/components/ui/page";
+import { PageBody, Section } from "@/components/ui/page";
 import { DetailSkeleton } from "@/components/ui/skeleton";
-import { Stat, StatRow } from "@/components/ui/stat";
-import { Summary, SummaryItem } from "@/components/ui/summary";
+import { ActionList, AsideBlock, Detail, ExpandableRow, Facts, LinkRow, RecordBody, RecordHeader } from "@/components/ui/record";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/client";
+import { languageName } from "@/lib/languages";
 import { cn } from "@/lib/utils";
 
 type Dossier = {
@@ -100,12 +102,21 @@ function answerText(a: unknown): string {
 
 export default function ParticipantPage() {
   const { id } = useParams<{ id: string }>();
+  const { state } = useContest();
+  const { toast } = useToast();
   const [d, setD] = useState<Dossier | null>(null);
+  const [unsold, setUnsold] = useState<UnsoldQuestion[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [action, setAction] = useState<Action | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setD(await api.get<Dossier>(`/api/admin/participants/${id}`));
+      const [dossier, q] = await Promise.all([
+        api.get<Dossier>(`/api/admin/participants/${id}`),
+        api.get<{ questions: { id: string; title: string; basePrice: number; status: string }[] }>("/api/admin/questions").catch(() => ({ questions: [] })),
+      ]);
+      setD(dossier);
+      setUnsold(q.questions.filter((x) => x.status === "unsold"));
     } catch {
       setError("That participant could not be loaded. They may have been removed.");
     }
@@ -135,463 +146,320 @@ export default function ParticipantPage() {
   const p = d.participant;
   const p1 = d.phase1;
   const p2 = d.phase2;
+  const phase = state?.contest.phase ?? "";
+  const inPhase2 = ["auction1", "coding1", "auction2", "final"].includes(phase);
   const spent = p2.ledger.filter((l) => l.delta < 0).reduce((s, l) => s + l.delta, 0);
+  const owned = p2.owned.filter((o) => !o.voided_at);
+  const row: ParticipantRow = { ...p, owned: owned.length };
+  const act = (kind: ActionKind) => setAction({ kind, p: row });
 
   return (
     <PageBody width="wide">
-      <PageHeader
-        breadcrumb={
-          <Link href="/admin/participants" className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
-            <Icon.ChevronLeft size={14} /> Participants
-          </Link>
-        }
-        title={
-          <span className="flex flex-wrap items-center gap-2.5">
-            {p.name}
+      <RecordHeader
+        back={{ href: "/admin/participants", label: "Participants" }}
+        title={p.name}
+        chips={
+          <>
             {p.disqualified && <Badge variant="destructive">Disqualified</Badge>}
-            {p.advanced === true && <Badge variant="success">Advanced to Phase 2</Badge>}
+            {p.advanced === true && <Badge variant="success">In Phase 2</Badge>}
             {p.advanced === false && <Badge variant="neutral">Not selected</Badge>}
-          </span>
+          </>
         }
-        description={
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="font-mono text-[12px]">{p.username}</span>
-            <span className="text-faint">·</span>
-            <span>
-              registered <LocalTime iso={p.registered_at} withDate />
-            </span>
-            {p.preferred_language && (
-              <>
-                <span className="text-faint">·</span>
-                <span>starts in {p.preferred_language}</span>
-              </>
-            )}
-          </span>
-        }
+        meta={p.disqualified ? `Disqualified: ${p.disqualified_reason || "no reason was recorded"}` : `Signs in as ${p.username ?? p.name}`}
         actions={
           <Button variant="outline" size="sm" onClick={load}>
             <Icon.Refresh size={14} /> Refresh
           </Button>
         }
-      />
+        figures={[
+          { label: "Phase 1", value: p1.standing ? `#${p1.standing.rank}` : "–", note: p1.standing ? `of ${p1.of}, ${p1.standing.points} points${p1.standing.provisional ? ", provisional" : ""}` : "no standing", tone: p1.standing?.provisional ? "warning" : "default" },
+          { label: "Phase 2", value: p2.standing ? `#${p2.standing.rank}` : "–", note: p2.standing ? `of ${p2.of}, ${p2.standing.score} points` : "not in Phase 2" },
+          { label: "Balance", value: p.balance.toLocaleString(), note: `${Math.abs(spent).toLocaleString()} spent`, tone: "success" },
+          { label: "Questions", value: owned.length, note: `${owned.filter((o) => o.solved_at).length} solved` },
+        ]}
+      >
+        <Journey p={p} p1={p1} />
+      </RecordHeader>
 
-      {p.disqualified && (
-        <Alert variant="destructive" className="mb-5">
-          <Icon.Ban />
-          <AlertTitle>Disqualified</AlertTitle>
-          <AlertDescription>{p.disqualified_reason || "No reason was recorded."}</AlertDescription>
-        </Alert>
-      )}
-
-      <StatRow cols={4} className="mb-5">
-        <Stat
-          label="Phase 1"
-          value={p1.standing ? `#${p1.standing.rank}` : "—"}
-          icon={<Icon.Puzzle size={13} />}
-          hint={p1.standing ? `${p1.standing.points} points of ${p1.of}${p1.standing.provisional ? " · provisional" : ""}` : "no standing"}
-          tone={p1.standing?.provisional ? "warning" : "default"}
-        />
-        <Stat
-          label="Phase 2"
-          value={p2.standing ? `#${p2.standing.rank}` : "—"}
-          icon={<Icon.Trophy size={13} />}
-          hint={p2.standing ? `${p2.standing.score} points · ${p2.standing.solved} solved` : "did not reach Phase 2"}
-        />
-        <Stat label="Balance" value={p.balance.toLocaleString()} icon={<Icon.Coins size={13} />} hint={`${Math.abs(spent).toLocaleString()} spent`} tone="success" />
-        <Stat
-          label="Questions owned"
-          value={p2.owned.filter((o) => !o.voided_at).length}
-          icon={<Icon.Code size={13} />}
-          hint={`${p2.owned.filter((o) => o.solved_at).length} solved`}
-        />
-      </StatRow>
-
-      <Tabs defaultValue="phase1">
-        <TabsList variant="line" className="mb-5 w-full justify-start border-b">
-          <TabsTrigger value="phase1">Phase 1</TabsTrigger>
-          <TabsTrigger value="phase2">Phase 2</TabsTrigger>
-          <TabsTrigger value="money">Money</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="phase1" className="space-y-5">
-          <Section title="How Phase 1 went" padded>
-            <Summary cols={4}>
-              <SummaryItem label="Points">
-                <span className="text-[15px] font-semibold tabular-nums">{p1.standing?.points ?? 0}</span>
-                {p1.standing?.provisional && <Badge variant="warning" className="ml-2">provisional</Badge>}
-              </SummaryItem>
-              <SummaryItem label="Rank">{p1.standing ? `#${p1.standing.rank} of ${p1.of}` : "—"}</SummaryItem>
-              <SummaryItem label="Section A finished">
-                {p.p1_puzzles_finished_at ? <LocalTime iso={p.p1_puzzles_finished_at} withDate /> : <span className="text-faint">never pressed finish</span>}
-              </SummaryItem>
-              <SummaryItem label="Section B finished">
-                {p.p1_hacking_finished_at ? <LocalTime iso={p.p1_hacking_finished_at} withDate /> : <span className="text-faint">never pressed finish</span>}
-              </SummaryItem>
-              {p.advancement_reason && (
-                <SummaryItem label="Selection decision" span>
-                  {p.advancement_reason}
-                </SummaryItem>
-              )}
-            </Summary>
-          </Section>
-
-          <Section
-            title="Section A · Puzzles"
-            description="Every published puzzle, and what they put. An unanswered one is shown too. A blank is a fact."
-            actions={
-              <span className="text-[12px] text-muted-foreground tabular-nums">
-                {p1.puzzles.filter((q) => q.answered).length}/{p1.puzzles.length} answered
-              </span>
-            }
-            padded={false}
-          >
-            {p1.puzzles.length === 0 ? (
-              <EmptyState compact icon={<Icon.Puzzle />} title="No puzzles were published" />
-            ) : (
-              <ul className="divide-y">
-                {p1.puzzles.map((q) => (
-                  <PuzzleItem key={q.question_id} q={q} />
-                ))}
-              </ul>
-            )}
-          </Section>
-
-          <Section
-            title="Section B · Hacking"
-            description="Every attempt, in the order it was sent, with the input itself."
-            actions={
-              <span className="text-[12px] text-muted-foreground tabular-nums">
-                {p1.hacks.reduce((s, h) => s + h.attempts.length, 0)} attempt
-                {p1.hacks.reduce((s, h) => s + h.attempts.length, 0) === 1 ? "" : "s"}
-              </span>
-            }
-            padded={false}
-          >
-            {p1.hacks.length === 0 ? (
-              <EmptyState compact icon={<Icon.Bug />} title="No hacking questions were published" />
-            ) : (
-              <ul className="divide-y">
-                {p1.hacks.map((h) => (
-                  <HackItem key={h.question_id} h={h} />
-                ))}
-              </ul>
-            )}
-          </Section>
-        </TabsContent>
-
-        <TabsContent value="phase2" className="space-y-5">
-          <Section title="How Phase 2 went" padded>
-            <Summary cols={4}>
-              <SummaryItem label="Score">
-                <span className="text-[15px] font-semibold tabular-nums">{p2.standing?.score ?? 0}</span>
-              </SummaryItem>
-              <SummaryItem label="Rank">{p2.standing ? `#${p2.standing.rank} of ${p2.of}` : "—"}</SummaryItem>
-              <SummaryItem label="Solved">
-                {p2.standing?.solved ?? 0} of {p2.owned.filter((o) => !o.voided_at).length} owned
-              </SummaryItem>
-              <SummaryItem label="Total solve time">{duration(p2.standing?.total_time_ms ?? null)}</SummaryItem>
-            </Summary>
-          </Section>
-
-          {p2.owned.length === 0 ? (
-            <Section padded={false}>
-              <EmptyState
-                icon={<Icon.Gavel />}
-                title="They own no questions"
-                body="They lost every bid, or did not reach Phase 2."
+      <RecordBody
+        aside={
+          <>
+            <AsideBlock title="About">
+              <Facts
+                items={[
+                  { label: "Registered", value: <LocalTime iso={p.registered_at} withDate /> },
+                  { label: "Writes first in", value: p.preferred_language ? languageName(p.preferred_language) : "not chosen" },
+                  { label: "Puzzles finished", value: p.p1_puzzles_finished_at ? <LocalTime iso={p.p1_puzzles_finished_at} /> : <span className="font-normal text-faint">never pressed finish</span> },
+                  { label: "Hacking finished", value: p.p1_hacking_finished_at ? <LocalTime iso={p.p1_hacking_finished_at} /> : <span className="font-normal text-faint">never pressed finish</span> },
+                  ...(p.advancement_reason ? [{ label: "Selection", value: p.advancement_reason }] : []),
+                ]}
               />
-            </Section>
-          ) : (
-            p2.owned.map((o) => <OwnedQuestion key={o.question_id} o={o} />)
-          )}
-        </TabsContent>
+            </AsideBlock>
+            <AsideBlock title="Actions">
+              <ActionList
+                items={[
+                  { label: "Adjust balance", icon: <Icon.Coins />, onSelect: () => act("adjust") },
+                  ...(inPhase2 && owned.length === 0 && unsold.length ? [{ label: "Assign an unsold question", icon: <Icon.Gavel />, onSelect: () => act("assign") }] : []),
+                  { label: "Reset password", icon: <Icon.Lock />, onSelect: () => act("password") },
+                  { label: "Rename", icon: <Icon.Edit />, onSelect: () => act("rename") },
+                  p.disqualified
+                    ? { label: "Reverse the disqualification", icon: <Icon.Undo />, onSelect: () => act("requalify") }
+                    : { label: "Disqualify", icon: <Icon.UserBan />, onSelect: () => act("disqualify"), tone: "destructive" as const },
+                  ...(phase === "registration" ? [{ label: "Remove the account", icon: <Icon.Trash />, onSelect: () => act("remove"), tone: "destructive" as const }] : []),
+                ]}
+              />
+              <p className="mt-2 text-[11.5px] text-faint">Each one asks for a reason and is written to the audit log.</p>
+            </AsideBlock>
+          </>
+        }
+      >
+        <Tabs defaultValue={inPhase2 || p.advanced ? "phase2" : "phase1"}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="phase1">Phase 1</TabsTrigger>
+            <TabsTrigger value="phase2">Phase 2</TabsTrigger>
+            <TabsTrigger value="money">Money</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="money">
-          <Section
-            title="Ledger"
-            description="Every coin in and out, newest first. The balance after each movement is what they saw at the time."
-            padded={false}
-          >
-            {p2.ledger.length === 0 ? (
-              <EmptyState compact icon={<Icon.Coins />} title="Nothing recorded yet" />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-28">Time</TableHead>
-                    <TableHead>What happened</TableHead>
-                    <TableHead className="hidden md:table-cell">Reference</TableHead>
-                    <TableHead className="text-right">Change</TableHead>
-                    <TableHead className="text-right">Balance after</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {p2.ledger.map((l) => (
-                    <TableRow key={l.id}>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">
-                        <LocalTime iso={l.created_at} />
-                      </TableCell>
-                      <TableCell className="font-medium">{LEDGER_LABEL[l.reason] ?? l.reason}</TableCell>
-                      <TableCell className="hidden font-mono text-[11.5px] text-faint md:table-cell">{l.ref}</TableCell>
-                      <TableCell className={cn("text-right font-semibold tabular-nums", l.delta < 0 ? "text-destructive" : "text-brand-deep")}>
-                        {l.delta > 0 ? "+" : ""}
-                        {l.delta.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{l.balance_after.toLocaleString()}</TableCell>
-                    </TableRow>
+          <TabsContent value="phase1" className="space-y-5">
+            <Section
+              title="Puzzles"
+              description="Every published puzzle and what they put. A blank is a fact too."
+              actions={<span className="text-[12px] text-muted-foreground tabular-nums">{p1.puzzles.filter((q) => q.answered).length} of {p1.puzzles.length} answered</span>}
+              padded={false}
+            >
+              {p1.puzzles.length === 0 ? (
+                <EmptyState compact icon={<Icon.Puzzle />} title="No puzzles were published" />
+              ) : (
+                <ul className="divide-y divide-line/70">
+                  {p1.puzzles.map((q) => (
+                    <PuzzleRow key={q.question_id} q={q} />
                   ))}
-                </TableBody>
-              </Table>
-            )}
-          </Section>
-        </TabsContent>
-      </Tabs>
+                </ul>
+              )}
+            </Section>
+
+            <Section
+              title="Hacking"
+              description="Every input they sent, in order."
+              actions={<span className="text-[12px] text-muted-foreground tabular-nums">{p1.hacks.reduce((s, h) => s + h.attempts.length, 0)} attempts</span>}
+              padded={false}
+            >
+              {p1.hacks.length === 0 ? (
+                <EmptyState compact icon={<Icon.Bug />} title="No hacking questions were published" />
+              ) : (
+                <ul className="divide-y divide-line/70">
+                  {p1.hacks.map((h) => (
+                    <HackRow key={h.question_id} h={h} participantId={p.id} />
+                  ))}
+                </ul>
+              )}
+            </Section>
+          </TabsContent>
+
+          <TabsContent value="phase2" className="space-y-5">
+            <Section
+              title="Questions they own"
+              description="What each one cost, and every submission against it."
+              actions={p2.standing && <span className="text-[12px] text-muted-foreground tabular-nums">{p2.standing.solved} solved, {duration(p2.standing.total_time_ms)} in total</span>}
+              padded={false}
+            >
+              {p2.owned.length === 0 ? (
+                <EmptyState compact icon={<Icon.Gavel />} title="They own no questions" body="They lost every bid, or did not reach Phase 2." />
+              ) : (
+                <ul className="divide-y divide-line/70">
+                  {p2.owned.map((o) => (
+                    <OwnedRow key={o.question_id} o={o} participantId={p.id} />
+                  ))}
+                </ul>
+              )}
+            </Section>
+          </TabsContent>
+
+          <TabsContent value="money">
+            <Section title="Ledger" description="Every coin in and out, newest first, with the balance they saw at the time." padded={false}>
+              {p2.ledger.length === 0 ? (
+                <EmptyState compact icon={<Icon.Coins />} title="Nothing recorded yet" />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-28">Time</TableHead>
+                      <TableHead>What happened</TableHead>
+                      <TableHead className="hidden md:table-cell">Reference</TableHead>
+                      <TableHead className="text-right">Change</TableHead>
+                      <TableHead className="text-right">Balance after</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {p2.ledger.map((l) => (
+                      <TableRow key={l.id}>
+                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                          <LocalTime iso={l.created_at} />
+                        </TableCell>
+                        <TableCell className="font-medium">{LEDGER_LABEL[l.reason] ?? l.reason}</TableCell>
+                        <TableCell className="hidden font-mono text-[11.5px] text-faint md:table-cell">{l.ref}</TableCell>
+                        <TableCell className={cn("text-right font-semibold tabular-nums", l.delta < 0 ? "text-destructive" : "text-brand-deep")}>
+                          {l.delta > 0 ? "+" : ""}
+                          {l.delta.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{l.balance_after.toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Section>
+          </TabsContent>
+        </Tabs>
+      </RecordBody>
+
+      {action && (
+        <ActionDialog
+          action={action}
+          unsold={unsold}
+          onClose={() => setAction(null)}
+          onDone={async (msg) => { setAction(null); toast({ title: msg, tone: "success" }); await load(); }}
+        />
+      )}
     </PageBody>
   );
 }
 
 // ---------------------------------------------------------------------------
 
-function PuzzleItem({ q }: { q: Dossier["phase1"]["puzzles"][number] }) {
+/**
+ * The path through the contest, as the one line worth reading first: where
+ * they got to, and when. It is a sequence, so it is drawn as one.
+ */
+function Journey({ p, p1 }: { p: Dossier["participant"]; p1: Dossier["phase1"] }) {
+  const steps: { label: string; at: string | null; done: boolean; note?: string }[] = [
+    { label: "Registered", at: p.registered_at, done: true },
+    { label: "Puzzles", at: p.p1_puzzles_finished_at, done: Boolean(p.p1_puzzles_finished_at) || p1.puzzles.some((q) => q.answered), note: p.p1_puzzles_finished_at ? undefined : p1.puzzles.some((q) => q.answered) ? "answered, never finished" : undefined },
+    { label: "Hacking", at: p.p1_hacking_finished_at, done: Boolean(p.p1_hacking_finished_at) || p1.hacks.some((h) => h.attempts.length > 0), note: p.p1_hacking_finished_at ? undefined : p1.hacks.some((h) => h.attempts.length > 0) ? "attempted, never finished" : undefined },
+    { label: p.advanced === false ? "Not selected" : "Selected", at: null, done: p.advanced === true, note: p.advanced === null ? "not decided yet" : undefined },
+    { label: "Phase 2", at: null, done: p.advanced === true },
+  ];
+  return (
+    <ol className="mt-4 flex flex-wrap items-start gap-x-2 gap-y-3">
+      {steps.map((s, i) => (
+        <li key={s.label} className="flex items-start gap-2">
+          <div className="flex items-start gap-2">
+            <span className={cn("mt-[3px] flex size-4 shrink-0 items-center justify-center rounded-full", s.done ? "bg-brand text-white" : "border border-line-2 bg-card")}>
+              {s.done && <Icon.Check size={10} strokeWidth={3} />}
+            </span>
+            <div className="leading-tight">
+              <div className={cn("text-[13px]", s.done ? "font-medium" : "text-muted-foreground")}>{s.label}</div>
+              <div className="text-[11.5px] text-faint">{s.at ? <LocalTime iso={s.at} /> : s.note ?? (s.done ? "" : "not yet")}</div>
+            </div>
+          </div>
+          {i < steps.length - 1 && <span className={cn("mx-1 mt-[10px] h-px w-6 sm:w-10", steps[i + 1].done ? "bg-brand" : "bg-line-2")} />}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function ScoreMark({ answered, pending, awarded, total }: { answered: boolean; pending: boolean; awarded: number; total: number }) {
+  return (
+    <span
+      className={cn(
+        "flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
+        !answered ? "border border-line-2 bg-card text-faint"
+        : pending ? "bg-blue-tint text-blue ring-1 ring-blue/30"
+        : awarded >= total ? "bg-green text-white"
+        : awarded > 0 ? "bg-amber-tint text-amber ring-1 ring-amber-bg/40"
+        : "bg-red-tint text-red ring-1 ring-red/30",
+      )}
+    >
+      {!answered ? "–" : pending ? "?" : awarded >= total ? <Icon.Check size={11} strokeWidth={3} /> : awarded > 0 ? "½" : <Icon.X size={11} strokeWidth={3} />}
+    </span>
+  );
+}
+
+function Score({ awarded, total }: { awarded: number; total: number }) {
+  return (
+    <span className="text-[14px] font-semibold tabular-nums">
+      {awarded}
+      <span className="text-[12px] font-normal text-faint">/{total}</span>
+    </span>
+  );
+}
+
+function PuzzleRow({ q }: { q: Dossier["phase1"]["puzzles"][number] }) {
+  const [open, setOpen] = useState(false);
   const total = q.points_possible + q.explain_possible;
   const pending = q.answered && q.awarded === null;
   const answer = answerText(q.answer);
-
   return (
-    <li className="px-5 py-3.5">
-      <div className="flex flex-wrap items-start gap-x-3 gap-y-1.5">
-        <span
-          className={cn(
-            "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-            !q.answered
-              ? "border border-line-2 bg-card text-faint"
-              : pending
-                ? "bg-blue-tint text-blue ring-1 ring-blue/30"
-                : (q.awarded ?? 0) >= total
-                  ? "bg-green text-white"
-                  : (q.awarded ?? 0) > 0
-                    ? "bg-amber-tint text-amber ring-1 ring-amber-bg/40"
-                    : "bg-red-tint text-red ring-1 ring-red/30",
-          )}
-        >
-          {!q.answered ? "–" : pending ? "?" : (q.awarded ?? 0) >= total ? <Icon.Check size={11} strokeWidth={3} /> : (q.awarded ?? 0) > 0 ? "½" : <Icon.X size={11} strokeWidth={3} />}
-        </span>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[13.5px] font-semibold">{q.title}</span>
-            <Badge variant="outline">{q.kind.replace(/_/g, " ")}</Badge>
-            <Badge variant="outline">{q.grading}</Badge>
-          </div>
-
-          {q.answered ? (
-            <div className="mt-2 space-y-2">
-              <div>
-                <div className="text-[11px] font-semibold tracking-[0.06em] text-faint uppercase">Their answer</div>
-                <div className="mt-0.5 font-mono text-[12.5px] break-words">{answer || <span className="text-faint">left blank</span>}</div>
-              </div>
-              {q.explanation && (
-                <div>
-                  <div className="text-[11px] font-semibold tracking-[0.06em] text-faint uppercase">Their reasoning</div>
-                  <div className="mt-0.5 text-[12.5px] whitespace-pre-wrap">{q.explanation}</div>
-                </div>
-              )}
-              {q.grade_comment && (
-                <div>
-                  <div className="text-[11px] font-semibold tracking-[0.06em] text-faint uppercase">Evaluator's note</div>
-                  <div className="mt-0.5 text-[12.5px]">{q.grade_comment}</div>
-                </div>
-              )}
-              {q.score_error && (
-                <Alert variant="destructive">
-                  <Icon.Alert />
-                  <AlertDescription>The validator errored: {q.score_error}</AlertDescription>
-                </Alert>
-              )}
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-faint">
-                {q.auto_score !== null && <span>auto {q.auto_score}</span>}
-                {q.manual_score !== null && <span>evaluator {q.manual_score}</span>}
-                {q.explain_score !== null && <span>reasoning {q.explain_score}</span>}
-                {q.updated_at && (
-                  <span>
-                    last changed <LocalTime iso={q.updated_at} />
-                  </span>
-                )}
-              </div>
-            </div>
-          ) : (
-            <p className="mt-1 text-[12.5px] text-faint">Never answered.</p>
-          )}
-        </div>
-
-        <div className="shrink-0 text-right">
-          {pending ? (
-            <Badge variant="review">awaiting grading</Badge>
-          ) : (
-            <span className="text-[15px] font-semibold tabular-nums">
-              {q.awarded ?? 0}
-              <span className="text-[12px] font-normal text-faint">/{total}</span>
-            </span>
-          )}
-        </div>
-      </div>
-    </li>
-  );
-}
-
-function HackItem({ h }: { h: Dossier["phase1"]["hacks"][number] }) {
-  const broke = h.attempts.some((a) => a.hacked);
-  return (
-    <li className="px-5 py-3.5">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <span className="text-[13.5px] font-semibold">{h.title}</span>
-        {broke ? <Badge variant="success">broke it</Badge> : h.attempts.length ? <Badge variant="neutral">never broke it</Badge> : <Badge variant="outline">no attempt</Badge>}
-        <span className="ml-auto text-[15px] font-semibold tabular-nums">
-          {h.awarded}
-          <span className="text-[12px] font-normal text-faint">/{h.points_possible}</span>
-        </span>
-      </div>
-
-      {h.attempts.length === 0 ? (
-        <p className="mt-1.5 text-[12.5px] text-faint">They never sent an input for this one.</p>
-      ) : (
-        <ol className="mt-2.5 space-y-2">
-          {h.attempts.map((a, i) => (
-            <li key={a.id} className="rounded-md border bg-muted/30 px-3 py-2.5">
-              <div className="flex flex-wrap items-center gap-2 text-[12px]">
-                <span className="font-semibold text-faint tabular-nums">#{i + 1}</span>
-                {a.state !== "done" ? (
-                  <Badge variant="info">judging</Badge>
-                ) : a.valid_input === false ? (
-                  <Badge variant="warning">invalid input</Badge>
-                ) : a.hacked ? (
-                  <Badge variant="success">hacked</Badge>
-                ) : (
-                  <Badge variant="destructive">did not break it</Badge>
-                )}
-                {a.verdict && <span className="font-mono text-[11.5px] text-muted-foreground">{a.verdict}</span>}
-                <span className={cn("font-semibold tabular-nums", a.points_awarded > 0 ? "text-brand-deep" : a.points_awarded < 0 ? "text-destructive" : "text-faint")}>
-                  {a.points_awarded > 0 ? "+" : ""}
-                  {a.points_awarded}
-                </span>
-                <span className="ml-auto text-faint">
-                  <LocalTime iso={a.created_at} />
-                </span>
-              </div>
-              {a.invalid_reason && <p className="mt-1 text-[11.5px] text-amber">{a.invalid_reason}</p>}
-              <pre className="pane mt-1.5 max-h-24 overflow-auto rounded border bg-card px-2 py-1.5 text-[11.5px]">{a.input}</pre>
-            </li>
-          ))}
-        </ol>
-      )}
-    </li>
-  );
-}
-
-function OwnedQuestion({ o }: { o: Dossier["phase2"]["owned"][number] }) {
-  const solved = Boolean(o.solved_at);
-  const hintSpend = o.hints_bought.reduce((s, h) => s + h.price_paid, 0);
-
-  return (
-    <Section
-      title={
-        <span className="flex flex-wrap items-center gap-2">
-          {o.title}
-          {solved ? <Badge variant="success">Solved</Badge> : <Badge variant="warning">Unsolved</Badge>}
-          {o.voided_at && <Badge variant="neutral">Voided</Badge>}
-          <Badge variant={o.difficulty === "hard" ? "destructive" : o.difficulty === "medium" ? "warning" : "success"}>{o.difficulty}</Badge>
-        </span>
-      }
-      description={<span className="font-mono text-[11.5px]">{o.question_id}</span>}
-      actions={
-        <span className="text-[15px] font-semibold tabular-nums">
-          {solved ? o.score : 0}
-          <span className="text-[12px] font-normal text-faint">/{o.score}</span>
-        </span>
-      }
-      padded={false}
+    <ExpandableRow
+      lead={<ScoreMark answered={q.answered} pending={pending} awarded={q.awarded ?? 0} total={total} />}
+      title={q.title}
+      chips={<Badge variant="outline">{q.kind.replace(/_/g, " ")}</Badge>}
+      trail={pending ? <Badge variant="review">awaiting grading</Badge> : <Score awarded={q.awarded ?? 0} total={total} />}
+      open={open}
+      onToggle={() => setOpen((o) => !o)}
     >
-      <div className="border-b px-5 py-3.5">
-        <Summary cols={4}>
-          <SummaryItem label="Bought for">{o.price_paid.toLocaleString()}</SummaryItem>
-          <SummaryItem label="Won at">
-            <LocalTime iso={o.awarded_at} withDate />
-          </SummaryItem>
-          <SummaryItem label="Solve time">{solved ? duration(o.solve_ms) : "—"}</SummaryItem>
-          <SummaryItem label="Submissions">{o.attempts}</SummaryItem>
-        </Summary>
-      </div>
-
-      {o.hints_bought.length > 0 && (
-        <Collapsible>
-          <CollapsibleTrigger className="flex w-full items-center gap-2 border-b px-5 py-2.5 text-[12.5px] font-medium transition-colors hover:bg-muted/40 [&[data-state=open]>svg:first-child]:rotate-90">
-            <Icon.ChevronRight size={14} className="shrink-0 text-faint transition-transform" />
-            <Icon.Lightbulb size={14} className="text-amber" />
-            {o.hints_bought.length} hint{o.hints_bought.length === 1 ? "" : "s"} bought
-            <span className="text-faint">· {hintSpend.toLocaleString()} spent</span>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <ul className="divide-y border-b bg-muted/20">
-              {o.hints_bought.map((h) => (
-                <li key={h.idx} className="flex gap-4 px-5 py-2.5">
-                  <span className="w-24 shrink-0 text-[11.5px] text-faint tabular-nums">
-                    Hint {h.idx + 1} · {h.price_paid}
-                  </span>
-                  <div className="min-w-0 flex-1 text-[12.5px]">
-                    <Markdown>{h.body_md}</Markdown>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-      {o.submissions.length === 0 ? (
-        <EmptyState compact icon={<Icon.Code />} title="Never submitted" body="They owned this question and wrote nothing against it." />
+      {q.answered ? (
+        <div className="space-y-2">
+          <Detail label="Their answer" mono>{answer || <span className="font-sans text-faint">left blank</span>}</Detail>
+          {q.explanation && <Detail label="Their reasoning"><span className="whitespace-pre-wrap">{q.explanation}</span></Detail>}
+          {q.grade_comment && <Detail label="Evaluator's note">{q.grade_comment}</Detail>}
+          {q.score_error && (
+            <Alert variant="destructive">
+              <Icon.Alert />
+              <AlertDescription>The validator errored: {q.score_error}</AlertDescription>
+            </Alert>
+          )}
+          <Detail label="Scored">
+            <span className="text-muted-foreground">
+              {[
+                q.auto_score !== null ? `${q.auto_score} automatically` : null,
+                q.manual_score !== null ? `${q.manual_score} by an evaluator` : null,
+                q.explain_score !== null ? `${q.explain_score} for the reasoning` : null,
+              ].filter(Boolean).join(", ") || "not yet"}
+              {q.updated_at && <>, last changed <LocalTime iso={q.updated_at} /></>}
+            </span>
+          </Detail>
+        </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-14 text-right">#</TableHead>
-              <TableHead className="w-28">Time</TableHead>
-              <TableHead>Verdict</TableHead>
-              <TableHead className="hidden sm:table-cell">Language</TableHead>
-              <TableHead className="hidden text-right md:table-cell">Tests</TableHead>
-              <TableHead className="hidden text-right lg:table-cell">Slowest</TableHead>
-              <TableHead className="hidden xl:table-cell">Jury detail</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {o.submissions.map((s, i) => (
-              <TableRow key={s.id}>
-                <TableCell className="text-right text-faint tabular-nums">{o.submissions.length - i}</TableCell>
-                <TableCell className="whitespace-nowrap text-muted-foreground">
-                  <LocalTime iso={s.created_at} />
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1.5">
-                    <VerdictBadge verdict={s.state === "done" ? s.verdict : null} />
-                    {s.attempt > 1 && <Badge variant="info">rejudged</Badge>}
-                  </div>
-                </TableCell>
-                <TableCell className="hidden font-mono text-[12px] sm:table-cell">{s.language}</TableCell>
-                <TableCell className="hidden text-right tabular-nums md:table-cell">
-                  {s.passed ?? "—"}
-                  <span className="text-faint">/{s.total ?? "—"}</span>
-                  {s.first_fail !== null && <span className="text-faint"> @{s.first_fail}</span>}
-                </TableCell>
-                <TableCell className="hidden text-right tabular-nums lg:table-cell">
-                  {s.max_time_ms !== null ? `${s.max_time_ms.toFixed(0)} ms` : "—"}
-                </TableCell>
-                <TableCell className="hidden max-w-[24ch] truncate font-mono text-[11.5px] text-muted-foreground xl:table-cell" title={s.jury_detail ?? ""}>
-                  {s.jury_detail}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <p className="text-[13px] text-faint">Never answered.</p>
       )}
-    </Section>
+    </ExpandableRow>
+  );
+}
+
+function HackRow({ h, participantId }: { h: Dossier["phase1"]["hacks"][number]; participantId: string }) {
+  const broke = h.attempts.some((a) => a.hacked);
+  const judging = h.attempts.some((a) => a.state !== "done");
+  return (
+    <LinkRow
+      href={`/admin/participants/${participantId}/hacks/${h.question_id}`}
+      lead={<ScoreMark answered={h.attempts.length > 0} pending={judging} awarded={broke ? h.points_possible : 0} total={h.points_possible} />}
+      title={h.title}
+      chips={<span className="text-[12px] text-muted-foreground">{h.attempts.length === 0 ? "no attempt" : `${h.attempts.length} attempt${h.attempts.length === 1 ? "" : "s"}${broke ? ", broke it" : ""}`}</span>}
+      trail={<Score awarded={h.awarded} total={h.points_possible} />}
+    />
+  );
+}
+
+function OwnedRow({ o, participantId }: { o: Dossier["phase2"]["owned"][number]; participantId: string }) {
+  const solved = Boolean(o.solved_at);
+  return (
+    <LinkRow
+      href={`/admin/participants/${participantId}/questions/${o.question_id}`}
+      lead={<span className={cn("mt-1 block size-2.5 rounded-full", o.difficulty === "hard" ? "bg-red" : o.difficulty === "medium" ? "bg-amber" : "bg-green")} title={o.difficulty} />}
+      title={o.title}
+      chips={
+        <>
+          {o.voided_at ? <Badge variant="neutral">Voided</Badge> : solved ? <Badge variant="success">Solved</Badge> : <Badge variant="warning">Unsolved</Badge>}
+          <span className="text-[12px] text-muted-foreground">
+            bought for {o.price_paid.toLocaleString()}, {o.attempts} submission{o.attempts === 1 ? "" : "s"}
+            {o.hints_bought.length ? `, ${o.hints_bought.length} hint${o.hints_bought.length === 1 ? "" : "s"}` : ""}
+            {solved ? `, solved in ${duration(o.solve_ms)}` : ""}
+          </span>
+        </>
+      }
+      trail={<Score awarded={solved ? o.score : 0} total={o.score} />}
+    />
   );
 }

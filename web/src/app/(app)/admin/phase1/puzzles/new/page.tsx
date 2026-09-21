@@ -10,7 +10,7 @@ export default function NewPuzzlePage() {
   return (
     <PageBody width="wide">
       <PageHeader
-        breadcrumb={<Link href="/admin/phase1" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Phase 1 · Section A</Link>}
+        breadcrumb={<Link href="/admin/phase1/puzzles" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Puzzles</Link>}
         title="New puzzle"
       />
       <PuzzleBuilder existing={null} />
