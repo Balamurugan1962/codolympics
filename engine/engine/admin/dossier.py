@@ -24,6 +24,7 @@ from engine.schema import (
     p1_answer,
     p1_hack_attempt,
     p1_hack_question,
+    p1_hack_solution,
     p1_question,
     participant,
     question,
@@ -308,3 +309,135 @@ def _ledger_rows(conn: sa.Connection, participant_id: str) -> list[dict[str, Any
         }
         for entry in found
     ]
+
+
+# --- one question for one participant, in full ---------------------------
+
+
+def owned_question(participant_id: str, question_id: str) -> dict[str, Any]:
+    """Everything they did on one question they own: the hints, in the order
+    bought, and every submission with the code itself. The page for a dispute
+    about one question, so nothing is summarised away."""
+    with db.transaction() as conn:
+        who = _named(conn, participant_id)
+        o = conn.execute(
+            sa.select(
+                ownership,
+                question.c.title,
+                question.c.difficulty,
+                question.c.score,
+                question.c.status,
+                question.c.topic,
+            )
+            .join(question, question.c.id == ownership.c.question_id)
+            .where(
+                ownership.c.participant_id == participant_id,
+                ownership.c.question_id == question_id,
+            )
+            .order_by(ownership.c.awarded_at.desc())
+        ).first()
+        if o is None:
+            raise errors.not_found("question")
+        subs = conn.execute(
+            sa.select(
+                submission.c.id,
+                submission.c.question_id,
+                submission.c.language,
+                submission.c.source,
+                submission.c.created_at,
+                judgement.c.state,
+                judgement.c.verdict,
+                judgement.c.passed,
+                judgement.c.total,
+                judgement.c.first_fail,
+                judgement.c.max_time_ms,
+                judgement.c.max_memory_kb,
+                judgement.c.compile_output,
+                judgement.c.message,
+                judgement.c.jury_detail,
+                judgement.c.attempt,
+                judgement.c.cancelled,
+                judgement.c.ended_at,
+            )
+            .outerjoin(
+                judgement,
+                sa.and_(
+                    judgement.c.submission_id == submission.c.id,
+                    judgement.c.superseded_at.is_(None),
+                ),
+            )
+            .where(
+                submission.c.participant_id == participant_id,
+                submission.c.question_id == question_id,
+            )
+            .order_by(submission.c.created_at.desc())
+        ).all()
+        hints = conn.execute(
+            sa.select(hint_purchase, hint.c.body_md)
+            .outerjoin(
+                hint,
+                sa.and_(
+                    hint.c.question_id == hint_purchase.c.question_id,
+                    hint.c.idx == hint_purchase.c.hint_idx,
+                ),
+            )
+            .where(
+                hint_purchase.c.participant_id == participant_id,
+                hint_purchase.c.question_id == question_id,
+            )
+            .order_by(hint_purchase.c.purchased_at)
+        ).all()
+    row = _owned_row(o, subs, hints)
+    row["topic"] = o.topic
+    for full, s in zip(row["submissions"], subs, strict=True):
+        full.update(
+            source=s.source,
+            max_memory_kb=s.max_memory_kb,
+            compile_output=s.compile_output,
+            cancelled=bool(s.cancelled),
+            ended_at=clock.iso(s.ended_at),
+        )
+    return {"participant": who, "question": row}
+
+
+def hack_question(participant_id: str, question_id: int) -> dict[str, Any]:
+    """Every input they sent against one hacking question, with the code they were reading."""
+    with db.transaction() as conn:
+        who = _named(conn, participant_id)
+        q = conn.execute(
+            sa.select(p1_hack_question).where(p1_hack_question.c.id == question_id)
+        ).one_or_none()
+        if q is None:
+            raise errors.not_found("question")
+        mine = conn.execute(
+            sa.select(p1_hack_attempt)
+            .where(
+                p1_hack_attempt.c.participant_id == participant_id,
+                p1_hack_attempt.c.question_id == question_id,
+            )
+            .order_by(p1_hack_attempt.c.created_at)
+        ).all()
+        copies = conn.execute(
+            sa.select(p1_hack_solution)
+            .where(p1_hack_solution.c.question_id == question_id)
+            .order_by(p1_hack_solution.c.order_index, p1_hack_solution.c.id)
+        ).all()
+    row = _hack_row(q, mine)
+    row["problem_id"] = q.problem_id
+    row["statement_md"] = q.statement_md
+    row["constraints_md"] = q.constraints_md
+    row["solutions"] = [{"id": c.id, "language": c.language, "source": c.source} for c in copies]
+    for full, a in zip(row["attempts"], mine, strict=True):
+        full.update(solution_id=a.solution_id, ended_at=clock.iso(a.ended_at))
+    return {"participant": who, "question": row}
+
+
+def _named(conn: sa.Connection, participant_id: str) -> dict[str, Any]:
+    who = conn.execute(
+        sa.select(user.c.id, user.c.name, user.c.username)
+        .join(participant, participant.c.user_id == user.c.id)
+        .where(user.c.id == participant_id)
+    ).one_or_none()
+    if who is None:
+        raise errors.not_found("participant")
+    return {"id": who.id, "name": who.name, "username": who.username}
