@@ -53,7 +53,8 @@ type Item = {
   use_blocked: string | null;
 };
 
-type Target = { id: string; name: string; disqualified: boolean; shielded: boolean; blacked_out: boolean; break_until: string | null };
+/** `off_limits` with no `break_until`: for the rest of the contest. */
+type Target = { id: string; name: string; disqualified: boolean; shielded: boolean; blacked_out: boolean; off_limits: boolean; break_until: string | null };
 
 type Shield = { active: boolean; ends_at: string | null; queued: number };
 type Market = {
@@ -278,14 +279,14 @@ export default function MarketplacePage() {
               <li key={t.id}>
                 <button
                   type="button"
-                  disabled={t.disqualified || t.break_until !== null || busy !== null}
+                  disabled={t.disqualified || t.off_limits || busy !== null}
                   onClick={() => aiming && attack(aiming, t)}
                   className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
                 >
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{t.name}</span>
                   {t.blacked_out && <Badge variant="neutral">already out</Badge>}
                   {t.shielded && <Badge variant="info">shielded</Badge>}
-                  {t.break_until && <Badge variant="warning">off limits for <Countdown until={t.break_until} warnUnderMs={0} /></Badge>}
+                  {t.off_limits && <Badge variant="warning">{t.break_until ? <>off limits for <Countdown until={t.break_until} warnUnderMs={0} /></> : "off limits now"}</Badge>}
                   {t.disqualified && <Badge variant="neutral">out of the contest</Badge>}
                   <Icon.ChevronRight size={15} className="shrink-0 text-faint" />
                 </button>
