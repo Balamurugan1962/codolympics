@@ -1,12 +1,14 @@
 """Phase 1 questions as portable zips.
 
     puzzle.zip     question.json, validator.py?
-    hack.zip       question.json, given.<ext>
+    hack.zip       question.json, given.<language>.<ext> for each language
     a set          manifest.json, puzzles/<slug>/..., hacking/<slug>/...
 
-Scripts are written out as real files so they can be diffed and edited. A
-hacking question does not carry its judge package -- that moves with the
-Problems export -- and importing one whose package is missing lands as a draft.
+Scripts and code are written out as real files so they can be diffed and
+edited. A hacking question does not carry its judge package (that moves with
+the Problems export) and importing one whose package is missing lands as a
+draft. A zip written before a question could carry several languages names one
+`given_file`; that still imports, as a question with one solution.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ import sqlalchemy as sa
 from engine.contest.rules import get_contest
 from engine.core import clock, db, errors
 from engine.packages.zips import json_bytes, read_zip, write_zip
+from engine.phase1 import solutions
 from engine.phase1.authoring import create, set_published
 from engine.phase1.self_tests import carry_verification
 from engine.schema import P1_CATEGORIES, P1_GRADING, P1_KINDS, p1_hack_question, p1_question
@@ -79,8 +82,21 @@ def _puzzle_files(q: sa.Row) -> dict[str, bytes]:
     return files
 
 
-def _hack_files(q: sa.Row) -> dict[str, bytes]:
-    name = f"given.{EXTENSION.get(q.given_language, 'txt')}"
+def _hack_files(q: sa.Row, copies: list[sa.Row]) -> dict[str, bytes]:
+    files: dict[str, bytes] = {}
+    listed = []
+    for copy in copies:
+        name = f"given.{copy.language}.{EXTENSION.get(copy.language, 'txt')}"
+        files[name] = copy.source.encode()
+        listed.append(
+            {
+                "language": copy.language,
+                "file": name,
+                "proven": copy.proven,
+                # An answer: keep this zip as carefully as the answer keys already in it.
+                "breaking_input": copy.breaking_input,
+            }
+        )
     doc = {
         "format": FORMAT,
         "type": "hack",
@@ -88,28 +104,30 @@ def _hack_files(q: sa.Row) -> dict[str, bytes]:
         "statement_md": q.statement_md,
         "constraints_md": q.constraints_md,
         "problem_id": q.problem_id,
-        "given_language": q.given_language,
-        "given_file": name,
+        "solutions": listed,
         "hack_points": q.hack_points,
         "fail_penalty": q.fail_penalty,
         "verified": q.ready,
         "was_published": q.published,
-        # An answer: keep this zip as carefully as the answer keys already in it.
-        "breaking_input": q.breaking_input,
     }
-    return {"question.json": json_bytes(doc), name: q.given_source.encode()}
+    files["question.json"] = json_bytes(doc)
+    return files
+
+
+def _files_for(conn: sa.Connection, section: str, q: sa.Row) -> dict[str, bytes]:
+    if section == "puzzles":
+        return _puzzle_files(q)
+    return _hack_files(q, solutions.for_questions(conn, [q.id])[q.id])
 
 
 def export_one(section: str, question_id: int) -> tuple[str, bytes]:
-    if section == "puzzles":
-        table, pack = p1_question, _puzzle_files
-    else:
-        table, pack = p1_hack_question, _hack_files
+    table = p1_question if section == "puzzles" else p1_hack_question
     with db.transaction() as conn:
         q = conn.execute(sa.select(table).where(table.c.id == question_id)).one_or_none()
-    if q is None:
-        raise errors.not_found("question")
-    return f"{_slug(q.title, q.id)}.zip", write_zip(pack(q))
+        if q is None:
+            raise errors.not_found("question")
+        files = _files_for(conn, section, q)
+    return f"{_slug(q.title, q.id)}.zip", write_zip(files)
 
 
 def export_many(sections: list[str]) -> tuple[str, bytes]:
@@ -122,14 +140,11 @@ def export_many(sections: list[str]) -> tuple[str, bytes]:
     }
     with db.transaction() as conn:
         for section in sections:
-            if section == "puzzles":
-                table, pack = p1_question, _puzzle_files
-            else:
-                table, pack = p1_hack_question, _hack_files
-            for q in conn.execute(sa.select(table).order_by(table.c.order_index, table.c.id)):
+            table = p1_question if section == "puzzles" else p1_hack_question
+            for q in conn.execute(sa.select(table).order_by(table.c.order_index, table.c.id)).all():
                 folder = f"{section}/{_slug(q.title, q.id)}"
                 manifest[section].append(folder)
-                for name, data in pack(q).items():
+                for name, data in _files_for(conn, section, q).items():
                     files[f"{folder}/{name}"] = data
     files["manifest.json"] = json_bytes(manifest)
     what = sections[0] if len(sections) == 1 else "phase1"
@@ -212,12 +227,13 @@ def _import_hack(
     go_live: bool,
     out: dict[str, Any],
 ) -> None:
-    given_name = str(doc.get("given_file") or "")
-    source = files.get(f"{folder}{given_name}") if given_name else None
-    if source is None:
-        raise errors.invalid(
-            f"the given solution ({given_name or 'given_file'}) is missing from the zip"
-        )
+    listed = _listed_solutions(doc)
+    given = []
+    for entry in listed:
+        source = files.get(f"{folder}{entry['file']}")
+        if source is None:
+            raise errors.invalid(f"the given solution ({entry['file']}) is missing from the zip")
+        given.append({"language": entry["language"], "source": source.decode()})
     problem_id = str(doc.get("problem_id") or "")
     title = str(doc.get("title") or "Untitled")
     fields = {
@@ -225,8 +241,7 @@ def _import_hack(
         "statement_md": str(doc.get("statement_md") or ""),
         "constraints_md": str(doc.get("constraints_md") or ""),
         "problem_id": problem_id,
-        "given_source": source.decode(),
-        "given_language": str(doc.get("given_language") or "cpp"),
+        "solutions": given,
         "hack_points": int(doc.get("hack_points") or 0),
         "fail_penalty": int(doc.get("fail_penalty") or 0),
         "order_index": 0,
@@ -244,13 +259,43 @@ def _import_hack(
         # A proof is about a package; with none here, readiness cannot carry.
         out["missingPackages"].append({"title": title, "problem_id": problem_id})
     elif doc.get("verified") is True:
-        breaking_input = doc.get("breaking_input")
-        if breaking_input is not None:
-            breaking_input = str(breaking_input)
-        carry_verification("hacking", new_id, breaking_input)
+        carry_verification("hacking", new_id, _proofs(new_id, listed))
         _mark_verified(actor_id, "hacking", new_id, doc, reason, go_live, entry, out)
     else:
         out["unverified"].append(title)
+
+
+def _listed_solutions(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    """The copies a question.json names, in either format."""
+    listed = doc.get("solutions")
+    if isinstance(listed, list) and listed:
+        return [
+            {
+                "language": str(one.get("language") or "cpp"),
+                "file": str(one.get("file") or ""),
+                "breaking_input": one.get("breaking_input"),
+            }
+            for one in listed
+            if isinstance(one, dict)
+        ]
+    # The single-solution format: given_file, given_language, breaking_input.
+    return [
+        {
+            "language": str(doc.get("given_language") or "cpp"),
+            "file": str(doc.get("given_file") or ""),
+            "breaking_input": doc.get("breaking_input"),
+        }
+    ]
+
+
+def _proofs(question_id: int, listed: list[dict[str, Any]]) -> dict[int, str | None]:
+    """Each stored copy's id with the breaking input the zip carried for it, by position."""
+    with db.transaction() as conn:
+        copies = solutions.for_questions(conn, [question_id])[question_id]
+    return {
+        copy.id: None if one["breaking_input"] is None else str(one["breaking_input"])
+        for copy, one in zip(copies, listed, strict=True)
+    }
 
 
 def _import_puzzle(

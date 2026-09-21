@@ -48,9 +48,10 @@ from engine.schema import contest, participant, question, user  # noqa: E402
 # fmt: off
 RUN_TABLES = (
     "event", "bid", "lot", "ownership", "hint_purchase", "ledger", "judgement", "submission",
-    "draft", "notification", "announcement", "audit_log", "p1_answer", "p1_hack_attempt",
-    "p1_advancement", "powerup_event", "powerup_inventory", "blackout", "participant", "hint",
-    "question", "p1_question", "p1_hack_question", "powerup", "session", "account",
+    "practice_run", "draft", "notification", "announcement", "audit_log", "p1_answer",
+    "p1_hack_attempt", "p1_advancement", "powerup_event", "powerup_inventory", "blackout",
+    "participant", "hint", "question", "p1_question", "p1_hack_question", "powerup", "session",
+    "account",
 )
 # fmt: on
 

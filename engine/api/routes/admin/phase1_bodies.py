@@ -57,14 +57,22 @@ class PuzzleBody(Body):
     format_hint: Annotated[str | None, Field(max_length=200)] = None
 
 
+class GivenSolution(Body):
+    """One copy of the flawed code. `id` names an existing copy, so an unchanged
+    one keeps its proof."""
+
+    id: int | None = None
+    language: Annotated[str, Field(min_length=1, max_length=32)]
+    source: Annotated[str, Field(min_length=1, max_length=262_144)]
+
+
 class HackBody(Body):
     reason: Reason
     title: Annotated[str, Field(min_length=1, max_length=200)]
     statement_md: Annotated[str, Field(max_length=100_000)]
     constraints_md: Annotated[str, Field(max_length=20_000)] = ""
     problem_id: ProblemId
-    given_source: Annotated[str, Field(max_length=262_144)]
-    given_language: Annotated[str, Field(max_length=32)]
+    solutions: Annotated[list[GivenSolution], Field(min_length=1, max_length=12)]
     hack_points: Annotated[int, Field(ge=0)]
     fail_penalty: Annotated[int, Field(ge=0)] = 0
     order_index: Annotated[int, Field(ge=0)] = 0
@@ -77,6 +85,7 @@ class PuzzleTrial(Body):
 
 
 class HackTrial(Body):
+    solution_id: int
     breaking_input: Annotated[str, Field(max_length=262_144)]
 
 

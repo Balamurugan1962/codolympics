@@ -16,7 +16,7 @@ import sqlalchemy as sa
 from engine.core import clock, db, events
 from engine.judge import client as judge_client
 from engine.judge.client import JudgeError
-from engine.schema import p1_hack_attempt, p1_hack_question
+from engine.schema import p1_hack_attempt, p1_hack_question, p1_hack_solution
 
 
 def tick() -> None:
@@ -37,10 +37,11 @@ def send_one() -> bool:
                 p1_hack_attempt.c.id,
                 p1_hack_attempt.c.input,
                 p1_hack_question.c.problem_id,
-                p1_hack_question.c.given_language,
-                p1_hack_question.c.given_source,
+                p1_hack_solution.c.language,
+                p1_hack_solution.c.source,
             )
             .join(p1_hack_question, p1_hack_question.c.id == p1_hack_attempt.c.question_id)
+            .outerjoin(p1_hack_solution, p1_hack_solution.c.id == p1_hack_attempt.c.solution_id)
             .where(p1_hack_attempt.c.state == "pending")
             .order_by(p1_hack_attempt.c.id)
             .limit(1)
@@ -48,11 +49,15 @@ def send_one() -> bool:
         ).one_or_none()
         if row is None:
             return False
+        if row.source is None:
+            # The copy it was aimed at was removed before it ran: nothing to judge.
+            _broken(conn, row.id)
+            return True
         try:
             job_id = judge_client.hack(
                 problem_id=row.problem_id,
-                language=row.given_language,
-                source=row.given_source,
+                language=row.language,
+                source=row.source,
                 input=row.input,
                 submission_id=f"hack_{row.id}",
             )
@@ -67,26 +72,32 @@ def send_one() -> bool:
 
 
 def _send_failed(conn: sa.Connection, attempt_id: int, err: JudgeError) -> bool:
-    where = p1_hack_attempt.c.id == attempt_id
     if err.judge_status in (400, 404):
-        # The problem is broken: neither a hack nor a failure, and nothing scored.
-        conn.execute(
-            sa.update(p1_hack_attempt)
-            .where(where)
-            .values(
-                state="done",
-                valid_input=True,
-                hacked=None,
-                verdict="IE",
-                invalid_reason=None,
-                ended_at=clock.now(),
-            )
-        )
+        _broken(conn, attempt_id)
         return True
     conn.execute(
-        sa.update(p1_hack_attempt).where(where).values(retries=p1_hack_attempt.c.retries + 1)
+        sa.update(p1_hack_attempt)
+        .where(p1_hack_attempt.c.id == attempt_id)
+        .values(retries=p1_hack_attempt.c.retries + 1)
     )
     return False
+
+
+def _broken(conn: sa.Connection, attempt_id: int) -> None:
+    """The question, not the participant, is at fault: neither a hack nor a failure,
+    and nothing scored."""
+    conn.execute(
+        sa.update(p1_hack_attempt)
+        .where(p1_hack_attempt.c.id == attempt_id)
+        .values(
+            state="done",
+            valid_input=True,
+            hacked=None,
+            verdict="IE",
+            invalid_reason=None,
+            ended_at=clock.now(),
+        )
+    )
 
 
 def poll() -> None:

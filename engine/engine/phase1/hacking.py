@@ -1,10 +1,10 @@
 """Phase 1, Section B: hacking, as participants see and use it.
 
-A participant submits a test input, never code. The judge validates the input,
-runs the stored reference solution and the flawed given one, and says whether
-the given one broke. The first successful hack on a question scores; later ones
-report success and score nothing. Feedback is deliberately thin: valid or not,
-hacked or not -- never the verdict.
+A participant submits a test input, never code. The flawed code comes in more
+than one language; the participant reads the one they like and the judge runs
+that copy against the stored reference. The first successful hack on a question
+scores, whichever copy it hit; later ones report success and score nothing.
+Feedback is deliberately thin: valid or not, hacked or not, never the verdict.
 
 Like Phase 2 submissions, the participant row serialises one person's attempts:
 one in flight, then a cooldown. Sending and settling attempts is in hack_jobs.
@@ -22,21 +22,21 @@ from engine.coding.submissions import MAX_SOURCE_BYTES as MAX_INPUT_BYTES
 from engine.contest.rules import get_contest, lock_contest
 from engine.core import clock, db, errors
 from engine.marketplace.blackouts import assert_not_blacked_out
+from engine.phase1 import solutions
 from engine.phase1.hack_jobs import send_one
 from engine.schema import p1_hack_attempt, p1_hack_question
 
 VISIBLE_FROM = ("p1_hacking", "review", "auction1", "coding1", "auction2", "final", "ended")
 
 
-def participant_question(q: sa.Row) -> dict[str, Any]:
-    """The reference solution is not in the database at all; the given solution is the task."""
+def participant_question(q: sa.Row, copies: list[sa.Row]) -> dict[str, Any]:
+    """The reference solution is not in the database at all; the given code is the task."""
     return {
         "id": q.id,
         "title": q.title,
         "statement_md": q.statement_md,
         "constraints_md": q.constraints_md,
-        "given_source": q.given_source,
-        "given_language": q.given_language,
+        "solutions": [solutions.participant_view(s) for s in copies],
         "hack_points": q.hack_points,
         "fail_penalty": q.fail_penalty,
         "order_index": q.order_index,
@@ -48,6 +48,7 @@ def participant_attempt(a: sa.Row) -> dict[str, Any]:
     return {
         "id": a.id,
         "question_id": a.question_id,
+        "solution_id": a.solution_id,
         "state": a.state,
         "valid_input": a.valid_input,
         "invalid_reason": a.invalid_reason,
@@ -72,17 +73,19 @@ def section_for(participant_id: str) -> dict[str, Any]:
             .where(p1_hack_attempt.c.participant_id == participant_id)
             .order_by(p1_hack_attempt.c.id.desc())
         ).all()
+        copies = solutions.for_questions(conn, [q.id for q in questions])
     is_open = c.phase == "p1_hacking" and not (c.phase_ends_at and c.phase_ends_at <= clock.now())
     return {
         "open": is_open,
         "phase_ends_at": clock.iso(c.phase_ends_at),
         "server_now": clock.now_ms(),
-        "questions": [participant_question(q) for q in questions],
+        "questions": [participant_question(q, copies[q.id]) for q in questions],
         "attempts": [participant_attempt(a) for a in attempts],
     }
 
 
-def submit(participant_id: str, question_id: int, test_input: str) -> int:
+def submit(participant_id: str, question_id: int, solution_id: int, test_input: str) -> int:
+    """An input against one copy of the code: the one the participant was reading."""
     if len(test_input.encode()) > MAX_INPUT_BYTES:
         raise errors.invalid("input is larger than 256 KB")
     with db.transaction() as conn:
@@ -93,12 +96,14 @@ def submit(participant_id: str, question_id: int, test_input: str) -> int:
             raise errors.conflict("section_closed", "Section B has closed")
         assert_not_blacked_out(conn, participant_id)
         _check_question(conn, question_id)
+        solutions.get(conn, question_id, solution_id)
         _check_may_attempt(conn, participant_id)
         attempt_id = conn.execute(
             sa.insert(p1_hack_attempt)
             .values(
                 participant_id=participant_id,
                 question_id=question_id,
+                solution_id=solution_id,
                 input=test_input,
                 state="pending",
             )

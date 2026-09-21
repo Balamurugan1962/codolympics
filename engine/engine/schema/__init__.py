@@ -21,7 +21,7 @@ from engine.schema.base import (
     PHASES,
     metadata,
 )
-from engine.schema.coding import draft, judgement, submission
+from engine.schema.coding import draft, judgement, practice_run, submission
 from engine.schema.contest import announcement, audit_log, contest, event, notification, participant
 from engine.schema.identity import account, session, user, verification
 from engine.schema.marketplace import blackout, powerup, powerup_event, powerup_inventory
@@ -30,6 +30,7 @@ from engine.schema.phase1 import (
     p1_answer,
     p1_hack_attempt,
     p1_hack_question,
+    p1_hack_solution,
     p1_question,
 )
 
@@ -61,11 +62,13 @@ __all__ = [
     "p1_answer",
     "p1_hack_attempt",
     "p1_hack_question",
+    "p1_hack_solution",
     "p1_question",
     "participant",
     "powerup",
     "powerup_event",
     "powerup_inventory",
+    "practice_run",
     "question",
     "session",
     "submission",

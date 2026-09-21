@@ -1,8 +1,12 @@
 """Authoring Phase 1 questions: create, edit, publish, void, reorder, override scores.
 
 Covers both Section A puzzles and Section B hack questions. Readiness is earned by
-a self-test (see self_tests) and lost by any edit. A question can only be published
-while ready, so what participants see has always been proven to work.
+a self-test (see self_tests) and lost by an edit: any edit to a puzzle, an edit to
+the code of a hack question. A question can only be published while ready, so what
+participants see has always been proven to work.
+
+Section B is read live, so every change to it is announced with a `hacking` event
+and each open page re-reads the section.
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ import sqlalchemy as sa
 from engine.core import db, errors, events
 from engine.core.audit import audit
 from engine.core.serialize import rows, to_camel
+from engine.phase1 import solutions
 from engine.schema import p1_answer, p1_hack_question, p1_question
 
 PUZZLE_FIELDS = (
@@ -42,8 +47,6 @@ HACK_FIELDS = (
     "statement_md",
     "constraints_md",
     "problem_id",
-    "given_source",
-    "given_language",
     "hack_points",
     "fail_penalty",
     "order_index",
@@ -74,7 +77,18 @@ def list_section(section: str) -> list[dict[str, Any]]:
     """Every question in a section, secrets included. Staff only."""
     table = table_for(section)
     with db.transaction() as conn:
-        return rows(conn.execute(sa.select(table).order_by(table.c.order_index, table.c.id)))
+        found = rows(conn.execute(sa.select(table).order_by(table.c.order_index, table.c.id)))
+        if section == "hacking":
+            copies = solutions.for_questions(conn, [q["id"] for q in found])
+            for q in found:
+                q["solutions"] = [solutions.staff_view(s) for s in copies[q["id"]]]
+        return found
+
+
+def _changed(section: str) -> None:
+    """Section B is on participants' screens while it is edited."""
+    if section == "hacking":
+        events.publish("hacking")
 
 
 def _check_puzzle(fields: dict[str, Any]) -> None:
@@ -101,6 +115,8 @@ def create(actor_id: str, section: str, fields: dict[str, Any], reason: str) -> 
         new_id = conn.execute(
             sa.insert(table).values(**values, published=False, ready=False).returning(table.c.id)
         ).scalar_one()
+        if section == "hacking":
+            solutions.replace(conn, new_id, fields.get("solutions") or [])
         action = "p1.puzzle.create" if section == "puzzles" else "p1.hack.create"
         audit(
             conn,
@@ -116,9 +132,11 @@ def create(actor_id: str, section: str, fields: dict[str, Any], reason: str) -> 
 def update(
     actor_id: str, section: str, question_id: int, fields: dict[str, Any], reason: str
 ) -> None:
-    """Any change voids readiness: the self-test must run again.
+    """A puzzle edit voids readiness: the self-test must run again.
 
-    A hack question keeps its breaking input, so it can be tried first.
+    A hack question's readiness follows its solutions: a copy whose code changed
+    loses its proof and keeps its breaking input, so it can be tried first; a copy
+    given back unchanged keeps its proof.
     """
     table = table_for(section)
     allowed = PUZZLE_FIELDS if section == "puzzles" else HACK_FIELDS
@@ -127,11 +145,14 @@ def update(
         current = get_question(conn, table, question_id, lock=True)
         if section == "puzzles":
             _check_puzzle({**current._mapping, **values})
-        conn.execute(
-            sa.update(table)
-            .where(table.c.id == question_id)
-            .values(**values, ready=False, verified_elsewhere=False)
-        )
+            values.update(ready=False, verified_elsewhere=False)
+        if values:
+            conn.execute(sa.update(table).where(table.c.id == question_id).values(**values))
+        if section == "hacking":
+            if "solutions" in fields:
+                solutions.replace(conn, question_id, fields["solutions"])
+                values["solutions"] = fields["solutions"]
+            solutions.refresh_ready(conn, question_id)
         action = "p1.puzzle.update" if section == "puzzles" else "p1.hack.update"
         audit(
             conn,
@@ -141,6 +162,7 @@ def update(
             reason=reason,
             detail=[to_camel(k) for k in values],
         )
+    _changed(section)
 
 
 def delete_puzzle(actor_id: str, question_id: int, reason: str) -> None:
@@ -182,6 +204,7 @@ def set_published(
             target=str(question_id),
             reason=reason,
         )
+    _changed(section)
 
 
 def void(actor_id: str, section: str, question_id: int, reason: str) -> None:
@@ -197,6 +220,7 @@ def void(actor_id: str, section: str, question_id: int, reason: str) -> None:
             reason=reason,
         )
     events.publish("leaderboard")
+    _changed(section)
 
 
 def reorder(actor_id: str, section: str, ids: list[int], reason: str) -> None:
@@ -220,6 +244,7 @@ def reorder(actor_id: str, section: str, ids: list[int], reason: str) -> None:
             reason=reason,
             detail={"ids": ids},
         )
+    _changed(section)
 
 
 def override_score(

@@ -14,9 +14,10 @@ import sqlalchemy as sa
 from engine.core import db, errors
 from engine.judge import client as judge_client
 from engine.packages.volume import latest_or_current
+from engine.phase1 import solutions
 from engine.phase1.answers import normalise_answer, score_auto
 from engine.phase1.authoring import get_question, table_for
-from engine.schema import p1_hack_question, p1_question
+from engine.schema import p1_hack_question, p1_hack_solution, p1_question
 
 
 def self_test_puzzle(
@@ -93,38 +94,35 @@ def _test_validator(q: sa.Row, should_pass: list[str], should_fail: list[str]) -
     return {"ready": False, "detail": "validator " + " and ".join(problems)}
 
 
-def self_test_hack(question_id: int, breaking_input: str) -> dict[str, Any]:
-    """The known breaking input must be valid and must break the given solution."""
+def self_test_hack(question_id: int, solution_id: int, breaking_input: str) -> dict[str, Any]:
+    """The known breaking input must be valid and must break this copy of the code.
+
+    Each copy is proven on its own; the question is ready once every copy is.
+    """
     with db.transaction() as conn:
         q = get_question(conn, p1_hack_question, question_id)
+        copy = solutions.get(conn, question_id, solution_id)
     # A proof has to work before the package is published, so the newest upload is used
     # if nothing is live.
     version = latest_or_current(q.problem_id)
     if version is None:
         raise errors.conflict(
             "package_missing",
-            f"there is no judge package called {q.problem_id} — upload it under Problems first",
+            f"there is no judge package called {q.problem_id}; upload it under Problems first",
         )
     job_id = judge_client.hack(
         problem_id=q.problem_id,
-        language=q.given_language,
-        source=q.given_source,
+        language=copy.language,
+        source=copy.source,
         input=breaking_input,
         version=version,
-        submission_id=f"p1hacktest_{question_id}",
+        submission_id=f"p1hacktest_{question_id}_{solution_id}",
     )
     result = judge_client.wait_for_job(job_id)
-    ready, detail = _hack_proof(result)
+    proven, detail = _hack_proof(result)
     with db.transaction() as conn:
-        values: dict[str, Any] = {"ready": ready, "verified_elsewhere": False}
-        if ready:
-            # The input that proved it is kept: it is how the question is proven again
-            # after an edit or import.
-            values["breaking_input"] = breaking_input
-        conn.execute(
-            sa.update(p1_hack_question).where(p1_hack_question.c.id == question_id).values(**values)
-        )
-    return {"ready": ready, "detail": detail, "result": result}
+        ready = solutions.record_proof(conn, question_id, solution_id, proven, breaking_input)
+    return {"ready": ready, "proven": proven, "detail": detail, "result": result}
 
 
 def _hack_proof(result: dict[str, Any]) -> tuple[bool, str]:
@@ -138,11 +136,24 @@ def _hack_proof(result: dict[str, Any]) -> tuple[bool, str]:
     return False, "the given solution handles this input correctly. It does not break it"
 
 
-def carry_verification(section: str, question_id: int, breaking_input: str | None = None) -> None:
-    """Readiness that arrived in a zip, recorded as proven elsewhere. Only importers call this."""
-    values: dict[str, Any] = {"ready": True, "verified_elsewhere": True}
-    if section == "hacking":
-        values["breaking_input"] = breaking_input
+def carry_verification(
+    section: str, question_id: int, breaking_inputs: dict[int, str | None] | None = None
+) -> None:
+    """Readiness that arrived in a zip, recorded as proven elsewhere. Only importers call this.
+
+    For a hack question, `breaking_inputs` maps each solution id to the input that
+    proved it where the zip came from.
+    """
     table = table_for(section)
     with db.transaction() as conn:
-        conn.execute(sa.update(table).where(table.c.id == question_id).values(**values))
+        conn.execute(
+            sa.update(table)
+            .where(table.c.id == question_id)
+            .values(ready=True, verified_elsewhere=True)
+        )
+        for solution_id, breaking_input in (breaking_inputs or {}).items():
+            conn.execute(
+                sa.update(p1_hack_solution)
+                .where(p1_hack_solution.c.id == solution_id)
+                .values(proven=True, breaking_input=breaking_input)
+            )
