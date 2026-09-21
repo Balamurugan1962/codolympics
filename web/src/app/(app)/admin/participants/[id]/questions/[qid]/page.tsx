@@ -19,6 +19,7 @@ import { PageBody, Section } from "@/components/ui/page";
 import { AsideBlock, Facts, RecordBody, RecordHeader } from "@/components/ui/record";
 import { DetailSkeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/client";
+import { fromHere, useCameFrom, useHere } from "@/lib/came-from";
 import { languageName } from "@/lib/languages";
 
 type Submission = {
@@ -45,6 +46,7 @@ function duration(ms: number | null): string {
 
 export default function ParticipantQuestionPage() {
   const { id, qid } = useParams<{ id: string; qid: string }>();
+  const here = useHere();
   const [d, setD] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
@@ -52,6 +54,8 @@ export default function ParticipantQuestionPage() {
     catch { setError("This question is not one they own, or the participant was removed."); }
   }, [id, qid]);
   useEffect(() => { void load(); }, [load]);
+
+  const back = useCameFrom({ href: `/admin/participants/${id}`, label: d?.participant.name ?? "Participant" });
 
   if (error) return <PageBody><Alert variant="destructive"><Icon.Alert /><AlertDescription>{error}</AlertDescription></Alert></PageBody>;
   if (!d) return <PageBody width="wide"><DetailSkeleton tabs={0} stats={4} /></PageBody>;
@@ -71,7 +75,7 @@ export default function ParticipantQuestionPage() {
   return (
     <PageBody width="wide">
       <RecordHeader
-        back={{ href: `/admin/participants/${id}`, label: d.participant.name }}
+        back={back}
         title={q.title}
         chips={
           <>
@@ -121,7 +125,7 @@ export default function ParticipantQuestionPage() {
                   <div className="text-[13px]"><Markdown>{e.h.body_md}</Markdown></div>
                 </Event>
               ) : (
-                <SubmissionEvent key={`s${e.s.id}`} s={e.s} n={numbered.get(e.s.id) ?? 0} withDate={dated} />
+                <SubmissionEvent key={`s${e.s.id}`} s={e.s} n={numbered.get(e.s.id) ?? 0} withDate={dated} from={here} />
               ),
             )}
             {q.solved_at && <Event at={q.solved_at} withDate={dated} tone="success" title="Solved" summary={`${q.score} points, ${duration(q.solve_ms)} after winning it.`} />}
@@ -132,7 +136,7 @@ export default function ParticipantQuestionPage() {
   );
 }
 
-function SubmissionEvent({ s, n, withDate }: { s: Submission; n: number; withDate: boolean }) {
+function SubmissionEvent({ s, n, withDate, from }: { s: Submission; n: number; withDate: boolean; from: string }) {
   const done = s.state === "done";
   const v = done ? s.verdict : null;
   const tone = !done ? "info" : s.cancelled ? "neutral" : v === "AC" ? "success" : VERDICTS[v ?? ""]?.variant === "warning" ? "warning" : "destructive";
@@ -144,7 +148,7 @@ function SubmissionEvent({ s, n, withDate }: { s: Submission; n: number; withDat
       withDate={withDate}
       tone={tone}
       title={`Submission ${n}`}
-      href={`/admin/judge/submission/${s.id}`}
+      href={fromHere(`/admin/judge/submission/${s.id}`, from)}
       chips={
         <>
           <VerdictBadge verdict={s.cancelled ? null : v} />

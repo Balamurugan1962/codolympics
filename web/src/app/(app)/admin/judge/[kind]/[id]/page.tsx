@@ -16,6 +16,7 @@ import { Badge, VerdictBadge } from "@/components/ui/badge";
 import { PageBody } from "@/components/ui/page";
 import { AsideBlock, Facts, RecordBody, RecordHeader } from "@/components/ui/record";
 import { api } from "@/lib/client";
+import { useCameFrom } from "@/lib/came-from";
 import { languageName } from "@/lib/languages";
 
 import { KIND, duration, type WorkKind } from "../../work";
@@ -23,6 +24,7 @@ import { DetailSkeleton, HackBody, SubmissionBody, ValidatorBody, type Detail } 
 
 export default function JudgeWorkPage() {
   const { kind, id } = useParams<{ kind: string; id: string }>();
+  const back = useCameFrom({ href: "/admin/judge", label: "Judge monitor" });
   const [d, setD] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
@@ -60,7 +62,7 @@ export default function JudgeWorkPage() {
   return (
     <PageBody width="wide">
       <RecordHeader
-        back={{ href: "/admin/judge", label: "Judge" }}
+        back={back}
         title={<span className="flex items-center gap-2"><span className="text-faint">{k.icon}</span>{k.noun} from {d.who.name}</span>}
         chips={
           <>

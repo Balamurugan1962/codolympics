@@ -35,9 +35,10 @@ import { Stat, StatRow } from "@/components/ui/stat";
 import { Summary, SummaryItem } from "@/components/ui/summary";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
+import { fromHere } from "@/lib/came-from";
 import { cn } from "@/lib/utils";
 
-import { Elapsed, KIND, STATE_WORDS, type Work, type WorkKind, duration } from "./work";
+import { Elapsed, KIND, STATE_WORDS, type Work, type WorkKind, duration, hrefOf } from "./work";
 
 type Feed = {
   judge: { status: string; go_judge: string; problems: number; busy: number; capacity: number } | null;
@@ -62,6 +63,7 @@ const KINDS: ({ key: "all"; label: string } | { key: WorkKind; label: string })[
 
 export default function JudgePage() {
   const router = useRouter();
+  const open = (w: Work) => { const href = hrefOf(w); if (href) router.push(fromHere(href, "/admin/judge")); };
   const [feed, setFeed] = useState<Feed | null>(null);
   const [busy, setBusy] = useState(false);
   const [kind, setKind] = useState<"all" | WorkKind>("all");
@@ -219,7 +221,7 @@ export default function JudgePage() {
                 </TableHeader>
                 <TableBody>
                   {running.map((w) => (
-                    <Row key={w.key} w={w} onOpen={() => { if (w.ref) router.push(`/admin/judge/${w.ref}`); }}>
+                    <Row key={w.key} w={w} onOpen={() => open(w)}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className={cn("size-1.5 shrink-0 rounded-full", w.state === "running" ? "animate-pulse bg-blue" : "bg-amber-bg")} />
@@ -327,7 +329,7 @@ export default function JudgePage() {
                   </TableHeader>
                   <TableBody>
                     {paged.rows.map((w) => (
-                      <Row key={w.key} w={w} onOpen={() => { if (w.ref) router.push(`/admin/judge/${w.ref}`); }} time>
+                      <Row key={w.key} w={w} onOpen={() => open(w)} time>
                         <TableCell>
                           <div className="flex min-w-0 items-center gap-1.5">
                             {w.kind === "submission" || w.kind === "run" ? <VerdictBadge verdict={w.verdict} /> : w.label ? <Badge variant={w.tone}>{w.label}</Badge> : null}
@@ -372,7 +374,7 @@ function Row({
 }) {
   const k = KIND[w.kind];
   // A practice run keeps neither code nor output, so there is nothing to open.
-  const openable = w.ref !== null;
+  const openable = hrefOf(w) !== null;
   return (
     <TableRow
       tabIndex={openable ? 0 : undefined}
