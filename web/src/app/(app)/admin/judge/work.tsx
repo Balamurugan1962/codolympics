@@ -13,12 +13,13 @@ import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/icons";
 
-export type WorkKind = "submission" | "hack" | "validator";
+export type WorkKind = "submission" | "run" | "hack" | "validator";
 
 export type Work = {
   kind: WorkKind;
   key: string;
-  ref: string;
+  // Where the detail lives; null for a kind that keeps nothing to open.
+  ref: string | null;
   job_id: string | null;
   state: "pending" | "queued" | "running" | "done" | "error";
   live: boolean;
@@ -42,6 +43,7 @@ export type Work = {
 
 export const KIND: Record<WorkKind, { noun: string; label: string; icon: React.ReactNode }> = {
   submission: { noun: "Submission", label: "Code", icon: <Icon.Code size={13} /> },
+  run: { noun: "Practice run", label: "Run", icon: <Icon.Terminal size={13} /> },
   hack: { noun: "Hack", label: "Hack", icon: <Icon.Bug size={13} /> },
   validator: { noun: "Validator run", label: "Validator", icon: <Icon.ListChecks size={13} /> },
 };

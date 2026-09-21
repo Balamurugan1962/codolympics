@@ -1,34 +1,27 @@
 "use client";
 
 /**
- * One judge request, opened from the activity list.
+ * The body of one judge request, by kind.
  *
  * The three kinds do not share a body, because they do not share a question.
  * For a submission you want the code and the testcase it died on; for a hack
  * you want the input the participant crafted and the solution it was aimed at;
  * for a validator run you want the entries it was asked to check. Forcing all
  * three through one layout would mean columns that are empty two times in three.
- *
- * What they do share is the envelope — who, when, which job id, how long — and
- * that is the strip at the top, in the same place every time.
  */
-import { useEffect, useState } from "react";
-
+import { Code } from "@/components/admin/timeline";
 import { Icon } from "@/components/icons";
 import { Badge, VerdictBadge } from "@/components/ui/badge";
-import { Drawer } from "@/components/ui/drawer";
 import { Section } from "@/components/ui/page";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Summary, SummaryItem } from "@/components/ui/summary";
-import { api } from "@/lib/client";
+import { languageName } from "@/lib/languages";
 
-import { KIND, type Work, duration, stateTone } from "./work";
-
-type Envelope = {
+export type Envelope = {
   kind: "submission" | "hack" | "validator";
   who: { id: string; name: string };
   submitted_at: string;
-  target: { title: string; problem_id: string | null };
+  target: { title: string; problem_id: string | null; question_id: string | number | null };
   language: string | null;
   request: {
     job_id: string | null;
@@ -43,7 +36,7 @@ type Envelope = {
   };
 };
 
-type SubmissionDetail = Envelope & {
+export type SubmissionDetail = Envelope & {
   kind: "submission";
   source: string;
   result: {
@@ -62,7 +55,7 @@ type SubmissionDetail = Envelope & {
   attempts: { id: number; attempt: number; verdict: string | null; state: string; createdAt: string }[];
 };
 
-type HackDetail = Envelope & {
+export type HackDetail = Envelope & {
   kind: "hack";
   input: string;
   source: string;
@@ -77,107 +70,15 @@ type HackDetail = Envelope & {
   stakes: { hack_points: number; fail_penalty: number };
 };
 
-type ValidatorDetail = Envelope & {
+export type ValidatorDetail = Envelope & {
   kind: "validator";
   entries: string[];
   result: { score: number | null; points_per_entry: number | null; error: string | null };
 };
 
-type Detail = SubmissionDetail | HackDetail | ValidatorDetail;
+export type Detail = SubmissionDetail | HackDetail | ValidatorDetail;
 
-export function WorkDrawer({ work, onClose }: { work: Work | null; onClose: () => void }) {
-  const [detail, setDetail] = useState<Detail | null>(null);
-
-  useEffect(() => {
-    setDetail(null);
-    if (!work) return;
-    let live = true;
-    void api
-      .get<Detail>(`/api/admin/judge/activity/${work.ref}`)
-      .then((d) => { if (live) setDetail(d); })
-      .catch(() => {});
-    return () => { live = false; };
-  }, [work]);
-
-  const kind = work ? KIND[work.kind] : null;
-
-  return (
-    <Drawer
-      open={Boolean(work)}
-      onClose={onClose}
-      width="xl"
-      title={
-        work ? (
-          <span className="flex items-center gap-2">
-            {kind!.icon}
-            {kind!.noun} from {work.name}
-          </span>
-        ) : (
-          ""
-        )
-      }
-      description={work ? `${work.target} · ${new Date(work.created_at).toLocaleString()}` : undefined}
-    >
-      {!detail ? (
-        <DetailSkeleton />
-      ) : (
-        <div className="space-y-5">
-          <Section title="The request" description="What was sent to the judge, and what it did with it.">
-            <Summary cols={3}>
-              <SummaryItem label="Participant">{detail.who.name}</SummaryItem>
-              <SummaryItem label="Sent">{new Date(detail.request.created_at).toLocaleTimeString()}</SummaryItem>
-              <SummaryItem label="Took">
-                {detail.request.ended_at ? (
-                  duration(new Date(detail.request.ended_at).getTime() - new Date(detail.request.created_at).getTime())
-                ) : detail.request.state === "done" || detail.request.state === "error" ? (
-                  <span className="text-faint">not recorded</span>
-                ) : (
-                  <span className="text-blue">still running</span>
-                )}
-              </SummaryItem>
-              <SummaryItem label="State">
-                <span className={stateTone(detail.request.state)}>{detail.request.state}</span>
-              </SummaryItem>
-              <SummaryItem label="Judge job">
-                {detail.request.job_id ? (
-                  <span className="font-mono text-[11.5px]">{detail.request.job_id}</span>
-                ) : (
-                  <span className="text-faint">not accepted yet</span>
-                )}
-              </SummaryItem>
-              <SummaryItem label="Package">
-                {detail.target.problem_id ? (
-                  <span className="font-mono text-[11.5px]">
-                    {detail.target.problem_id}
-                    {detail.request.problem_version ? ` @${detail.request.problem_version}` : ""}
-                  </span>
-                ) : (
-                  <span className="text-faint">none: it runs a validator, not a package</span>
-                )}
-              </SummaryItem>
-            </Summary>
-            {(detail.request.retries > 0 || detail.request.cancelled || detail.request.superseded_at) && (
-              <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t pt-3">
-                {detail.request.retries > 0 && <Badge variant="warning">sent again ×{detail.request.retries}</Badge>}
-                {detail.request.cancelled && <Badge variant="neutral">cancelled</Badge>}
-                {detail.request.superseded_at && <Badge variant="neutral">superseded by a rejudge</Badge>}
-                {detail.request.attempt !== null && detail.request.attempt > 1 && (
-                  <Badge variant="info">attempt {detail.request.attempt}</Badge>
-                )}
-              </div>
-            )}
-          </Section>
-
-          {detail.kind === "submission" && <SubmissionBody d={detail} />}
-          {detail.kind === "hack" && <HackBody d={detail} />}
-          {detail.kind === "validator" && <ValidatorBody d={detail} />}
-        </div>
-      )}
-    </Drawer>
-  );
-}
-
-function SubmissionBody({ d }: { d: SubmissionDetail }) {
+export function SubmissionBody({ d }: { d: SubmissionDetail }) {
   const r = d.result;
   return (
     <>
@@ -229,8 +130,8 @@ function SubmissionBody({ d }: { d: SubmissionDetail }) {
         </Section>
       )}
 
-      <Section title={`What they submitted · ${d.language}`} padded={false}>
-        <pre className="pane max-h-[28rem] overflow-auto bg-navy p-4 text-[12px] leading-relaxed text-white">{d.source}</pre>
+      <Section title="What they submitted" description={d.language ? `In ${languageName(d.language)}, exactly as sent.` : undefined} padded={false}>
+        <Code source={d.source} language={d.language ?? "plaintext"} maxLines={40} />
       </Section>
 
       {d.attempts.length > 1 && (
@@ -250,7 +151,7 @@ function SubmissionBody({ d }: { d: SubmissionDetail }) {
   );
 }
 
-function HackBody({ d }: { d: HackDetail }) {
+export function HackBody({ d }: { d: HackDetail }) {
   const r = d.result;
   const tone = r.hacked === true ? "success" : r.valid_input === false ? "warning" : r.hacked === false ? "neutral" : "neutral";
   return (
@@ -293,14 +194,14 @@ function HackBody({ d }: { d: HackDetail }) {
         <pre className="pane max-h-72 overflow-auto bg-muted p-3 text-[11.5px]">{d.input}</pre>
       </Section>
 
-      <Section title={`The solution it was aimed at · ${d.language}`} padded={false}>
-        <pre className="pane max-h-[24rem] overflow-auto bg-navy p-4 text-[12px] leading-relaxed text-white">{d.source}</pre>
+      <Section title="The solution it was aimed at" description={d.language ? `The ${languageName(d.language)} copy, deliberately wrong somewhere.` : undefined} padded={false}>
+        <Code source={d.source} language={d.language ?? "plaintext"} maxLines={40} />
       </Section>
     </>
   );
 }
 
-function ValidatorBody({ d }: { d: ValidatorDetail }) {
+export function ValidatorBody({ d }: { d: ValidatorDetail }) {
   return (
     <>
       <Section title="The outcome">
@@ -338,7 +239,7 @@ function ValidatorBody({ d }: { d: ValidatorDetail }) {
 }
 
 /** The drawer's own shape while it loads: the envelope, a result, a code pane. */
-function DetailSkeleton() {
+export function DetailSkeleton() {
   return (
     <div className="space-y-5" aria-hidden>
       <div className="rounded-lg border bg-card p-5 shadow-xs">
