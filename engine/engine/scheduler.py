@@ -26,7 +26,7 @@ import time
 from collections.abc import Callable
 
 from engine.auction import lots
-from engine.coding import judging
+from engine.coding import judging, runs
 from engine.core import db, events
 from engine.phase1 import hack_jobs, validator_jobs
 
@@ -36,6 +36,7 @@ log = logging.getLogger("engine.scheduler")
 STEPS: tuple[tuple[str, Callable[[], None]], ...] = (
     ("auction", lots.tick),
     ("submissions", judging.tick),
+    ("runs", runs.tick),
     ("hacking", hack_jobs.tick),
     ("puzzles", validator_jobs.tick),
 )

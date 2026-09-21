@@ -83,11 +83,13 @@ def for_owner(participant_id: str, question_id: str) -> dict[str, Any]:
         if q is None:
             raise errors.not_found("question")
         saved = conn.execute(
-            sa.select(draft).where(
+            sa.select(draft)
+            .where(
                 draft.c.participant_id == participant_id,
                 draft.c.question_id == question_id,
             )
-        ).one_or_none()
+            .order_by(draft.c.updated_at.desc())
+        ).all()
         mine = {
             "hints": hints_for(conn, participant_id, question_id),
             "history": history(conn, participant_id, question_id),
@@ -102,13 +104,11 @@ def for_owner(participant_id: str, question_id: str) -> dict[str, Any]:
         memory_limit_mb = info.get("memory_limit_mb")
         # How many hidden testcases, never what is in them.
         hidden_testcases = max(0, info["testcases"] - q.sample_count)
-    saved_draft = None
-    if saved:
-        saved_draft = {
-            "source": saved.source,
-            "language": saved.language,
-            "updated_at": clock.iso(saved.updated_at),
-        }
+    # Newest first, so the first one is the language they were last writing in.
+    drafts = [
+        {"source": d.source, "language": d.language, "updated_at": clock.iso(d.updated_at)}
+        for d in saved
+    ]
     return {
         "id": q.id,
         "title": q.title,
@@ -123,7 +123,7 @@ def for_owner(participant_id: str, question_id: str) -> dict[str, Any]:
         "samples": samples_for(q.id, q.sample_count, q.problem_version),
         "hints": mine["hints"],
         "history": mine["history"],
-        "draft": saved_draft,
+        "drafts": drafts,
         "submit": mine["submit"],
         "awarded_at": clock.iso(own.awarded_at),
     }
@@ -142,7 +142,7 @@ def save_draft(participant_id: str, question_id: str, source: str, language: str
     values = {"source": source, "language": language, "updated_at": clock.now()}
     stmt = pg_insert(draft).values(participant_id=participant_id, question_id=question_id, **values)
     upsert = stmt.on_conflict_do_update(
-        index_elements=["participant_id", "question_id"],
+        index_elements=["participant_id", "question_id", "language"],
         set_=values,
     )
     with db.transaction() as conn:

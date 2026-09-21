@@ -9,7 +9,8 @@ from fastapi import Body as BodyParam
 from pydantic import Field
 
 from engine.auction import bidding
-from engine.coding import hints, questions, submission_views, submissions
+from engine.coding import hints, questions, runs, submission_views, submissions
+from engine.coding.runs import MAX_CUSTOM_INPUT_BYTES
 from engine.coding.submissions import MAX_SOURCE_BYTES
 from engine.core import clock
 
@@ -66,6 +67,25 @@ def buy_hint(
 def save_draft(viewer: Participant, question_id: str, body: DraftBody) -> dict[str, str | None]:
     questions.save_draft(viewer.id, question_id, body.source, body.language)
     return {"saved_at": clock.iso(clock.now())}
+
+
+class RunBody(Body):
+    language: Annotated[str, Field(min_length=1, max_length=32)]
+    source: Annotated[str, Field(max_length=MAX_SOURCE_BYTES)]
+    # An input of the participant's own, run after the samples.
+    custom_input: Annotated[str | None, Field(max_length=MAX_CUSTOM_INPUT_BYTES)] = None
+
+
+@router.post("/questions/{question_id}/run", status_code=202)
+def run_samples(viewer: Participant, question_id: str, body: RunBody) -> dict[str, int]:
+    """A practice run on the samples and an optional custom input. Nothing is scored."""
+    return {"id": runs.start(viewer.id, question_id, body.language, body.source, body.custom_input)}
+
+
+@router.get("/runs/{run_id}")
+def read_run(viewer: Participant, run_id: Annotated[int, Path(gt=0)]) -> dict[str, Any]:
+    """The workspace polls this until the run is done."""
+    return runs.poll(viewer.id, run_id)
 
 
 @router.post("/submissions", status_code=202)

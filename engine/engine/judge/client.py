@@ -135,6 +135,28 @@ def hack(
     return _call("POST", "/hack", body)["job_id"]
 
 
+def run(
+    *,
+    problem_id: str,
+    language: str,
+    source: str,
+    samples: int,
+    inputs: list[dict[str, str | None]],
+    submission_id: str,
+) -> str:
+    """A practice run: the problem's first `samples` testcases, then `inputs`
+    (`{"input", "answer"}` pairs, answer None when there is nothing to compare)."""
+    body = {
+        "problem_id": problem_id,
+        "language": language,
+        "source": source,
+        "samples": samples,
+        "inputs": inputs,
+        "submission_id": submission_id,
+    }
+    return _call("POST", "/run", body)["job_id"]
+
+
 def validate_answers(*, validator: str, entries: list[str], submission_id: str) -> str:
     body = {
         "validator": validator,
