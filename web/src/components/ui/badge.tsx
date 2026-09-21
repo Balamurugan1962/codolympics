@@ -86,7 +86,7 @@ function StatusDot({
   );
 }
 
-/** The judge's verdict, spelled out. Participants should never have to learn the abbreviations. */
+/** Every verdict the judge can give, in the words and colour the app uses for it. */
 const VERDICTS: Record<string, { label: string; variant: "success" | "destructive" | "warning" | "neutral" }> = {
   AC: { label: "Accepted", variant: "success" },
   WA: { label: "Wrong answer", variant: "destructive" },
@@ -114,4 +114,4 @@ function VerdictBadge({ verdict, className }: { verdict: string | null | undefin
   );
 }
 
-export { Badge, badgeVariants, StatusDot, VerdictBadge, verdictLabel };
+export { Badge, badgeVariants, StatusDot, VERDICTS, VerdictBadge, verdictLabel };
