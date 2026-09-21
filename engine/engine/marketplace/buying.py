@@ -18,6 +18,7 @@ import sqlalchemy as sa
 from engine.accounts import wallet
 from engine.contest.rules import lock_contest, marketplace_closed_reason
 from engine.core import db, errors, events
+from engine.marketplace import shields
 from engine.marketplace.inventory import add_to_inventory, event_for, holdings
 from engine.schema import participant, powerup, powerup_event
 
@@ -31,6 +32,7 @@ def buy(participant_id: str, powerup_id: int, request_id: str) -> dict[str, Any]
             raise
         return {**_replay_buy(participant_id, request_id), "replayed": True}
     events.publish("balance", {"balance": result["balance"]}, participant_id)
+    events.publish("powerup", {"you": "bought"}, participant_id)
     return result
 
 
@@ -51,6 +53,9 @@ def _buy(
 
     balance = wallet.move(conn, participant_id, -item.price, "powerup", item.name)
     owned = add_to_inventory(conn, participant_id, item.id)
+    if item.kind == "shield":
+        # Nothing up yet: this one starts now. Otherwise it waits its turn.
+        shields.settle(conn, participant_id)
     # Last, so a replayed request collides here and rolls everything above back.
     conn.execute(
         sa.insert(powerup_event).values(

@@ -49,7 +49,7 @@ from engine.schema import contest, participant, question, user  # noqa: E402
 RUN_TABLES = (
     "event", "bid", "lot", "ownership", "hint_purchase", "ledger", "judgement", "submission",
     "practice_run", "draft", "notification", "announcement", "audit_log", "p1_answer",
-    "p1_hack_attempt", "p1_advancement", "powerup_event", "powerup_inventory", "blackout",
+    "p1_hack_attempt", "p1_advancement", "powerup_event", "powerup_inventory", "blackout", "shield",
     "participant", "hint", "question", "p1_question", "p1_hack_question", "powerup", "session",
     "account",
 )
@@ -76,6 +76,8 @@ def clean(schema: None) -> Iterator[None]:
                 auction_paused_at=None,
                 auction_mode="online",
                 marketplace_open=False,
+                reveal_attacker=True,
+                reveal_shields=True,
                 bid_increment=10,
                 countdown_seconds=60,
                 opening_window_seconds=60,

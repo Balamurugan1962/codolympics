@@ -29,6 +29,8 @@ class ContestPatch(Body):
     reason: Reason
     auction_mode: AuctionMode | None = None
     marketplace_open: bool | None = None
+    reveal_attacker: bool | None = None
+    reveal_shields: bool | None = None
     starting_balance: Annotated[int | None, Field(ge=0)] = None
     bid_increment: Annotated[int | None, Field(ge=1)] = None
     countdown_seconds: Annotated[int | None, Field(ge=0)] = None  # 0 disables the countdown

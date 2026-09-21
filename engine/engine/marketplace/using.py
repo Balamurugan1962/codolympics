@@ -4,8 +4,9 @@ The server is the only authority. Inventory, phase and whether a blackout is sti
 running are re-read inside the transaction that acts on them.
 
 An attack locks the attacker's and the target's participant rows together, in id
-order, so two attacks on one person serialise -- one Shield is spent by exactly one
-of them -- and two people attacking each other at once cannot deadlock.
+order, so two attacks on one person serialise -- the Shield that is up is spent by
+exactly one of them, and the next in the target's queue is up before the other
+lands -- and two people attacking each other at once cannot deadlock.
 
 Stacking is adjacency, not overlap. A new blackout starts where the target's last
 one ends, so simultaneous attacks queue back to back and the total is the sum.
@@ -24,9 +25,10 @@ from engine.accounts import wallet
 from engine.contest.messages import notify
 from engine.contest.rules import lock_contest
 from engine.core import clock, db, errors, events
+from engine.marketplace import shields
 from engine.marketplace.blackouts import blackout_for, blackout_state
 from engine.marketplace.inventory import event_for, holdings, take_one
-from engine.schema import blackout, powerup, powerup_event, powerup_inventory, user
+from engine.schema import blackout, powerup, powerup_event, user
 
 
 def use(actor_id: str, powerup_id: int, target_id: str | None, request_id: str) -> dict[str, Any]:
@@ -67,7 +69,8 @@ def _use(
         _require_owned(conn, actor_id, item)
         raise errors.conflict(
             "passive",
-            f"a {item.name} protects you while you hold it. There is nothing to activate",
+            f"a {item.name} starts on its own when the one before it ends. "
+            "There is nothing to activate",
         )
     if not target_id:
         raise errors.invalid("choose who to use it on")
@@ -130,10 +133,12 @@ def _land_blackout(
         raise errors.conflict("target_inactive", "that participant is out of the contest")
     both = [actor_id, target.user_id]
     names = dict(conn.execute(sa.select(user.c.id, user.c.name).where(user.c.id.in_(both))).all())
-    attacker = names.get(actor_id) or "Someone"
+    # Whether the target learns who did this is the organisers' call.
+    reveal = lock_contest(conn).reveal_attacker
+    attacker = (names.get(actor_id) or "Someone") if reveal else "Someone"
     target_name = names.get(target.user_id)
 
-    if _spend_shield(conn, target.user_id, attacker):
+    if _spend_shield(conn, target.user_id, actor_id, attacker):
         return {"shielded": True, "ends_at": None, "target_name": target_name}
 
     seconds = item.duration_seconds or 0
@@ -146,27 +151,21 @@ def _land_blackout(
     return {"shielded": False, "ends_at": ends_at, "target_name": target_name}
 
 
-def _spend_shield(conn: sa.Connection, target_id: str, attacker: str) -> bool:
-    shield = conn.execute(
-        sa.select(powerup_inventory.c.powerup_id, powerup_inventory.c.quantity, powerup.c.name)
-        .join(powerup, powerup.c.id == powerup_inventory.c.powerup_id)
-        .where(
-            powerup_inventory.c.participant_id == target_id,
-            powerup.c.kind == "shield",
-            powerup_inventory.c.quantity > 0,
-        )
-        .order_by(powerup_inventory.c.powerup_id)
-        .limit(1)
-    ).one_or_none()
-    if shield is None:
+def _spend_shield(conn: sa.Connection, target_id: str, actor_id: str, attacker: str) -> bool:
+    """The shield that is up eats the attack, and the next in the queue is up at once."""
+    spent = shields.absorb(conn, target_id, actor_id)
+    if spent is None:
         return False
-    take_one(conn, target_id, shield.powerup_id)
-    remaining = shield.quantity - 1
-    message = (
-        f"**{attacker}** tried to black you out. "
-        f"Your **{shield.name}** absorbed it — {remaining} left."
+    after = shields.shield_state(conn, target_id)
+    if after["active"]:
+        left = f"The next one is up now, with {after['queued']} more waiting."
+    elif after["queued"]:
+        left = f"{after['queued']} more waiting."
+    else:
+        left = "That was your last one."
+    notify(
+        conn, target_id, f"**{attacker}** tried to black you out. Your shield absorbed it. {left}"
     )
-    notify(conn, target_id, message)
     return True
 
 

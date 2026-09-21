@@ -31,11 +31,12 @@ def _active_blackouts(conn: sa.Connection, participant_id: str) -> list[sa.Row]:
 
 def blackout_state(conn: sa.Connection, participant_id: str) -> dict[str, Any]:
     active = _active_blackouts(conn, participant_id)
+    reveal = get_contest(conn).reveal_attacker
     return {
         "active": bool(active),
         "ends_at": clock.iso(active[-1].ends_at) if active else None,
         "count": len(active),
-        "by": [r.name or "someone" for r in active],
+        "by": [(r.name or "someone") if reveal else "someone" for r in active],
         "server_now": clock.now_ms(),
     }
 

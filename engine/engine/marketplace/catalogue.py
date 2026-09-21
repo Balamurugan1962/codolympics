@@ -37,7 +37,7 @@ EDITABLE = (
 
 
 def save(actor_id: str, powerup_id: int, patch: dict[str, Any], reason: str) -> None:
-    """Edit a powerup. A blackout already running keeps the end time it landed with."""
+    """Edit a powerup. A blackout or shield already running keeps the end time it started with."""
     clean = {k: v for k, v in patch.items() if k in EDITABLE}
     if not clean:
         raise errors.invalid("nothing to change")
@@ -47,9 +47,8 @@ def save(actor_id: str, powerup_id: int, patch: dict[str, Any], reason: str) -> 
         ).one_or_none()
         if before is None:
             raise errors.not_found("powerup")
-        clears_duration = "duration_seconds" in clean and not clean["duration_seconds"]
-        if before.kind == "blackout" and clears_duration:
-            raise errors.invalid("a blackout needs a duration")
+        if "duration_seconds" in clean:
+            _check_duration(before.kind, clean["duration_seconds"])
         conn.execute(sa.update(powerup).where(powerup.c.id == powerup_id).values(**clean))
         audit(
             conn,
@@ -58,6 +57,16 @@ def save(actor_id: str, powerup_id: int, patch: dict[str, Any], reason: str) -> 
             target=str(powerup_id),
             reason=reason,
             detail={"name": before.name, **clean},
+        )
+
+
+def _check_duration(kind: str, seconds: int | None) -> None:
+    """A blackout lasts a number of seconds. A shield does too, or -1: up until it absorbs one."""
+    if kind == "blackout" and not (seconds and seconds > 0):
+        raise errors.invalid("a blackout needs a duration in seconds")
+    if kind == "shield" and not (seconds and (seconds > 0 or seconds == -1)):
+        raise errors.invalid(
+            "a shield needs a duration in seconds, or -1 to last until it absorbs an attack"
         )
 
 
@@ -101,11 +110,12 @@ DEFAULTS = (
         "kind": "shield",
         "name": "Shield",
         "price": 120,
-        "duration_seconds": None,
+        "duration_seconds": 300,
         "sort_order": 2,
         "description": (
-            "Absorbs one Blackout aimed at you. "
-            "Works while you hold it. There is nothing to switch on."
+            "Absorbs one Blackout aimed at you while it is up. "
+            "Starts the moment you buy it, or when the one before it ends. "
+            "There is nothing to switch on."
         ),
     },
 )

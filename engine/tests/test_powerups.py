@@ -12,8 +12,17 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from engine.coding import submissions
 from engine.core import clock, db
-from engine.marketplace import blackouts, buying, catalogue, storefront, using
-from engine.schema import blackout, ledger, participant, powerup, powerup_event, powerup_inventory
+from engine.marketplace import blackouts, buying, catalogue, shields, storefront, using
+from engine.schema import (
+    blackout,
+    ledger,
+    notification,
+    participant,
+    powerup,
+    powerup_event,
+    powerup_inventory,
+    shield,
+)
 
 
 def rid() -> str:
@@ -66,6 +75,31 @@ def attack(actor: str, target: str, ids: dict[str, int], request_id: str | None 
 
 def state(who: str) -> dict:
     return blackouts.blackout_for(who)
+
+
+def shield_of(who: str) -> dict:
+    with db.transaction() as conn:
+        return shields.shield_state(conn, who)
+
+
+def run_out(who: str) -> None:
+    """The shield that is up ends now, as if its time had passed."""
+    with db.transaction() as conn:
+        conn.execute(
+            sa.update(shield)
+            .where(shield.c.participant_id == who, shield.c.absorbed_at.is_(None))
+            .values(ends_at=clock.now() - timedelta(seconds=1))
+        )
+
+
+def last_notice(who: str) -> str:
+    query = (
+        sa.select(notification.c.body_md)
+        .where(notification.c.participant_id == who)
+        .order_by(notification.c.id.desc())
+        .limit(1)
+    )
+    return scalar(query) or ""
 
 
 # --- buying ------------------------------------------------------------------
@@ -235,6 +269,77 @@ def test_a_shield_cannot_be_activated(market: dict[str, int]) -> None:
     assert qty("alice", market["shield"]) == 1
 
 
+def test_a_bought_shield_starts_at_once_and_the_next_waits(market: dict[str, int]) -> None:
+    buying.buy("alice", market["shield"], rid())
+    first = shield_of("alice")
+    assert (first["active"], first["queued"]) == (True, 0)
+    ends = datetime.fromisoformat(first["ends_at"])
+    assert timedelta(seconds=295) < ends - clock.now() <= timedelta(seconds=300)
+    buying.buy("alice", market["shield"], rid())
+    second = shield_of("alice")
+    assert (second["active"], second["queued"], second["ends_at"]) == (True, 1, first["ends_at"])
+
+
+def test_the_next_shield_starts_when_the_one_up_runs_out(market: dict[str, int]) -> None:
+    give("bob", market["shield"], 2)
+    shields.tick()
+    assert (shield_of("bob")["active"], qty("bob", market["shield"])) == (True, 1)
+    run_out("bob")
+    assert shield_of("bob")["active"] is False
+    shields.tick()
+    assert (shield_of("bob")["active"], qty("bob", market["shield"])) == (True, 0)
+    run_out("bob")
+    shields.tick()
+    assert (shield_of("bob")["active"], shield_of("bob")["queued"]) == (False, 0)
+
+
+def test_absorbing_an_attack_puts_the_next_shield_up_at_once(market: dict[str, int]) -> None:
+    give("alice", market["blackout"], 3)
+    give("bob", market["shield"], 2)
+    assert attack("alice", "bob", market)["outcome"] == "shielded"
+    assert (shield_of("bob")["active"], shield_of("bob")["queued"]) == (True, 0)
+    assert "next one is up now" in last_notice("bob")
+    assert attack("alice", "bob", market)["outcome"] == "shielded"
+    assert "your last one" in last_notice("bob")
+    assert attack("alice", "bob", market)["outcome"] == "blackout"
+    absorbed = rows(sa.select(shield).where(shield.c.absorbed_by == "alice"))
+    assert len(absorbed) == 2
+
+
+def test_a_shield_without_a_time_limit_stays_up_until_it_absorbs_one(
+    market: dict[str, int],
+) -> None:
+    catalogue.save("admin", market["shield"], {"duration_seconds": -1}, "no limit")
+    raises_code(
+        "invalid_request",
+        lambda: catalogue.save("admin", market["shield"], {"duration_seconds": 0}, "break"),
+    )
+    give("alice", market["blackout"], 2)
+    give("bob", market["shield"], 1)
+    shields.tick()
+    assert (shield_of("bob")["active"], shield_of("bob")["ends_at"]) == (True, None)
+    shields.tick()  # nothing to advance: it does not run out
+    assert (shield_of("bob")["active"], qty("bob", market["shield"])) == (True, 0)
+    assert attack("alice", "bob", market)["outcome"] == "shielded"
+    assert shield_of("bob")["active"] is False
+    assert attack("alice", "bob", market)["outcome"] == "blackout"
+
+
+def test_organisers_decide_what_an_attack_reveals(market: dict[str, int]) -> None:
+    set_contest(phase="coding1", marketplace_open=True, reveal_attacker=False, reveal_shields=False)
+    give("alice", market["blackout"], 2)
+    give("bob", market["shield"], 1)
+    shields.tick()
+    view = storefront.marketplace_for("alice")
+    targets = {t["id"]: t for t in view["targets"]}
+    assert not targets["bob"]["shielded"] and view["reveal_shields"] is False
+    attack("alice", "bob", market)
+    assert last_notice("bob").startswith("**Someone** tried")
+    attack("alice", "bob", market)
+    assert last_notice("bob").startswith("**Someone** blacked")
+    assert state("bob")["by"] == ["someone"]
+
+
 # --- configuration and the participant's view -------------------------------------
 
 
@@ -252,6 +357,7 @@ def test_a_setting_change_never_changes_a_running_blackout(market: dict[str, int
 
 def test_the_marketplace_explains_itself_and_never_offers_yourself(market: dict[str, int]) -> None:
     give("bob", market["shield"], 1)
+    shields.tick()
     with db.transaction() as conn:
         conn.execute(
             sa.update(participant).where(participant.c.user_id == "alice").values(balance=50)
