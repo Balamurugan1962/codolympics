@@ -85,3 +85,23 @@ blackout = Table(
     created_at(),
     Index("blackout_participant_idx", "participant_id", "ends_at"),
 )
+
+# A shield that has started. One is up at a time; the rest wait in the
+# inventory as a queue. It ends when its time runs out or a blackout is
+# absorbed by it, and the next in the queue starts at that moment. A shield
+# with no end time (seconds -1) stays up until it absorbs one.
+shield = Table(
+    "shield",
+    metadata,
+    Column("id", BigInteger, primary_key=True, autoincrement=True),
+    participant_ref("participant_id", cascade=True),
+    Column("powerup_id", BigInteger, ForeignKey("powerup.id", ondelete="CASCADE")),
+    Column("seconds", Integer, nullable=False),
+    timestamp("starts_at", nullable=False),
+    timestamp("ends_at"),
+    # Set when a blackout was absorbed: the shield ended early, by this attacker.
+    timestamp("absorbed_at"),
+    participant_ref("absorbed_by", cascade=True, nullable=True),
+    created_at(),
+    Index("shield_participant_idx", "participant_id", "ends_at"),
+)

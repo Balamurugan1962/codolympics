@@ -16,6 +16,8 @@ from engine.schema import contest
 SETTINGS = (
     "auction_mode",
     "marketplace_open",
+    "reveal_attacker",
+    "reveal_shields",
     "starting_balance",
     "bid_increment",
     "countdown_seconds",

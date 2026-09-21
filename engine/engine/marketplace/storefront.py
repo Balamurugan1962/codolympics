@@ -8,8 +8,9 @@ import sqlalchemy as sa
 
 from engine.contest.rules import get_contest, in_phase2, marketplace_closed_reason
 from engine.core import clock, db, errors
+from engine.marketplace import shields
 from engine.marketplace.catalogue import catalogue
-from engine.schema import blackout, participant, powerup, powerup_inventory, user
+from engine.schema import blackout, participant, powerup_inventory, user
 
 
 def marketplace_for(participant_id: str) -> dict[str, Any]:
@@ -25,7 +26,8 @@ def marketplace_for(participant_id: str) -> dict[str, Any]:
             sa.select(powerup_inventory).where(powerup_inventory.c.participant_id == participant_id)
         )
         held = {h.powerup_id: h for h in inventory}
-        targets = _attackable_targets(conn, participant_id)
+        targets = _attackable_targets(conn, participant_id, c.reveal_shields)
+        my_shield = shields.shield_state(conn, participant_id)
     return {
         "open": marketplace_closed_reason(c) is None,
         "in_phase2": in_phase2(c.phase),
@@ -33,6 +35,9 @@ def marketplace_for(participant_id: str) -> dict[str, Any]:
         "balance": p.balance,
         "items": [_offer(item, held.get(item.id), c, p) for item in items if item.enabled],
         "targets": targets,
+        "shield": my_shield,
+        # Organisers decide whether an attacker can see who has a shield up.
+        "reveal_shields": c.reveal_shields,
         "server_now": clock.now_ms(),
     }
 
@@ -80,19 +85,15 @@ def _buy_blocked(item: sa.Row, c: sa.Row, p: sa.Row, owned: int, bought: int) ->
     return None
 
 
-def _attackable_targets(conn: sa.Connection, actor_id: str) -> list[dict[str, Any]]:
+def _attackable_targets(
+    conn: sa.Connection, actor_id: str, reveal_shields: bool
+) -> list[dict[str, Any]]:
     people = conn.execute(
         sa.select(participant.c.user_id, user.c.name, participant.c.disqualified_at)
         .join(user, user.c.id == participant.c.user_id)
         .order_by(user.c.name)
     ).all()
-    shielded = set(
-        conn.execute(
-            sa.select(powerup_inventory.c.participant_id)
-            .join(powerup, powerup.c.id == powerup_inventory.c.powerup_id)
-            .where(powerup.c.kind == "shield", powerup_inventory.c.quantity > 0)
-        ).scalars()
-    )
+    shielded = shields.shielded_now(conn) if reveal_shields else set()
     blacked = set(
         conn.execute(
             sa.select(blackout.c.participant_id).where(blackout.c.ends_at > clock.now())
@@ -103,7 +104,7 @@ def _attackable_targets(conn: sa.Connection, actor_id: str) -> list[dict[str, An
             "id": r.user_id,
             "name": r.name,
             "disqualified": r.disqualified_at is not None,
-            # Shields are visible, so spending an attack is a decision, not a dice roll.
+            # With shields revealed, spending an attack is a decision, not a dice roll.
             "shielded": r.user_id in shielded,
             "blacked_out": r.user_id in blacked,
         }

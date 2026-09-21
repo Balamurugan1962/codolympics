@@ -42,6 +42,10 @@ contest = Table(
     timestamp("auction_paused_at"),
     Column("auction_mode", Text, nullable=False, server_default=text("'online'")),
     Column("marketplace_open", Boolean, nullable=False, server_default=text("false")),
+    # Whether a blackout's target is told who sent it, and whether an attacker
+    # can see that a target has a shield up before spending an attack.
+    Column("reveal_attacker", Boolean, nullable=False, server_default=text("true")),
+    Column("reveal_shields", Boolean, nullable=False, server_default=text("true")),
     CheckConstraint("id = 1", name="contest_single_row"),
 )
 

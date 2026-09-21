@@ -24,7 +24,8 @@ class PowerupPatch(Body):
     name: Annotated[str | None, Field(min_length=1, max_length=60)] = None
     description: Annotated[str | None, Field(max_length=500)] = None
     price: Annotated[int | None, Field(ge=0)] = None
-    duration_seconds: Annotated[int | None, Field(ge=1, le=3600)] = None
+    # -1 on a shield: up until it absorbs an attack.
+    duration_seconds: Annotated[int | None, Field(ge=-1, le=3600)] = None
     enabled: bool | None = None
     max_held: Annotated[int | None, Field(ge=1)] = None
     max_purchases: Annotated[int | None, Field(ge=1)] = None
