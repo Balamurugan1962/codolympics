@@ -26,6 +26,7 @@ import { Icon } from "@/components/icons";
 import { ActionButton } from "@/components/action-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ChoiceCards } from "@/components/ui/choice";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Hint } from "@/components/ui/hint";
@@ -136,12 +137,14 @@ export function PowerupList() {
 
 // ---------------------------------------------------------------------------
 
+type AfterCap = "break" | "forever";
 type Rules = {
   revealAttacker: boolean;
   revealShields: boolean;
   attackCap: number;
   attackBreakSeconds: number;
   countAbsorbedAttacks: boolean;
+  afterCap: AfterCap;
 };
 type Switches = "revealAttacker" | "revealShields" | "countAbsorbedAttacks";
 
@@ -177,7 +180,7 @@ const SWITCH: Record<Switches, { field: string; label: string; help: string; on:
 export function AttackRules() {
   const { toast } = useToast();
   const [rules, setRules] = useState<Rules | null>(null);
-  const [draft, setDraft] = useState<{ attackCap?: number; attackBreakSeconds?: number }>({});
+  const [draft, setDraft] = useState<{ attackCap?: number; attackBreakSeconds?: number; afterCap?: AfterCap }>({});
   const load = useCallback(async () => {
     const c = await api.get<Rules>("/api/admin/contest");
     setRules({
@@ -186,6 +189,7 @@ export function AttackRules() {
       attackCap: c.attackCap,
       attackBreakSeconds: c.attackBreakSeconds,
       countAbsorbedAttacks: c.countAbsorbedAttacks,
+      afterCap: c.afterCap,
     });
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -206,6 +210,7 @@ export function AttackRules() {
       reason: "Changed how often one person can be attacked.",
       attack_cap: draft.attackCap,
       attack_break_seconds: draft.attackBreakSeconds,
+      after_cap: draft.afterCap,
     });
     toast({ title: "Attack cap saved", description: "Recorded in the audit log.", tone: "success" });
     setDraft({});
@@ -215,6 +220,7 @@ export function AttackRules() {
   if (!rules) return <SectionSkeleton lines={5} />;
   const cap = draft.attackCap ?? rules.attackCap;
   const seconds = draft.attackBreakSeconds ?? rules.attackBreakSeconds;
+  const afterCap = draft.afterCap ?? rules.afterCap;
   const dirty = Object.keys(draft).length > 0;
 
   return (
@@ -226,7 +232,7 @@ export function AttackRules() {
       <Section
         title="How often one person can be attacked"
         description="Without a cap, everybody attacks whoever is in front."
-        info="After the cap is reached, nobody can attack that person for the break; an attack in a break is refused and costs nothing. Each break for the same person is twice as long as their last, so the most-hunted person gets ever-longer peace. Counting starts afresh after each break."
+        info="After the cap is reached, nobody can attack that person: for a break, or for the rest of the contest. An attack on them then is refused and costs nothing. With breaks, each one for the same person is twice as long as their last, so the most-hunted person gets ever-longer peace, and counting starts afresh after each."
         footer={dirty && (
           <>
             <Button variant="ghost" onClick={() => setDraft({})}>Discard</Button>
@@ -235,16 +241,32 @@ export function AttackRules() {
         )}
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Attacks before a break" hint="0 for no cap">
+          <Field label="Attacks one person can take" hint="0 for no cap">
             <Input type="number" min={0} value={cap} onChange={(e) => setDraft((d) => ({ ...d, attackCap: Number(e.target.value) }))} />
           </Field>
-          <Field label="First break" hint="seconds; doubles each time">
-            <Input type="number" min={1} max={7200} value={seconds} onChange={(e) => setDraft((d) => ({ ...d, attackBreakSeconds: Number(e.target.value) }))} />
-          </Field>
+          {afterCap === "break" && (
+            <Field label="First break" hint="seconds; doubles each time">
+              <Input type="number" min={1} max={7200} value={seconds} onChange={(e) => setDraft((d) => ({ ...d, attackBreakSeconds: Number(e.target.value) }))} />
+            </Field>
+          )}
         </div>
+        <Field label="Then" className="mt-4">
+          <ChoiceCards
+            cols={2}
+            size="sm"
+            value={afterCap}
+            onChange={(v) => setDraft((d) => ({ ...d, afterCap: v }))}
+            options={[
+              { value: "break", label: "A break, then attacks resume", description: "Each break for the same person is twice as long as their last." },
+              { value: "forever", label: "Off limits for the rest of the contest", description: "The cap is the end of it. Nobody can attack them again." },
+            ]}
+          />
+        </Field>
         {cap > 0 && (
           <p className="mt-3 text-[12px] text-muted-foreground">
-            After {cap} attack{cap === 1 ? "" : "s"}: {seconds}s of peace, then {seconds * 2}s the next time, then {seconds * 4}s.
+            {afterCap === "break"
+              ? `After ${cap} attack${cap === 1 ? "" : "s"}: ${seconds}s of peace, then ${seconds * 2}s the next time, then ${seconds * 4}s.`
+              : `After ${cap} attack${cap === 1 ? "" : "s"} on one person, nobody can attack them again.`}
           </p>
         )}
         <div className="mt-4 border-t pt-1">

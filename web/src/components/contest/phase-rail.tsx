@@ -76,7 +76,7 @@ export function PhaseRail({ phase, endsAt, shield, attackBreak }: {
           <span className="font-medium text-foreground sm:hidden">{STEPS[Math.max(0, here.step - 1)]} · </span>
           {here.todo}
         </p>
-        {attackBreak?.active && attackBreak.ends_at && <BreakChip until={attackBreak.ends_at} />}
+        {attackBreak?.active && <BreakChip until={attackBreak.ends_at} />}
         {shield && (shield.active || shield.queued > 0) && <ShieldChip shield={shield} />}
         {endsAt && (
           <span className="shrink-0 text-[12.5px] font-semibold tabular-nums">
@@ -115,20 +115,21 @@ function ShieldChip({ shield }: { shield: ShieldState }) {
   );
 }
 
-/** Nobody can attack you until this ends: the break after the cap was reached. */
-function BreakChip({ until }: { until: string }) {
+/** Nobody can attack you until this ends (or ever again, with no end): the cap was reached. */
+function BreakChip({ until }: { until: string | null }) {
   const { serverNow, refresh } = useContest();
   useEffect(() => {
+    if (!until) return;
     const id = setTimeout(() => void refresh(), remainingMs(until, serverNow) + 300);
     return () => clearTimeout(id);
   }, [until, serverNow, refresh]);
   return (
     <span
       className="flex shrink-0 items-center gap-1.5 rounded-full border border-amber/40 bg-amber-tint px-2.5 py-0.5 text-[12px] font-medium text-amber"
-      title="You were attacked as often as the rules allow. Nobody can attack you until this runs out."
+      title={until ? "You were attacked as often as the rules allow. Nobody can attack you until this runs out." : "You were attacked as often as the rules allow. Nobody can attack you again this contest."}
     >
       <Icon.Ban size={12} />
-      <span className="tabular-nums">no attacks <Countdown until={until} warnUnderMs={0} /></span>
+      <span className="tabular-nums">{until ? <>no attacks <Countdown until={until} warnUnderMs={0} /></> : "no more attacks"}</span>
     </span>
   );
 }
