@@ -53,14 +53,17 @@ type Item = {
   use_blocked: string | null;
 };
 
-type Target = { id: string; name: string; disqualified: boolean; shielded: boolean; blacked_out: boolean };
+type Target = { id: string; name: string; disqualified: boolean; shielded: boolean; blacked_out: boolean; break_until: string | null };
 
 type Shield = { active: boolean; ends_at: string | null; queued: number };
 type Market = {
   open: boolean; in_phase2: boolean; phase: string; balance: number; items: Item[]; targets: Target[];
   shield: Shield;
+  attack_break: { active: boolean; ends_at: string | null; number: number };
   /** Whether the organisers let attackers see who has a shield up. */
   reveal_shields: boolean;
+  /** After this many attacks on one person, nobody can attack them for a while. 0 is no cap. */
+  attack_cap: number;
 };
 
 /** One id per attempt, so a retry is the same attempt rather than a new one. */
@@ -84,8 +87,8 @@ export default function MarketplacePage() {
   useEffect(() => {
     void load();
   }, [load]);
-  // Somebody's shield went up, a balance moved, an attack landed.
-  useEngineEvent(["powerup", "balance", "phase"], load);
+  // Somebody's shield went up, a balance moved, an attack landed, a break began.
+  useEngineEvent(["powerup", "balance", "phase", "targets"], load);
 
   async function buy(item: Item) {
     setBusy(item.id);
@@ -261,9 +264,11 @@ export default function MarketplacePage() {
         open={Boolean(aiming)}
         onClose={() => setAiming(null)}
         title={aiming ? `Use ${aiming.name} on…` : ""}
-        description={market.reveal_shields
-          ? "They lose their screen for the duration. If they have a Shield up it absorbs this instead, and your powerup is still spent."
-          : "They lose their screen for the duration. If they have a Shield up it absorbs this instead, and your powerup is still spent. Shields are hidden in this contest, so you will not know until you try."}
+        description={[
+          "They lose their screen for the duration. If they have a Shield up it absorbs this instead, and your powerup is still spent.",
+          market.reveal_shields ? null : "Shields are hidden in this contest, so you will not know until you try.",
+          market.attack_cap > 0 ? `After ${market.attack_cap} attacks on one person nobody can attack them for a while; trying then is refused and costs nothing.` : null,
+        ].filter(Boolean).join(" ")}
       >
         {market.targets.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">There is nobody else in the contest to aim at.</p>
@@ -273,13 +278,14 @@ export default function MarketplacePage() {
               <li key={t.id}>
                 <button
                   type="button"
-                  disabled={t.disqualified || busy !== null}
+                  disabled={t.disqualified || t.break_until !== null || busy !== null}
                   onClick={() => aiming && attack(aiming, t)}
                   className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
                 >
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{t.name}</span>
                   {t.blacked_out && <Badge variant="neutral">already out</Badge>}
                   {t.shielded && <Badge variant="info">shielded</Badge>}
+                  {t.break_until && <Badge variant="warning">off limits for <Countdown until={t.break_until} warnUnderMs={0} /></Badge>}
                   {t.disqualified && <Badge variant="neutral">out of the contest</Badge>}
                   <Icon.ChevronRight size={15} className="shrink-0 text-faint" />
                 </button>
