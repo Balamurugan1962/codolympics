@@ -428,7 +428,7 @@ def hack_question(participant_id: str, question_id: int) -> dict[str, Any]:
     row["constraints_md"] = q.constraints_md
     row["solutions"] = [{"id": c.id, "language": c.language, "source": c.source} for c in copies]
     for full, a in zip(row["attempts"], mine, strict=True):
-        full.update(solution_id=a.solution_id, ended_at=clock.iso(a.ended_at))
+        full.update(solution_id=a.solution_id, message=a.message, ended_at=clock.iso(a.ended_at))
     return {"participant": who, "question": row}
 
 

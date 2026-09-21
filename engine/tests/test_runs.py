@@ -88,7 +88,13 @@ def test_the_judge_is_asked_for_the_samples_and_the_custom_input(judge: FakeJudg
     sent = judge.requests[0]
     assert (sent["samples"], sent["inputs"]) == (2, [{"input": "7 8\n", "answer": None}])
     assert sent["submission_id"] == f"run_{run_id}"
-    assert row(run_id).state == "queued"
+    kept = row(run_id)
+    assert (kept.state, kept.source, kept.custom_input, kept.sample_count) == (
+        "queued",
+        "int main(){}",
+        "7 8\n",
+        2,
+    )
 
 
 def test_the_scheduler_records_the_verdict_and_the_workspace_reads_the_outputs(
@@ -105,6 +111,9 @@ def test_the_scheduler_records_the_verdict_and_the_workspace_reads_the_outputs(
     assert (view["state"], view["verdict"], view["outputs"]) == ("done", "WA", outputs)
     assert (row(run_id).verdict, row(run_id).message) == ("WA", "WA summary")
     assert row(run_id).ended_at is not None
+    # The outputs are on the row now, so the judge forgetting the job changes nothing.
+    judge.forget(row(run_id).job_id)
+    assert runs.poll("alice", run_id)["outputs"] == outputs
 
 
 def test_one_run_at_a_time(judge: FakeJudge) -> None:

@@ -6,11 +6,9 @@ question's samples and the participant's own input, under the real limits.
 
 A run is a judge job like a submission and lives the same life: a row holds
 its state, the scheduler asks the judge about every run in flight, and the
-workspace polls the row. Unlike a submission, neither the source nor the
-outputs are stored. The row says who ran what and how it went, which is
-what the Judge page lists; the outputs are handed to the workspace from the
-judge's own copy while the judge still has it, and are gone after that,
-which is fine for something that was only ever a look.
+workspace polls the row. The row keeps what was run and, once the judge is
+done, what came out, so the Judge monitor can open a run the way it opens a
+submission.
 """
 
 from __future__ import annotations
@@ -65,7 +63,14 @@ def start(
             raise errors.conflict("in_flight", "your previous run is still going")
         run_id = conn.execute(
             sa.insert(practice_run)
-            .values(participant_id=participant_id, question_id=question_id, language=language)
+            .values(
+                participant_id=participant_id,
+                question_id=question_id,
+                language=language,
+                source=source,
+                custom_input=custom_input,
+                sample_count=q.sample_count,
+            )
             .returning(practice_run.c.id)
         ).scalar_one()
     # The judge is called outside the transaction. Whatever goes wrong now ends
@@ -122,13 +127,21 @@ def _poll_one(r: sa.Row) -> None:
         return
     result = job.get("result")
     if job["state"] == "done" and result:
-        _finish(r.id, result["verdict"], result["message"])
+        _finish(r.id, result["verdict"], result["message"], result)
     elif job["state"] != r.state:
         _update(r.id, state=job["state"])
 
 
-def _finish(run_id: int, verdict: str, message: str) -> None:
-    _update(run_id, state="done", verdict=verdict, message=message, ended_at=clock.now())
+def _finish(run_id: int, verdict: str, message: str, result: dict[str, Any] | None = None) -> None:
+    kept = None
+    if result:
+        kept = {
+            "compile_output": result.get("compile_output", ""),
+            "outputs": result.get("outputs", []),
+        }
+    _update(
+        run_id, state="done", verdict=verdict, message=message, result=kept, ended_at=clock.now()
+    )
 
 
 def _update(run_id: int, **values: Any) -> None:
@@ -140,8 +153,7 @@ def _update(run_id: int, **values: Any) -> None:
 
 
 def poll(participant_id: str, run_id: int) -> dict[str, Any]:
-    """The run as the row has it. Once it is done, the judge is asked once for
-    the outputs, which it keeps for a while after finishing."""
+    """The run as the row has it."""
     with db.transaction() as conn:
         r = conn.execute(
             sa.select(practice_run).where(
@@ -150,7 +162,11 @@ def poll(participant_id: str, run_id: int) -> dict[str, Any]:
         ).one_or_none()
     if r is None:
         raise errors.not_found("run")
-    result = _outputs(r) if r.state == "done" and r.job_id else None
+    return view(r)
+
+
+def view(r: sa.Row) -> dict[str, Any]:
+    result = r.result
     return {
         "id": r.id,
         "question_id": r.question_id,
@@ -165,13 +181,3 @@ def poll(participant_id: str, run_id: int) -> dict[str, Any]:
         "created_at": clock.iso(r.created_at),
         "ended_at": clock.iso(r.ended_at),
     }
-
-
-def _outputs(r: sa.Row) -> dict[str, Any] | None:
-    try:
-        job = judge_client.job(r.job_id)
-    except JudgeError as err:
-        if err.judge_status == 404:
-            return None  # the judge has forgotten it; the verdict on the row still stands
-        raise
-    return job.get("result") if job["state"] == "done" else None
