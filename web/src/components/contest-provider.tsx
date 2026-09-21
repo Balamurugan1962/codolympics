@@ -28,7 +28,7 @@ import { api } from "@/lib/client";
 
 export type ContestState = {
   viewer: { id: string; name: string; username: string; role: "participant" | "evaluator" | "admin" };
-  contest: { phase: string; phase_ends_at: string | null; registration_open: boolean; leaderboard_mode: string; in_phase2: boolean; server_now: number };
+  contest: { phase: string; phase_ends_at: string | null; registration_open: boolean; leaderboard_mode: string; p1_leaderboard_mode: string; in_phase2: boolean; server_now: number };
   announcements: { id: number; bodyMd: string; createdAt: string }[];
   /** The newest event id when this state was read: where polling starts. */
   event_cursor: number;
