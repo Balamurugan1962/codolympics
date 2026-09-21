@@ -7,6 +7,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query
 from pydantic import Field
 
+from engine.accounts.preferences import set_preferred_language
 from engine.accounts.registration import register_participant
 from engine.coding import scoring
 from engine.contest import messages
@@ -41,6 +42,18 @@ def read_events(viewer: SignedIn, after: Annotated[int, Query(ge=0)] = 0) -> dic
 @router.get("/languages")
 def read_languages(_: SignedIn) -> dict[str, Any]:
     return {"languages": languages.offered()}
+
+
+class LanguageChoice(Body):
+    language: Annotated[str, Field(min_length=1, max_length=32)]
+
+
+@router.put("/me/language")
+def choose_language(viewer: Participant, body: LanguageChoice) -> dict[str, str]:
+    """The language a participant reads and writes by default. Asked at
+    registration; changed from any language dropdown, and the change sticks."""
+    set_preferred_language(viewer.id, body.language)
+    return {"preferred_language": body.language}
 
 
 @router.get("/leaderboard")
