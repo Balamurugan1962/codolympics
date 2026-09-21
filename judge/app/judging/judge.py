@@ -19,6 +19,7 @@ from app.core.verdict import (
     INTERNAL_ERROR_MESSAGE,
     RunOutcome,
     Verdict,
+    clean_stderr,
     failure_detail,
     message_for,
     verdict_for_failure,
@@ -120,13 +121,13 @@ class Judge:
         with self.compiler.prepare(submission.language, submission.source) as program:
             if not program.ok:
                 return RunOutcome("CE", program.compile_output)
-            return self._execute(submission, program, self._comparator(submission.problem), input_text, answer_text)
+            return self.execute(submission, program, self.comparator(submission.problem), input_text, answer_text)
 
     # --- the testcase loop -------------------------------------------------
 
     def _run_testcases(self, submission: Submission, program: Program, control: JobControl, run_all: bool) -> Tally:
         problem = submission.problem
-        comparator = self._comparator(problem)
+        comparator = self.comparator(problem)
         tally = Tally()
         stop_early = problem.early_exit and not run_all
         for testcase in problem.testcases:
@@ -148,9 +149,9 @@ class Judge:
             input_text, answer_text = self.store.read_testcase(testcase)
         except ProblemBroken as exc:
             return RunOutcome("IE", str(exc))
-        return self._execute(submission, program, comparator, input_text, answer_text)
+        return self.execute(submission, program, comparator, input_text, answer_text)
 
-    def _execute(
+    def execute(
         self,
         submission: Submission,
         program: Program,
@@ -177,7 +178,7 @@ class Judge:
             return _ran(result, comparison.accepted())
         return _ran(result, comparator.compare(input_text, result.stdout, answer_text))
 
-    def _comparator(self, problem: Problem) -> Comparator:
+    def comparator(self, problem: Problem) -> Comparator:
         if problem.compare == "checker":
             return CheckerComparator(self.python, self.store.checker(problem), problem.problem_id)
         return comparison.for_mode(problem.compare, problem.float_tolerance)
@@ -221,8 +222,12 @@ def _failed(result: Result, memory_limit_mb: int) -> RunOutcome:
         failure_detail(result.status, result.exit_status, result.stderr),
         result.time_ms,
         result.memory_kb,
+        result.stdout,
+        clean_stderr(result.stderr),
     )
 
 
 def _ran(result: Result, decided: Comparison) -> RunOutcome:
-    return RunOutcome(decided.verdict, decided.detail, result.time_ms, result.memory_kb, result.stdout)
+    return RunOutcome(
+        decided.verdict, decided.detail, result.time_ms, result.memory_kb, result.stdout, clean_stderr(result.stderr)
+    )

@@ -14,6 +14,7 @@ from app.judging.answers import AnswerScorer
 from app.judging.hack import Hacker
 from app.judging.judge import Judge
 from app.judging.program import Compiler
+from app.judging.run import Runner
 from app.judging.validation import ValidationRegistry, Validator
 from app.problems.storage import LocalStorage
 from app.problems.store import ProblemStore
@@ -30,6 +31,7 @@ class Services:
     python: SandboxedPython
     judge: Judge
     hacker: Hacker
+    runner: Runner
     scorer: AnswerScorer
     validator: Validator
     registry: ValidationRegistry
@@ -64,6 +66,7 @@ def build(settings: Settings, sandbox: Sandbox | None = None) -> Services:
         python=python,
         judge=judge,
         hacker=Hacker(judge, python, store),
+        runner=Runner(judge, store),
         scorer=AnswerScorer(python),
         validator=Validator(store, judge, python, registry),
         registry=registry,

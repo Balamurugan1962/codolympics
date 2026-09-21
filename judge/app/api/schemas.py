@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.core.comparison import CompareMode
 from app.core.problem import ID_PATTERN
-from app.core.results import AnswersResult, HackResult, Judgement
+from app.core.results import AnswersResult, HackResult, Judgement, RunResult
 from app.jobs.control import POLL_QUEUED_MS
 
 JobStateName = Literal["queued", "running", "done"]
@@ -41,6 +41,23 @@ class HackRequest(BaseModel):
     submission_id: str | None = Field(default=None, max_length=64)
 
 
+class RunCase(BaseModel):
+    input: str
+    # The published answer for a sample; absent for an input the participant typed.
+    answer: str | None = None
+
+
+class RunRequest(BaseModel):
+    """Run source on the problem's samples and on inputs the caller supplies, without judging it."""
+    problem_id: str = Field(pattern=ID_PATTERN)
+    language: str
+    source: str
+    # The first `samples` stored testcases, which the statement shows, run first.
+    samples: int = Field(default=0, ge=0, le=10)
+    inputs: list[RunCase] = Field(default_factory=list, max_length=10)
+    submission_id: str | None = Field(default=None, max_length=64)
+
+
 class AnswersRequest(BaseModel):
     """Score a list of entries with a supplied validator (US-J7-03)."""
     validator: str
@@ -66,7 +83,7 @@ class JobState(BaseModel):
     state: JobStateName
     progress: Progress
     poll_after_ms: int | None = None
-    result: Judgement | HackResult | AnswersResult | None = None
+    result: Judgement | HackResult | AnswersResult | RunResult | None = None
 
 
 class Language(BaseModel):

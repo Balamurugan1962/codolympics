@@ -376,6 +376,43 @@ paths:
         "429": { $ref: "#/components/responses/Busy" }
         "503": { $ref: "#/components/responses/SandboxDown" }
 
+  /run:
+    post:
+      tags: [Judging]
+      summary: Run source on the caller's inputs, without judging it
+      operationId: run
+      description: |
+        A practice run: the samples from the statement, or an input the
+        participant typed, the way LeetCode's "Run" works. Compiled once and
+        run on each input under the problem's real limits, so passing the
+        samples here means what a participant thinks it means. No hidden
+        testcase is touched and nothing is scored.
+
+        Each input may carry the published `answer`; then its output is
+        compared with the problem's comparator and the verdict is a real one.
+        Without an answer there is nothing to compare, and `AC` only means it
+        ran to completion within the limits.
+
+        Everything in the result is the participant's own program talking
+        (their stdout, their stderr, the compiler's complaint), so all of it
+        may be shown to them.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RunRequest" }
+      responses:
+        "202":
+          description: Accepted. Poll the job; `result` is a RunResult.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobHandle" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/ProblemNotFound" }
+        "429": { $ref: "#/components/responses/Busy" }
+        "503": { $ref: "#/components/responses/SandboxDown" }
+
   /validate-answers:
     post:
       tags: [Judging]
@@ -681,10 +718,12 @@ components:
             - $ref: "#/components/schemas/Judgement"
             - $ref: "#/components/schemas/HackResult"
             - $ref: "#/components/schemas/AnswersResult"
+            - $ref: "#/components/schemas/RunResult"
             - type: "null"
           description: |
             `null` until `state` is `done`. Then a Judgement for `/submit`, a
-            HackResult for `/hack`, an AnswersResult for `/validate-answers`.
+            HackResult for `/hack`, an AnswersResult for `/validate-answers`,
+            a RunResult for `/run`.
 
     Progress:
       type: object
@@ -850,6 +889,86 @@ components:
             participant** — it reveals the shape of the bug. `IE` means the
             problem, not the participant, is at fault.
         message: { type: string }
+        problem_version: { type: string }
+        duration_ms: { type: integer }
+
+    RunCase:
+      type: object
+      required: [input]
+      properties:
+        input:
+          type: string
+          description: What the program reads on stdin.
+        answer:
+          type: [string, "null"]
+          description: >
+            The published answer to compare against, for a sample. Omit for
+            an input the participant typed themselves.
+
+    RunRequest:
+      type: object
+      required: [problem_id, language, source]
+      properties:
+        problem_id:
+          type: string
+          pattern: "^[A-Za-z0-9._-]+$"
+          description: Supplies the limits, the comparator and the samples.
+        language: { type: string }
+        source:
+          type: string
+          maxLength: 262144
+        samples:
+          type: integer
+          minimum: 0
+          maximum: 10
+          default: 0
+          description: >
+            Run the first `samples` stored testcases first, compared against
+            their answers. These are the ones the statement shows, so nothing
+            hidden is revealed. At least one of `samples` and `inputs` must
+            give something to run.
+        inputs:
+          type: array
+          maxItems: 10
+          items: { $ref: "#/components/schemas/RunCase" }
+          description: Run after the samples. All inputs together may not exceed 256 KB.
+        submission_id:
+          type: string
+          maxLength: 64
+
+    RunOutput:
+      type: object
+      required: [verdict]
+      description: One input's run. All of it is the participant's own program talking and may be shown to them.
+      properties:
+        verdict:
+          $ref: "#/components/schemas/Verdict"
+        stdout:
+          type: string
+          description: Truncated to 16 KB.
+        stderr:
+          type: string
+          description: Truncated to 16 KB, runtime chatter removed.
+        time_ms: { type: number }
+        memory_kb: { type: integer }
+
+    RunResult:
+      type: object
+      required: [verdict, message]
+      properties:
+        submission_id: { type: [string, "null"] }
+        verdict:
+          $ref: "#/components/schemas/Verdict"
+          description: >
+            `CE` when it did not compile (`outputs` is empty), `IE` when the
+            judge failed, otherwise the first non-AC verdict among the
+            outputs, or `AC`.
+        message: { type: string }
+        compile_output: { type: string }
+        outputs:
+          type: array
+          items: { $ref: "#/components/schemas/RunOutput" }
+          description: One per input, in order.
         problem_version: { type: string }
         duration_ms: { type: integer }
 

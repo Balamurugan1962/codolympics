@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.core.results import AnswersResult, HackResult, Judgement
+from app.core.results import AnswersResult, HackResult, Judgement, RunResult
 from app.jobs.control import JobControl
-from app.judging import answers, hack
+from app.judging import answers, hack, run
 from app.judging.answers import AnswerScorer
 from app.judging.hack import Hacker
 from app.judging.judge import Judge, Submission
+from app.judging.run import RunInput, Runner
 
 
 @dataclass(frozen=True)
@@ -76,4 +77,28 @@ class AnswersTask:
         return answers.internal_error(self.submission_id, message)
 
     def cancelled(self) -> AnswersResult:
+        return self.failed("cancelled")
+
+
+@dataclass(frozen=True)
+class RunTask:
+    runner: Runner
+    submission: Submission
+    inputs: list[RunInput]
+
+    @property
+    def submission_id(self) -> str | None:
+        return self.submission.submission_id
+
+    @property
+    def steps(self) -> int:
+        return len(self.inputs)
+
+    def run(self, control: JobControl) -> RunResult:
+        return self.runner.run(self.submission, self.inputs, control)
+
+    def failed(self, message: str) -> RunResult:
+        return run.internal_error(self.submission, message)
+
+    def cancelled(self) -> RunResult:
         return self.failed("cancelled")
