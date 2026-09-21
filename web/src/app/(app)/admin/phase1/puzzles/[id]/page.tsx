@@ -23,7 +23,7 @@ export default function EditPuzzlePage() {
   }, [id]);
   useEffect(() => { void load(); }, [load]);
 
-  const crumb = <Link href="/admin/phase1" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Phase 1 · Section A</Link>;
+  const crumb = <Link href="/admin/phase1/puzzles" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Puzzles</Link>;
   if (puzzle === undefined) return <PageBody width="wide"><DetailSkeleton tabs={2} /></PageBody>;
   if (puzzle === null) return <PageBody width="wide"><PageHeader breadcrumb={crumb} title="Puzzle not found" /><Section padded={false}><EmptyState icon={<Icon.Puzzle size={20} />} title="No puzzle with that id" body="It may have been deleted." /></Section></PageBody>;
   const s = stateOf(puzzle);
@@ -32,7 +32,7 @@ export default function EditPuzzlePage() {
       <PageHeader
         breadcrumb={crumb}
         title={puzzle.title}
-        description={`Puzzle #${puzzle.id} · ${KIND_LABEL[puzzle.kind]} · ${puzzle.points} pts${puzzle.explainPoints ? ` + ${puzzle.explainPoints} reasoning` : ""}`}
+        description={`${KIND_LABEL[puzzle.kind]}, worth ${puzzle.points} points${puzzle.explainPoints ? ` and ${puzzle.explainPoints} for the reasoning` : ""}.`}
         actions={s === "live" ? <StatusDot tone="success">Live</StatusDot> : s === "ready" ? <StatusDot tone="info">Ready to publish</StatusDot> : s === "void" ? <StatusDot tone="neutral">Void</StatusDot> : <StatusDot tone="warning">Draft</StatusDot>}
       />
       <PuzzleBuilder existing={puzzle} initialStep={search.get("step") ?? undefined} onSaved={load} />

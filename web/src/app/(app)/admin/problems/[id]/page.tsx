@@ -16,18 +16,20 @@ import { Icon } from "@/components/icons";
 import { ReasonAction } from "@/components/reason-action";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge, StatusDot } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { FileDrop } from "@/components/ui/file-drop";
 import { FormGrid } from "@/components/ui/field";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { SimpleSelect } from "@/components/ui/select";
+import { SimpleCombobox } from "@/components/ui/combobox";
 import { Textarea } from "@/components/ui/textarea";
-import { PageBody, PageHeader, Section } from "@/components/ui/page";
+import { PageBody, Section } from "@/components/ui/page";
+import { AsideBlock, Facts, RecordBody, RecordHeader } from "@/components/ui/record";
 import { DetailSkeleton } from "@/components/ui/skeleton";
-import { Checklist, Summary, SummaryItem } from "@/components/ui/summary";
+import { Checklist } from "@/components/ui/summary";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
@@ -43,6 +45,7 @@ export default function ProblemPage() {
   const [problem, setProblem] = useState<P | null | undefined>(undefined);
   const [question, setQuestion] = useState<Q | null | undefined>(undefined);
   const [tab, setTab] = useState<Tab>((search.get("tab") as Tab) || "package");
+  const { toast } = useToast();
 
   const load = useCallback(async () => {
     const [p, q] = await Promise.all([api.get<{ problems: P[] }>("/api/admin/problems"), api.get<{ questions: Q[] }>("/api/admin/questions")]);
@@ -59,62 +62,108 @@ export default function ProblemPage() {
   const validated = Boolean(problem?.validated || question?.validated || problem?.last_validation?.ok);
   const elsewhere = Boolean(problem?.last_validation?.imported) && !problem?.validated && !question?.validated;
   const stages = [
-    { key: "package", label: "Package", done: Boolean(problem), detail: problem ? `${problem.versions.length} version${problem.versions.length === 1 ? "" : "s"} · latest ${problem.versions.at(-1)}` : "no package on the judge" },
+    { key: "package", label: "Package", done: Boolean(problem), detail: problem ? `${problem.versions.length} version${problem.versions.length === 1 ? "" : "s"}, latest ${problem.versions.at(-1)}` : "no package on the judge" },
     { key: "validate", label: "Validated", done: validated, detail: validated ? (elsewhere ? "the reference passed where this was exported" : "the reference passes every test") : "not yet proven" },
-    ...(hackOnly ? [] : [{ key: "details", label: "Details", done: Boolean(question), detail: question ? `${question.hints.length} hint${question.hints.length === 1 ? "" : "s"} · ${question.sampleCount} sample${question.sampleCount === 1 ? "" : "s"}` : "nothing for participants yet" }]),
+    ...(hackOnly ? [] : [{ key: "details", label: "Details", done: Boolean(question), detail: question ? `${question.hints.length} hint${question.hints.length === 1 ? "" : "s"}, ${question.sampleCount} sample${question.sampleCount === 1 ? "" : "s"}` : "nothing for participants yet" }]),
     { key: "publish", label: "Published", done: Boolean(problem?.current), detail: problem?.current ? `${problem.current} is live` : "no live version" },
   ];
   const currentStage = stages.findIndex((s) => !s.done);
 
+  const version = problem?.current ?? problem?.versions.at(-1) ?? null;
+
   return (
     <PageBody width="wide">
-      <PageHeader
-        breadcrumb={<Link href="/admin/problems" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Problems</Link>}
-        title={<span className="flex flex-wrap items-center gap-2">{question?.title ?? id}{hackOnly && <Badge variant="info">Hacking</Badge>}{question?.status === "void" && <Badge variant="destructive">Void</Badge>}{question?.status === "sold" && <Badge variant="neutral">Sold</Badge>}</span>}
-        description={<span className="font-mono text-[12px]">{id}</span>}
-        actions={
-          <div className="flex items-center gap-3">
-            {problem && (validated ? <StatusDot tone="success">Validated</StatusDot> : <StatusDot tone="warning">Not validated</StatusDot>)}
-            {problem?.current ? <StatusDot tone="success">Live {problem.current}</StatusDot> : <StatusDot tone="neutral">Not published</StatusDot>}
-          </div>
+      <RecordHeader
+        back={{ href: "/admin/problems", label: "Problems" }}
+        title={question?.title ?? id}
+        chips={
+          <>
+            {hackOnly && <Badge variant="info">Hacking</Badge>}
+            {question?.status === "void" && <Badge variant="destructive">Void</Badge>}
+            {question?.status === "sold" && <Badge variant="neutral">Sold</Badge>}
+            {problem?.current ? <Badge variant="success">Live {problem.current}</Badge> : <Badge variant="outline">Not published</Badge>}
+          </>
         }
-      />
+        meta={<span className="font-mono text-[12px]">{id}</span>}
+        figures={[
+          { label: "Versions", value: problem?.versions.length ?? 0, note: problem?.current ? `${problem.current} live` : problem ? "none live" : "no package" },
+          { label: "Testcases", value: problem?.testcases ?? "–", note: question ? `${question.sampleCount} shown as samples` : undefined },
+          { label: "Limits", value: problem ? `${problem.time_limit_ms / 1000} s` : "–", note: problem ? `${problem.memory_limit_mb} MB` : undefined },
+          ...(hackOnly ? [] : [{ label: "Worth", value: question ? question.score : "–", note: question ? `base price ${question.basePrice}` : "no details yet" }]),
+          ...(hackOnly ? [] : [{ label: "Hints", value: question?.hints.length ?? 0, note: question?.hints.length ? `${question.hints.reduce((s, h) => s + h.price, 0)} coins in all` : "none" }]),
+        ]}
+      >
+        <ol className="mt-4 flex flex-wrap items-start gap-x-2 gap-y-3" aria-label="Stages">
+          {stages.map((st, i) => {
+            const now = i === currentStage;
+            const target: Tab = st.key === "details" ? "details" : "package";
+            return (
+              <li key={st.key} className="flex items-start gap-2">
+                <button type="button" onClick={() => goTab(target)} className="flex items-start gap-2 rounded-md px-1 py-0.5 text-left hover:bg-muted">
+                  <span className={`mt-[3px] flex size-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${st.done ? "bg-brand text-white" : now ? "bg-navy text-white" : "border border-line-2 text-faint"}`}>
+                    {st.done ? <Icon.Check size={10} strokeWidth={3} /> : i + 1}
+                  </span>
+                  <span className="leading-tight">
+                    <span className={`block text-[13px] ${st.done || now ? "font-medium" : "text-muted-foreground"}`}>{st.label}</span>
+                    <span className="block text-[11.5px] text-faint">{st.detail}</span>
+                  </span>
+                </button>
+                {i < stages.length - 1 && <span className={`mx-1 mt-[10px] h-px w-6 sm:w-10 ${stages[i + 1].done ? "bg-brand" : "bg-line-2"}`} />}
+              </li>
+            );
+          })}
+        </ol>
+      </RecordHeader>
 
-      <ol className="mb-5 grid gap-px overflow-hidden rounded-box border border-line bg-line sm:grid-cols-2 lg:grid-cols-4" aria-label="Stages">
-        {stages.map((s, i) => {
-          const now = i === currentStage;
-          const target: Tab = s.key === "details" ? "details" : "package";
-          return (
-            <li key={s.key}>
-              <button type="button" onClick={() => goTab(target)} className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted ${now ? "bg-brand-tint/60" : "bg-card"}`}>
-                <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${s.done ? "bg-brand text-white" : now ? "bg-navy text-white" : "border border-line-2 text-faint"}`}>
-                  {s.done ? <Icon.Check size={11} strokeWidth={3} /> : i + 1}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold">{s.label}</span>
-                  <span className="block truncate text-[11.5px] text-muted-foreground">{s.detail}</span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+      <RecordBody
+        aside={
+          <>
+            {problem && <PublishBlock id={id} problem={problem} question={question} validated={validated} onChange={load} />}
+            <AsideBlock title="On the judge">
+              <Facts
+                items={[
+                  { label: "Live version", value: problem?.current ?? <span className="font-normal text-faint">none</span> },
+                  { label: "Latest upload", value: problem?.versions.at(-1) ?? <span className="font-normal text-faint">none</span> },
+                  { label: "Comparison", value: problem?.compare ?? "–" },
+                  { label: "Reference", value: problem ? (problem.has_reference ? "in the package" : "not stored") : "–" },
+                  { label: "Modified", value: problem?.modified_at ? new Date(problem.modified_at).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "–" },
+                ]}
+              />
+              {problem?.last_validation && (
+                <div className="mt-3 border-t border-line pt-3 text-[12.5px]">
+                  <ValidationNote record={problem.last_validation} />
+                </div>
+              )}
+            </AsideBlock>
+            {question && question.status !== "void" && !hackOnly && (
+              <AsideBlock title="Take it out of play">
+                <p className="mb-3 text-[12.5px] text-muted-foreground">Voiding scores it for nobody. The owner is refunded the price and every hint bought.</p>
+                <ReasonAction label="Void this question" variant="destructive" size="sm" title={`Void ${id}?`} description="This cannot be undone."
+                  defaultReason={`${id} is unusable as set; removing it from play.`}
+                  onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/void`, { reason }); toastVoid(); load(); }} />
+              </AsideBlock>
+            )}
+          </>
+        }
+      >
+        <Tabs value={tab} onValueChange={(v) => goTab(v as Tab)}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="package">Package</TabsTrigger>
+            {!hackOnly && <TabsTrigger value="details">Details &amp; hints</TabsTrigger>}
+            {!hackOnly && <TabsTrigger value="preview">Preview</TabsTrigger>}
+          </TabsList>
+        </Tabs>
 
-      <Tabs value={tab} onValueChange={(v) => goTab(v as Tab)}>
-        <TabsList variant="line" className="mb-5 w-full justify-start border-b">
-          <TabsTrigger value="package">Package</TabsTrigger>
-          {!hackOnly && <TabsTrigger value="details">Details &amp; hints</TabsTrigger>}
-          {!hackOnly && <TabsTrigger value="preview">Preview</TabsTrigger>}
-        </TabsList>
-      </Tabs>
-
-      {tab === "package" && (problem
-        ? <Package id={id} problem={problem} question={question} onChange={load} />
-        : <NoPackage id={id} onChange={load} />)}
-      {tab === "details" && <Details id={id} question={question} testcases={problem?.testcases ?? null} onChange={load} />}
-      {tab === "preview" && <Preview id={id} problem={problem} question={question} />}
+        {tab === "package" && (problem
+          ? <Package id={id} problem={problem} question={question} version={version} onChange={load} />
+          : <NoPackage id={id} onChange={load} />)}
+        {tab === "details" && <Details id={id} question={question} testcases={problem?.testcases ?? null} onChange={load} />}
+        {tab === "preview" && <Preview id={id} problem={problem} question={question} />}
+      </RecordBody>
     </PageBody>
   );
+
+  function toastVoid() { toast({ title: "Question voided", tone: "success" }); }
 }
 
 // ---------------------------------------------------------------------------
@@ -157,19 +206,17 @@ function UploadVersion({ id, onChange, next }: { id: string; onChange: () => voi
   );
 }
 
-function Package({ id, problem, question, onChange }: { id: string; problem: P; question: Q | null; onChange: () => void }) {
+function Package({ id, problem, question, version: live, onChange }: { id: string; problem: P; question: Q | null; version: string | null; onChange: () => void }) {
   const { toast } = useToast();
-  const [version, setVersion] = useState(problem.versions.at(-1) ?? "");
+  const [version, setVersion] = useState(problem.versions.at(-1) ?? live ?? "");
   const [report, setReport] = useState<Report | null>(null);
   const [reference, setReference] = useState(""); const [wrong, setWrong] = useState(""); const [lang, setLang] = useState("cpp");
   const [languages, setLanguages] = useState<{ key: string; name: string }[]>([]);
-  const [blast, setBlast] = useState(0);
   const [busy, setBusy] = useState(false);
   const nextVersion = `v${Number(problem.versions.at(-1)?.slice(1) ?? 0) + 1}`;
   useEffect(() => {
-    void api.post<{ submissions: number }>(`/api/admin/problems/${id}/blast-radius`, {}).then((r) => setBlast(r.submissions)).catch(() => setBlast(0));
     void api.get<{ languages: { key: string; name: string }[] }>("/api/languages").then((r) => setLanguages(r.languages)).catch(() => undefined);
-  }, [id]);
+  }, []);
   useEffect(() => { setVersion((v) => (problem.versions.includes(v) ? v : problem.versions.at(-1) ?? "")); }, [problem.versions]);
 
   async function validate() {
@@ -180,69 +227,73 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
     } catch (err) { toast({ title: "Validation could not run", description: errorMessage(err), tone: "error" }); } finally { setBusy(false); }
   }
 
-  const validated = problem.validated || question?.validated || problem.last_validation?.ok;
-  const stale = problem.current && version !== problem.current;
-
   return (
     <div className="space-y-4">
-      <Section title="Versions" description="Each upload is a complete package. Only the live one is judged; the others wait." padded={false}>
+      <Section
+        title="Versions"
+        description="Each upload is a complete package. Only the live one is judged."
+        actions={
+          <Collapsible>
+            <CollapsibleTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-card px-2.5 text-[12.5px] font-semibold hover:bg-muted [&[data-state=open]]:bg-muted">
+              <Icon.Upload size={13} /> Add {nextVersion}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="absolute right-4 z-10 mt-2 w-[min(28rem,calc(100vw-4rem))] rounded-box border border-line bg-card p-4 shadow-md">
+              <UploadVersion id={id} onChange={onChange} next={nextVersion} />
+            </CollapsibleContent>
+          </Collapsible>
+        }
+        padded={false}
+        className="relative"
+      >
         <Table>
-          <TableHeader><TableRow><TableHead>Version</TableHead><TableHead>Status</TableHead><TableHead className="hidden sm:table-cell">Notes</TableHead><TableHead className="w-32"><span className="sr-only">Select</span></TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Version</TableHead><TableHead>Status</TableHead><TableHead className="w-32"><span className="sr-only">Select</span></TableHead></TableRow></TableHeader>
           <TableBody>
             {[...problem.versions].reverse().map((v) => (
               <TableRow key={v} data-state={v === version ? "selected" : undefined}>
-                <TableCell className="font-mono text-[12.5px] font-semibold">{v}</TableCell>
+                <TableCell className="font-mono text-[12.5px] font-semibold">{v}{v === problem.versions.at(-1) && <span className="ml-2 font-sans font-normal text-faint">latest</span>}</TableCell>
                 <TableCell>{v === problem.current ? <StatusDot tone="success">Live</StatusDot> : <StatusDot tone="neutral">Not live</StatusDot>}</TableCell>
-                <TableCell className="hidden text-muted-foreground sm:table-cell">{v === problem.versions.at(-1) ? "latest upload" : ""}</TableCell>
                 <TableCell className="text-right tabular-nums">{v === version ? <span className="text-[12px] font-semibold text-brand-deep">Selected</span> : <Button size="sm" variant="ghost" onClick={() => { setVersion(v); setReport(null); }}>Select</Button>}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        <div className="border-t border-line px-5 py-4">
-          <div className="mb-2 text-[12px] font-semibold text-muted-foreground">Add a version</div>
-          <UploadVersion id={id} onChange={onChange} next={nextVersion} />
-        </div>
       </Section>
 
       <Section
         title={<span className="flex items-center gap-2">Validate <span className="font-mono text-[12px] font-normal text-faint">{version}</span></span>}
-        description="Prove the package before it goes live. The reference solution is the part that matters. It must pass every test within the limits. A wrong solution should fail, proving the tests bite."
-        footer={<Button onClick={validate} loading={busy} disabled={!version}><Icon.Play size={14} /> Run validation</Button>}
+        description="The reference solution must pass every test within the limits. A wrong solution should fail, proving the tests bite."
+        actions={<Button size="sm" onClick={validate} loading={busy} disabled={!version}><Icon.Play size={14} /> Run validation</Button>}
       >
-        <Summary cols={4} className="mb-5">
-          <SummaryItem label="Testcases">{problem.testcases}</SummaryItem>
-          <SummaryItem label="Limits">{problem.time_limit_ms} ms · {problem.memory_limit_mb} MB</SummaryItem>
-          <SummaryItem label="Comparison">{problem.compare}</SummaryItem>
-          <SummaryItem label="Reference">{problem.has_reference ? "stored in the package" : "supply one below"}</SummaryItem>
-        </Summary>
-        {problem.has_reference && !reference && <div className="mb-4"><Alert variant="info"><AlertDescription>This package carries its own reference solution; validation uses it unless you paste another one below.</AlertDescription></Alert></div>}
-        <FormGrid cols={2}>
-          <Field label={problem.has_reference ? "Reference solution (optional override)" : "Reference solution"} help="Must be accepted on every test.">
-            <Textarea rows={7} className="font-mono text-[12px]" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Paste source…" />
-          </Field>
-          <Field label="Wrong solution" hint="optional" help="Should fail at least one test; otherwise the tests are too weak.">
-            <Textarea rows={7} className="font-mono text-[12px]" value={wrong} onChange={(e) => setWrong(e.target.value)} placeholder="Paste a deliberately wrong source…" />
-          </Field>
-        </FormGrid>
-        {(reference || wrong) && (
-          <div className="mt-4 max-w-xs">
-            <Field label="Language of the pasted sources">
-              <SimpleSelect
-                className="w-full"
-                size="default"
-                value={lang}
-                onValueChange={setLang}
-                options={languages.length === 0 ? [{ value: lang, label: lang }] : languages.map((l) => ({ value: l.key, label: l.name }))}
-              />
-            </Field>
-          </div>
-        )}
+        <p className="text-[13px] text-muted-foreground">
+          {problem.testcases} testcases, {problem.time_limit_ms} ms and {problem.memory_limit_mb} MB each, compared by {problem.compare}.{" "}
+          {problem.has_reference ? "The package carries its own reference solution, so validation needs nothing pasted." : "The package has no reference solution: paste one below."}
+        </p>
+        <Collapsible defaultOpen={!problem.has_reference} className="mt-3">
+          <CollapsibleTrigger className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-brand hover:underline [&[data-state=open]>svg]:rotate-90">
+            <Icon.ChevronRight size={13} className="transition-transform" /> {problem.has_reference ? "Test with pasted solutions instead" : "Paste the solutions"}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3">
+            <FormGrid cols={2}>
+              <Field label={problem.has_reference ? "Reference solution (overrides the package's)" : "Reference solution"} help="Must be accepted on every test.">
+                <Textarea rows={7} className="font-mono text-[12px]" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Paste source…" />
+              </Field>
+              <Field label="Wrong solution" hint="optional" help="Should fail at least one test; otherwise the tests are too weak.">
+                <Textarea rows={7} className="font-mono text-[12px]" value={wrong} onChange={(e) => setWrong(e.target.value)} placeholder="Paste a deliberately wrong source…" />
+              </Field>
+            </FormGrid>
+            <div className="mt-3 max-w-xs">
+              <Field label="Language of the pasted sources">
+                <SimpleCombobox className="w-full" value={lang} onValueChange={setLang}
+                  options={languages.length === 0 ? [{ value: lang, label: lang }] : languages.map((l) => ({ value: l.key, label: l.name }))} />
+              </Field>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
         {report && (
-          <div className="mt-5">
+          <div className="mt-4">
             <Alert variant={report.ok ? "success" : "destructive"}><AlertTitle>{report.ok ? `${version} is valid` : `${version} has problems`}</AlertTitle><AlertDescription>
               <Checklist items={[
-                ...(report.reference ? [{ ok: report.reference.verdict === "AC", label: `Reference: ${report.reference.verdict}`, detail: `${report.reference.passed} passed · slowest ${report.reference.max_time_ms} ms${report.reference.first_fail !== null ? ` · first failure on test ${report.reference.first_fail}` : ""}` }] : []),
+                ...(report.reference ? [{ ok: report.reference.verdict === "AC", label: `Reference: ${report.reference.verdict}`, detail: `${report.reference.passed} passed, slowest ${report.reference.max_time_ms} ms${report.reference.first_fail !== null ? `, first failure on test ${report.reference.first_fail}` : ""}` }] : []),
                 ...(report.wrong_solution ? [{ ok: report.wrong_solution.verdict !== "AC", label: `Wrong solution: ${report.wrong_solution.verdict}`, detail: report.wrong_solution.verdict === "AC" ? "it passed everything. The tests do not catch it" : "rejected, as it should be" }] : []),
                 ...(report.checker ? [{ ok: report.checker.compiled, label: report.checker.compiled ? "Checker compiles" : "Checker does not compile", detail: report.checker.output || undefined }] : []),
                 ...report.issues.map((i) => ({ ok: false, label: i })),
@@ -251,52 +302,62 @@ function Package({ id, problem, question, onChange }: { id: string; problem: P; 
           </div>
         )}
       </Section>
-
-      <Section
-        title="Publish"
-        description={problem.current ? `${problem.current} is live. Publishing ${version} swaps it atomically.` : "Nothing is live yet. Publishing makes this version the one the judge runs."}
-        footer={
-          <ReasonAction
-            label={problem.current === version ? `${version} is live` : `Publish ${version}`} variant="default" size="default" disabled={!version || problem.current === version}
-            title={`Publish ${version}?`}
-            defaultReason={problem.current ? `Replacing ${problem.current} with ${version}.` : `Making ${version} the live package.`}
-            description={blast > 0
-              ? <span>This rejudges <strong>{blast}</strong> submission{blast === 1 ? "" : "s"} already made on this question. Verdicts may change; you will be asked what to do with the outcome.</span>
-              : "No submissions exist for this question yet, so nothing is rejudged."}
-            onConfirm={async (reason) => {
-              const r = await api.post<{ rejudged: number }>(`/api/admin/problems/${id}/publish`, { version, reason, confirmed_rejudge: blast });
-              toast({ title: `${version} is live`, description: r.rejudged ? `${r.rejudged} submission(s) are being rejudged.` : undefined, tone: "success" });
-              onChange();
-            }}
-          />
-        }
-      >
-        <Checklist items={[
-          { ok: Boolean(validated) && !stale, label: validated ? "Validated" : "Not validated", detail: validated ? (problem.last_validation?.imported ? "the reference passed on the install that exported this" : "the reference passed") : "publishing without validation is allowed but unwise" },
-          { ok: blast === 0, label: blast === 0 ? "No submissions affected" : `${blast} submission${blast === 1 ? "" : "s"} would be rejudged`, detail: blast ? "the number you confirm must match this" : undefined },
-        ]} />
-        {problem.last_validation && (
-          <div className="mt-3 border-t pt-3">
-            <ValidationNote record={problem.last_validation} />
-          </div>
-        )}
-        {blast > 0 && question && question.status !== "void" && (
-          <div className="mt-5 border-t border-line pt-4">
-            <div className="mb-2 text-[12px] font-semibold text-muted-foreground">After a rejudge</div>
-            <p className="mb-3 text-[12.5px] text-muted-foreground">If verdicts changed and someone was disadvantaged, choose what happens. Every choice is audit-logged.</p>
-            <div className="flex flex-wrap gap-2">
-              {(["stand", "refund", "void"] as const).map((o) => (
-                <ReasonAction key={o} label={o === "stand" ? "Let verdicts stand" : o === "refund" ? "Refund the owner" : "Void the question"} variant={o === "void" ? "destructive" : "outline"}
-                  defaultReason={o === "stand" ? "The rejudge changed nothing material; the new verdicts stand." : o === "refund" ? "The rejudge disadvantaged the owner; refunding what they paid." : "The package was wrong; this question scores for nobody."}
-                  title={o === "stand" ? "Let the new verdicts stand?" : o === "refund" ? "Refund the owner?" : "Void this question?"}
-                  description={o === "stand" ? "The rejudged verdicts count as they are." : o === "refund" ? "The owner keeps the question and gets the price back." : "Scores for nobody; the owner is refunded the price and every hint bought."}
-                  onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/rejudge-outcome`, { reason, outcome: o }); toast({ title: "Recorded", tone: "success" }); onChange(); }} />
-              ))}
-            </div>
-          </div>
-        )}
-      </Section>
     </div>
+  );
+}
+
+/**
+ * Publishing, in the aside where the record's actions live: what is live, what
+ * would go live, whether it is proven, and what a rejudge would touch.
+ */
+function PublishBlock({ id, problem, question, validated, onChange }: { id: string; problem: P; question: Q | null; validated: boolean; onChange: () => void }) {
+  const { toast } = useToast();
+  const [blast, setBlast] = useState(0);
+  // Set by a publish that rejudged, which is the only time the outcome is a question.
+  const [rejudged, setRejudged] = useState(0);
+  const latest = problem.versions.at(-1) ?? "";
+  const target = latest;
+  const isLive = problem.current === target;
+  useEffect(() => {
+    void api.post<{ submissions: number }>(`/api/admin/problems/${id}/blast-radius`, {}).then((r) => setBlast(r.submissions)).catch(() => setBlast(0));
+  }, [id, problem.current]);
+  return (
+    <AsideBlock title={isLive ? "Published" : "Publish"}>
+      <Checklist items={[
+        { ok: validated, label: validated ? "Validated" : "Not validated", detail: validated ? undefined : "allowed, but unwise" },
+        { ok: blast === 0, label: blast === 0 ? "No submissions affected" : `${blast} submission${blast === 1 ? "" : "s"} would be rejudged`, detail: blast ? "verdicts may change" : undefined },
+      ]} />
+      <div className="mt-3">
+        <ReasonAction
+          label={isLive ? `${target} is live` : `Publish ${target}`} variant="default" size="sm" disabled={!target || isLive}
+          title={`Publish ${target}?`}
+          defaultReason={problem.current ? `Replacing ${problem.current} with ${target}.` : `Making ${target} the live package.`}
+          description={blast > 0
+            ? <span>This rejudges <strong>{blast}</strong> submission{blast === 1 ? "" : "s"} already made on this question. Verdicts may change; you will be asked what to do with the outcome.</span>
+            : "No submissions exist for this question yet, so nothing is rejudged."}
+          onConfirm={async (reason) => {
+            const r = await api.post<{ rejudged: number }>(`/api/admin/problems/${id}/publish`, { version: target, reason, confirmed_rejudge: blast });
+            toast({ title: `${target} is live`, description: r.rejudged ? `${r.rejudged} submission(s) are being rejudged.` : undefined, tone: "success" });
+            setRejudged(r.rejudged);
+            onChange();
+          }}
+        />
+      </div>
+      {rejudged > 0 && question && question.status !== "void" && (
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="mb-2 text-[12.5px] text-muted-foreground">{rejudged} submission{rejudged === 1 ? " was" : "s were"} rejudged. If someone was disadvantaged:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {(["stand", "refund", "void"] as const).map((o) => (
+              <ReasonAction key={o} size="sm" label={o === "stand" ? "Let verdicts stand" : o === "refund" ? "Refund the owner" : "Void"} variant={o === "void" ? "destructive" : "outline"}
+                defaultReason={o === "stand" ? "The rejudge changed nothing material; the new verdicts stand." : o === "refund" ? "The rejudge disadvantaged the owner; refunding what they paid." : "The package was wrong; this question scores for nobody."}
+                title={o === "stand" ? "Let the new verdicts stand?" : o === "refund" ? "Refund the owner?" : "Void this question?"}
+                description={o === "stand" ? "The rejudged verdicts count as they are." : o === "refund" ? "The owner keeps the question and gets the price back." : "Scores for nobody; the owner is refunded the price and every hint bought."}
+                onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/rejudge-outcome`, { reason, outcome: o }); toast({ title: "Recorded", tone: "success" }); onChange(); }} />
+            ))}
+          </div>
+        </div>
+      )}
+    </AsideBlock>
   );
 }
 
@@ -327,14 +388,6 @@ function Details({ id, question, testcases, onChange }: { id: string; question: 
       <Section title="Hints" description="Author-written text, unlocked in order. Hidden testcases are never for sale, at any price.">
         <HintsEditor hints={d.hints} onChange={(hints) => setD({ ...d, hints })} />
       </Section>
-      {question && question.status !== "void" && (
-        <Section title="Void" description="Removes the question from play. It scores for nobody; the owner is refunded the price and every hint bought for it.">
-          <ReasonAction label="Void this question" variant="destructive" title={`Void ${id}?`} description="This cannot be undone."
-            defaultReason={`${id} is unusable as set; removing it from play.`}
-            onConfirm={async (reason) => { await api.post(`/api/admin/questions/${id}/void`, { reason }); toast({ title: "Question voided", tone: "success" }); onChange(); }} />
-        </Section>
-      )}
-
       {(dirty || !question) && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 backdrop-blur lg:left-60">
           <div className="mx-auto flex max-w-[1440px] flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:px-6 lg:px-8">

@@ -2,6 +2,7 @@
 
 /** The problem set. One row per problem, its stage at a glance; creating one is its own page. */
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { ProblemTransferActions, problemExportMenuItem } from "@/components/admin/problem-transfer";
@@ -14,9 +15,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Menu } from "@/components/ui/menu";
 import { SearchInput } from "@/components/ui/field";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
-import { SimpleSelect } from "@/components/ui/select";
 import { PageSkeleton } from "@/components/ui/skeleton";
-import { Stat, StatRow } from "@/components/ui/stat";
+import { Figures, FilterChips } from "@/components/ui/record";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
 
@@ -91,13 +91,14 @@ const STAGE: Record<Stage, { label: string; tone: "success" | "destructive" | "w
 };
 
 const KINDS = [
-  { value: "all", label: "All problems" },
-  { value: "auction", label: "Auction problems" },
-  { value: "hacking", label: "Hacking problems" },
+  { value: "all", label: "All" },
+  { value: "auction", label: "Auction" },
+  { value: "hacking", label: "Hacking" },
   { value: "attention", label: "Needs attention" },
 ] as const;
 
 export default function ProblemsPage() {
+  const router = useRouter();
   const [problems, setProblems] = useState<P[] | null>(null);
   const [questions, setQuestions] = useState<Q[]>([]);
   const [filter, setFilter] = useState("");
@@ -176,23 +177,12 @@ export default function ProblemsPage() {
         </Section>
       ) : (
         <div className="space-y-5">
-          <StatRow cols={4}>
-            <Stat label="Problems" value={all.length} icon={<Icon.Code size={13} />} hint={`${hacking} for hacking`} />
-            <Stat label="Ready" value={ready} tone="success" icon={<Icon.Check size={13} />} hint="live" />
-            <Stat
-              label="Need attention"
-              value={attention}
-              tone={attention ? "warning" : "default"}
-              icon={<Icon.Alert size={13} />}
-              hint={attention ? "unvalidated, undescribed or unpublished" : undefined}
-            />
-            <Stat
-              label="Auction lots"
-              value={questions.filter((q) => q.status !== "void").length}
-              icon={<Icon.Gavel size={13} />}
-              hint="described"
-            />
-          </StatRow>
+          <Figures items={[
+            { label: "Problems", value: all.length, note: `${hacking} for hacking` },
+            { label: "Ready", value: ready, note: "validated, described and live", tone: "success" },
+            { label: "Need attention", value: attention, note: attention ? "unvalidated, undescribed or unpublished" : "none", tone: attention ? "warning" : "default" },
+            { label: "Auction lots", value: questions.filter((q) => q.status !== "void").length, note: "described for bidders" },
+          ]} />
 
           <Section padded={false}>
             <Toolbar
@@ -209,7 +199,12 @@ export default function ProblemsPage() {
                 onChange={(e) => setFilter(e.target.value)}
                 onClear={() => setFilter("")}
               />
-              <SimpleSelect className="w-44" value={kind} onValueChange={setKind} options={KINDS} aria-label="Show" />
+              <FilterChips label="Show" value={kind} onChange={setKind}
+                options={KINDS.map((k) => ({ value: k.value, label: k.label, count:
+                  k.value === "all" ? all.length
+                  : k.value === "auction" ? all.filter((r) => !r.p?.hack_only).length
+                  : k.value === "hacking" ? hacking
+                  : attention }))} />
             </Toolbar>
             <Table>
               <TableHeader>
@@ -222,17 +217,17 @@ export default function ProblemsPage() {
                   <TableHead className="hidden text-right sm:table-cell">Tests</TableHead>
                   <TableHead className="hidden md:table-cell">Live</TableHead>
                   <TableHead>Stage</TableHead>
-                  <TableHead className="w-28">
+                  <TableHead className="w-12">
                     <span className="sr-only">Actions</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map(({ id, p, q, stage }) => (
-                  <TableRow key={id}>
-                    <TableCell className="hidden text-right text-faint tabular-nums lg:table-cell">{q ? q.auctionOrder : "—"}</TableCell>
+                  <TableRow key={id} className="cursor-pointer" onClick={() => router.push(`/admin/problems/${encodeURIComponent(id)}`)}>
+                    <TableCell className="hidden text-right text-faint tabular-nums lg:table-cell">{q ? q.auctionOrder : "–"}</TableCell>
                     <TableCell>
-                      <Link href={`/admin/problems/${encodeURIComponent(id)}`} className="group block">
+                      <Link href={`/admin/problems/${encodeURIComponent(id)}`} className="group block" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold group-hover:text-brand-deep">
                             {q?.title ?? (p?.hack_only ? <span className="font-mono">{id}</span> : <span className="font-normal text-faint">Untitled</span>)}
@@ -253,13 +248,8 @@ export default function ProblemsPage() {
                     <TableCell>
                       <StatusDot tone={STAGE[stage].tone}>{STAGE[stage].label}</StatusDot>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-0.5">
-                        <Button size="sm" variant="ghost" asChild>
-                          <Link href={`/admin/problems/${encodeURIComponent(id)}`}>
-                            Open <Icon.ChevronRight size={14} />
-                          </Link>
-                        </Button>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end">
                         <Menu label={`Actions for ${id}`} items={[problemExportMenuItem(id)]} />
                       </div>
                     </TableCell>

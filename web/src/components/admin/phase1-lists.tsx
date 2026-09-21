@@ -24,15 +24,15 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, SearchInput } from "@/components/ui/field";
 import { Hint } from "@/components/ui/hint";
-import { SimpleSelect } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Menu } from "@/components/ui/menu";
 import { Section, Toolbar } from "@/components/ui/page";
 import { TableSkeleton } from "@/components/ui/skeleton";
-import { Stat, StatRow } from "@/components/ui/stat";
+import { Figures, FilterChips } from "@/components/ui/record";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
+import { languageName } from "@/lib/languages";
 
 const STATE: Record<QuestionState, { label: string; tone: "success" | "warning" | "info" | "neutral" }> = {
   draft: { label: "Draft", tone: "warning" }, ready: { label: "Ready", tone: "info" }, live: { label: "Live", tone: "success" }, void: { label: "Void", tone: "neutral" },
@@ -164,12 +164,12 @@ export function PuzzleList() {
   return (
     <div className="space-y-4">
       {rows.length > 0 && (
-        <StatRow cols={4}>
-          <Stat label="Puzzles" value={rows.length} icon={<Icon.Puzzle size={13} />} hint={`${rows.filter((r) => stateOf(r) === "draft").length} still draft`} />
-          <Stat label="Live" value={live.length} tone="success" icon={<Icon.Check size={13} />} hint="published and in the section" />
-          <Stat label="Points available" value={points} icon={<Icon.Trophy size={13} />} hint="across live puzzles, reasoning included" />
-          <Stat label="Need an evaluator" value={live.filter((r) => r.grading === "manual" || r.explainPoints > 0).length} icon={<Icon.Users size={13} />} hint="manually graded or with reasoning" />
-        </StatRow>
+        <Figures items={[
+          { label: "Puzzles", value: rows.length, note: `${rows.filter((r) => stateOf(r) === "draft").length} still draft` },
+          { label: "Live", value: live.length, note: "in the section", tone: "success" },
+          { label: "Points available", value: points, note: "across live puzzles, reasoning included" },
+          { label: "Need an evaluator", value: live.filter((r) => r.grading === "manual" || r.explainPoints > 0).length, note: "graded by hand or with reasoning" },
+        ]} />
       )}
       {rows.length === 0 ? (
         <Section padded={false}>
@@ -180,8 +180,8 @@ export function PuzzleList() {
         <Section padded={false}>
           <Toolbar actions={<span className="text-[12px] text-muted-foreground">{shown.length} of {rows.length}</span>}>
             <SearchInput className="w-64" placeholder="Filter by title" value={filter} onChange={(e) => setFilter(e.target.value)} />
-            <SimpleSelect className="w-36" value={state} onValueChange={setState} aria-label="State"
-              options={[{ value: "all", label: "All states" }, { value: "draft", label: "Draft" }, { value: "ready", label: "Ready" }, { value: "live", label: "Live" }, { value: "void", label: "Void" }]} />
+            <FilterChips label="State" value={state} onChange={setState}
+              options={(["all", "draft", "ready", "live", "void"] as const).map((v) => ({ value: v, label: v === "all" ? "All" : STATE[v].label, count: v === "all" ? rows.length : rows.filter((r) => stateOf(r) === v).length }))} />
           </Toolbar>
           <Table>
             <TableHeader>
@@ -199,13 +199,13 @@ export function PuzzleList() {
               {shown.map((r) => {
                 const s = stateOf(r);
                 return (
-                  <TableRow key={r.id} className={r.voided ? "opacity-60" : ""}>
+                  <TableRow key={r.id} className={`cursor-pointer ${r.voided ? "opacity-60" : ""}`} onClick={() => router.push(`/admin/phase1/puzzles/${r.id}`)}>
                     <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
                     <TableCell>
                       {/* The name only. A row of question text in every row is
                           a paragraph the organiser has to read past to find the
                           one they came for; the question is on its own page. */}
-                      <Link href={`/admin/phase1/puzzles/${r.id}`} className="group block">
+                      <Link href={`/admin/phase1/puzzles/${r.id}`} className="group block" onClick={(e) => e.stopPropagation()}>
                         <div className="font-semibold group-hover:text-brand-deep">{r.title}</div>
                         <div className="text-[11.5px] text-faint">{CATEGORY_LABEL[r.category]}</div>
                       </Link>
@@ -217,7 +217,7 @@ export function PuzzleList() {
                       <StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot>
                       {r.verifiedElsewhere && <ProvenElsewhere />}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Menu items={[
                         { label: "Edit", icon: <Icon.Edit size={15} />, onSelect: () => router.push(`/admin/phase1/puzzles/${r.id}`) },
                         exportMenuItem("puzzles", r.id),
@@ -248,23 +248,25 @@ export function HackList() {
   const router = useRouter();
   const [rows, setRows] = useState<Hack[] | null>(null);
   const [filter, setFilter] = useState("");
+  const [state, setState] = useState<"all" | QuestionState>("all");
   const [pending, setPending] = useState<Pending | null>(null);
   const load = useCallback(async () => setRows((await api.get<{ questions: Hack[] }>("/api/admin/phase1/hacking")).questions), []);
   useEffect(() => { void load(); }, [load]);
   const act = useQuestionActions("hacking", load);
 
   if (!rows) return <TableSkeleton rows={7} cols={5} />;
-  const shown = rows.filter((r) => !filter || r.title.toLowerCase().includes(filter.toLowerCase()) || r.problemId.includes(filter));
+  const shown = rows.filter((r) => state === "all" || stateOf(r) === state).filter((r) => !filter || r.title.toLowerCase().includes(filter.toLowerCase()) || r.problemId.includes(filter));
   const live = rows.filter((r) => stateOf(r) === "live");
 
   return (
     <div className="space-y-4">
       {rows.length > 0 && (
-        <StatRow cols={3}>
-          <Stat label="Hacking questions" value={rows.length} icon={<Icon.Bug size={13} />} hint={`${rows.filter((r) => stateOf(r) === "draft").length} still draft`} />
-          <Stat label="Live" value={live.length} tone="success" icon={<Icon.Check size={13} />} hint="each proven breakable" />
-          <Stat label="Points available" value={live.reduce((s, r) => s + r.hackPoints, 0)} icon={<Icon.Trophy size={13} />} hint="one successful hack per solution" />
-        </StatRow>
+        <Figures items={[
+          { label: "Questions", value: rows.length, note: `${rows.filter((r) => stateOf(r) === "draft").length} still draft` },
+          { label: "Live", value: live.length, note: "each proven breakable", tone: "success" },
+          { label: "Points available", value: live.reduce((s, r) => s + r.hackPoints, 0), note: "one successful hack each" },
+          { label: "Languages", value: new Set(rows.flatMap((r) => r.solutions.map((x) => x.language))).size, note: "copies across all questions" },
+        ]} />
       )}
       {rows.length === 0 ? (
         <Section padded={false}>
@@ -276,6 +278,8 @@ export function HackList() {
         <Section padded={false}>
           <Toolbar actions={<span className="text-[12px] text-muted-foreground">{shown.length} of {rows.length}</span>}>
             <SearchInput className="w-64" placeholder="Filter by title or problem id" value={filter} onChange={(e) => setFilter(e.target.value)} />
+            <FilterChips label="State" value={state} onChange={setState}
+              options={(["all", "draft", "ready", "live", "void"] as const).map((v) => ({ value: v, label: v === "all" ? "All" : STATE[v].label, count: v === "all" ? rows.length : rows.filter((r) => stateOf(r) === v).length }))} />
           </Toolbar>
           <Table>
             <TableHeader>
@@ -283,7 +287,7 @@ export function HackList() {
                 <TableHead className="w-12 text-right tabular-nums">#</TableHead>
                 <TableHead>Question</TableHead>
                 <TableHead className="hidden md:table-cell">Judge problem</TableHead>
-                <TableHead className="hidden sm:table-cell">Language</TableHead>
+                <TableHead className="hidden sm:table-cell">Languages</TableHead>
                 <TableHead className="text-right tabular-nums">Points</TableHead>
                 <TableHead className="hidden lg:table-cell text-right tabular-nums">Penalty</TableHead>
                 <TableHead>State</TableHead>
@@ -294,23 +298,23 @@ export function HackList() {
               {shown.map((r) => {
                 const s = stateOf(r);
                 return (
-                  <TableRow key={r.id} className={r.voided ? "opacity-60" : ""}>
+                  <TableRow key={r.id} className={`cursor-pointer ${r.voided ? "opacity-60" : ""}`} onClick={() => router.push(`/admin/phase1/hacking/${r.id}`)}>
                     <TableCell className="text-faint text-right tabular-nums">{r.orderIndex}</TableCell>
                     <TableCell>
-                      <Link href={`/admin/phase1/hacking/${r.id}`} className="group block">
+                      <Link href={`/admin/phase1/hacking/${r.id}`} className="group block" onClick={(e) => e.stopPropagation()}>
                         <div className="font-semibold group-hover:text-brand-deep">{r.title}</div>
                         <div className="text-[11.5px] text-faint md:hidden">{r.problemId}</div>
                       </Link>
                     </TableCell>
                     <TableCell className="hidden font-mono text-[12px] md:table-cell">{r.problemId}</TableCell>
-                    <TableCell className="hidden text-muted-foreground sm:table-cell">{r.givenLanguage}</TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">{r.solutions.map((x) => languageName(x.language)).join(", ")}</TableCell>
                     <TableCell className="font-medium text-right tabular-nums">{r.hackPoints}</TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell text-right tabular-nums">{r.failPenalty ? `−${r.failPenalty}` : "0"}</TableCell>
                     <TableCell>
                       <StatusDot tone={STATE[s].tone}>{STATE[s].label}</StatusDot>
                       {r.verifiedElsewhere && <ProvenElsewhere />}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Menu items={[
                         { label: "Edit", icon: <Icon.Edit size={15} />, onSelect: () => router.push(`/admin/phase1/hacking/${r.id}`) },
                         exportMenuItem("hacking", r.id),
@@ -359,12 +363,12 @@ export function Review() {
 
   return (
     <div className="space-y-4">
-      <StatRow cols={4}>
-        <Stat label="Participants" value={rows.length} icon={<Icon.Users size={13} />} hint={`${rows.filter((r) => r.disqualified).length} disqualified`} />
-        <Stat label="Provisional" value={provisional} tone={provisional ? "warning" : "default"} icon={<Icon.Clock size={13} />} hint={provisional ? "items still with an evaluator" : "every item graded"} />
-        <Stat label="Selected" value={chosen.size} tone="success" icon={<Icon.Check size={13} />} hint={dirty ? "unsaved selection" : `${decided} decided so far`} />
-        <Stat label="Top score" value={rows[0]?.points ?? 0} icon={<Icon.Trophy size={13} />} hint={rows[0]?.name} />
-      </StatRow>
+      <Figures items={[
+        { label: "Participants", value: rows.length, note: `${rows.filter((r) => r.disqualified).length} disqualified` },
+        { label: "Provisional", value: provisional, note: provisional ? "items still with an evaluator" : "every item graded", tone: provisional ? "warning" : "default" },
+        { label: "Selected", value: chosen.size, note: dirty ? "unsaved selection" : `${decided} decided so far`, tone: "success" },
+        { label: "Top score", value: rows[0]?.points ?? 0, note: rows[0]?.name },
+      ]} />
       {provisional > 0 && <Alert variant="warning"><AlertTitle>{`${provisional} participant${provisional === 1 ? " has" : "s have"} ungraded items`}</AlertTitle><AlertDescription>Their totals are provisional. You may still select; grades can follow and the selection can be revised until Phase 2 opens.</AlertDescription></Alert>}
       <Section
         title="Who advances"
@@ -378,7 +382,7 @@ export function Review() {
         }
         padded={false}
         footer={
-          <ReasonAction label={`Confirm selection · ${chosen.size}`} variant="default" size="default" title="Set who advances to Phase 2"
+          <ReasonAction label={`Confirm ${chosen.size} selected`} variant="default" size="default" title="Set who advances to Phase 2"
             description={<span><strong>{chosen.size}</strong> participant{chosen.size === 1 ? "" : "s"} will be selected; everyone else is marked not selected. Announce the basis before Phase 1 if you have not.</span>}
             onConfirm={async (reason) => { await api.post("/api/admin/phase1/advance", { participant_ids: [...chosen], reason }); toast({ title: "Selection saved", description: "Participants have been notified.", tone: "success" }); await load(); }} />
         }

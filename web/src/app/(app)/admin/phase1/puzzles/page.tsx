@@ -17,7 +17,7 @@ export default function PuzzlesPage() {
   return (
     <PageBody width="wide">
       <PageHeader
-        title="Section A · Puzzles"
+        title="Puzzles"
         description="Each one must pass its self-test before it can go live."
         actions={
           <>
