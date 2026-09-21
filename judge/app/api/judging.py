@@ -6,12 +6,13 @@ from fastapi import APIRouter, Depends, Response
 from app.api import errors
 from app.api.auth import require_token
 from app.api.deps import Svc, check_size, language_or_400, load_problem, require_capacity
-from app.api.schemas import AnswersRequest, HackRequest, JobHandle, JobState, Progress, SubmitRequest
+from app.api.schemas import AnswersRequest, HackRequest, JobHandle, JobState, Progress, RunRequest, SubmitRequest
 from app.container import Services
 from app.jobs.control import Task
 from app.jobs.queue import Job
 from app.judging.judge import Submission
-from app.judging.tasks import AnswersTask, HackTask, JudgeTask
+from app.judging.run import RunInput
+from app.judging.tasks import AnswersTask, HackTask, JudgeTask, RunTask
 
 router = APIRouter(tags=["Judging"], dependencies=[Depends(require_token)])
 
@@ -36,6 +37,20 @@ def hack(body: HackRequest, services: Svc) -> JobHandle:
         raise errors.invalid_request(f"{body.problem_id} has no reference solution, so it cannot be hacked")
     submission = Submission(problem, language, body.source, body.submission_id)
     return _enqueue(services, HackTask(services.hacker, submission, body.input))
+
+
+@router.post("/run", response_model=JobHandle, status_code=202)
+def run(body: RunRequest, services: Svc) -> JobHandle:
+    """Run source on the caller's inputs, with no testcases and no score."""
+    check_size(body.source, services.settings.max_source_bytes, errors.source_too_large)
+    check_size("\n".join(c.input for c in body.inputs), services.settings.max_input_bytes, errors.input_too_large)
+    language = language_or_400(body.language)
+    problem = load_problem(services, body.problem_id)
+    submission = Submission(problem, language, body.source, body.submission_id)
+    inputs = services.runner.samples(problem, body.samples) + [RunInput(c.input, c.answer) for c in body.inputs]
+    if not inputs:
+        raise errors.invalid_request("nothing to run: the problem has no samples and no input was given")
+    return _enqueue(services, RunTask(services.runner, submission, inputs))
 
 
 @router.post("/validate-answers", response_model=JobHandle, status_code=202)

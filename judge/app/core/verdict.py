@@ -45,6 +45,7 @@ class RunOutcome:
     time_ms: float = 0.0
     memory_kb: int = 0
     stdout: str = ""        # kept so a reference run can supply the answer
+    stderr: str = ""        # cleaned; shown to the author of a practice run
 
     @property
     def accepted(self) -> bool:
@@ -79,11 +80,18 @@ def failure_detail(status: str, exit_status: int, stderr: str) -> str:
     return f"{status} (exit {exit_status}). {stderr}".strip()
 
 
+def wording(verdict: Verdict) -> str:
+    """The verdict in words a contestant understands."""
+    if verdict == "IE":
+        return INTERNAL_ERROR_MESSAGE
+    return _WORDING.get(verdict, verdict.lower())
+
+
 def message_for(verdict: Verdict, index: int) -> str:
     """Human summary, safe to show a contestant: names the test, never its data."""
     if verdict == "IE":
         return INTERNAL_ERROR_MESSAGE
-    return f"{_WORDING.get(verdict, verdict.lower())} on test {index}"
+    return f"{wording(verdict)} on test {index}"
 
 
 def truncate(text: str, limit: int) -> str:

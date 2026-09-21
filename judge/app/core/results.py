@@ -47,6 +47,28 @@ class HackResult(BaseModel):
     duration_ms: int = 0
 
 
+class RunOutput(BaseModel):
+    """One input of a practice run. Everything here is the participant's own
+    program talking, so all of it may be shown to them."""
+    verdict: Verdict
+    stdout: str = ""
+    stderr: str = ""
+    time_ms: float = 0.0
+    memory_kb: int = 0
+
+
+class RunResult(BaseModel):
+    submission_id: str | None = None
+    # CE when it did not compile, IE when the judge failed, otherwise the first
+    # non-AC verdict among the outputs, or AC.
+    verdict: Verdict
+    message: str = ""
+    compile_output: str = ""
+    outputs: list[RunOutput] = Field(default_factory=list)
+    problem_version: str = ""
+    duration_ms: int = 0
+
+
 class EntryResult(BaseModel):
     valid: bool
     error: str | None = None
