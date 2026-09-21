@@ -14,6 +14,9 @@
  * The constraints stay beside it rather than above, because the bug is usually
  * found by reading one against the other. When that is not enough, "Wide" hands
  * the code the whole card.
+ *
+ * The same flawed program comes in more than one language; a dropdown in the
+ * code header lets the reader pick the one they know best.
  */
 import dynamic from "next/dynamic";
 import { useState } from "react";
@@ -24,17 +27,34 @@ import { Icon } from "../icons";
 import { Markdown } from "../markdown";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { SimpleCombobox } from "../ui/combobox";
+import { languageName } from "@/lib/languages";
 
 const CodeEditor = dynamic(() => import("../editor").then((m) => m.CodeEditor), {
   ssr: false,
   loading: () => <div className="h-full min-h-[420px] animate-pulse bg-[#1e1e1e]" />,
 });
 
-export type HackView = { id: number; title: string; statement_md: string; constraints_md: string; given_source: string; given_language: string; hack_points: number; fail_penalty: number };
+/** One copy of the flawed code. Every copy solves the same problem and every copy is wrong somewhere. */
+export type GivenSolution = { id: number; language: string; source: string };
+export type HackView = { id: number; title: string; statement_md: string; constraints_md: string; solutions: GivenSolution[]; hack_points: number; fail_penalty: number };
 
-export function HackQuestionView({ q, index, total, hacked = false, eyebrowExtra }: { q: HackView; index: number; total: number; hacked?: boolean; eyebrowExtra?: React.ReactNode }) {
+export type HackQuestionViewProps = {
+  q: HackView;
+  index: number;
+  total: number;
+  hacked?: boolean;
+  eyebrowExtra?: React.ReactNode;
+  /** Which copy is open. Defaults to the first. */
+  solutionId?: number;
+  /** Offered when there is more than one copy; the reader picks the language they know best. */
+  onSelectSolution?: (id: number) => void;
+};
+
+export function HackQuestionView({ q, index, total, hacked = false, eyebrowExtra, solutionId, onSelectSolution }: HackQuestionViewProps) {
   const [wide, setWide] = useState(false);
-  const lines = q.given_source.split("\n").length;
+  const solution = q.solutions.find((x) => x.id === solutionId) ?? q.solutions[0] ?? { id: 0, language: "plaintext", source: "" };
+  const lines = solution.source.split("\n").length;
   /* Fit the program rather than the viewport: a seventeen-line solution in a
    * fixed 62vh box is half a screen of empty dark, and a hundred-line one still
    * needs a cap. ~19px is the line box at font-size 13, plus the editor's own
@@ -44,9 +64,20 @@ export function HackQuestionView({ q, index, total, hacked = false, eyebrowExtra
   const code = (
     <div className="flex min-w-0 flex-col">
       <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">
-        <span className="truncate">
-          The given solution · {q.given_language}
-          <span className="ml-2 font-normal tracking-normal normal-case text-faint tabular-nums">{lines} lines</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate">The given solution</span>
+          {q.solutions.length > 1 && onSelectSolution ? (
+            <SimpleCombobox
+              aria-label="Language of the given solution"
+              className="w-36 font-normal tracking-normal normal-case"
+              value={String(solution.id)}
+              onValueChange={(v) => onSelectSolution(Number(v))}
+              options={q.solutions.map((x) => ({ value: String(x.id), label: languageName(x.language) }))}
+            />
+          ) : (
+            <span>· {solution.language}</span>
+          )}
+          <span className="font-normal tracking-normal normal-case text-faint tabular-nums">{lines} lines</span>
         </span>
         <span className="flex shrink-0 items-center gap-2">
           <span className="hidden font-normal tracking-normal normal-case text-faint sm:inline">read only. It is wrong somewhere</span>
@@ -63,7 +94,7 @@ export function HackQuestionView({ q, index, total, hacked = false, eyebrowExtra
         </span>
       </div>
       <div className="overflow-hidden rounded-box border border-line">
-        <CodeEditor value={q.given_source} language={q.given_language} readOnly height={height} />
+        <CodeEditor key={solution.id} value={solution.source} language={solution.language} readOnly height={height} />
       </div>
     </div>
   );

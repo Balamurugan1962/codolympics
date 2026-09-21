@@ -15,7 +15,7 @@ export default function HackingPage() {
   return (
     <PageBody width="wide">
       <PageHeader
-        title="Section B · Hacking"
+        title="Hacking questions"
         description="Each one needs a proven breaking input before it can go live."
         actions={
           <>

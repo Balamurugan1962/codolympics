@@ -64,27 +64,45 @@ def test_a_puzzle_never_carries_its_answer_key_validator_or_model_answer() -> No
     assert SECRET not in json.dumps(puzzle_question(row))
 
 
-def test_a_hacking_question_never_carries_its_breaking_input() -> None:
+def test_a_hacking_question_never_carries_its_breaking_inputs() -> None:
     row = SimpleNamespace(
         id=1,
         title="t",
         statement_md="s",
         constraints_md="c",
-        given_source="int main(){}",
-        given_language="cpp",
         hack_points=20,
         fail_penalty=0,
         order_index=0,
-        breaking_input=SECRET,
         problem_id=SECRET,
     )
-    assert SECRET not in json.dumps(hack_question(row))
+    copies = [
+        SimpleNamespace(
+            id=7,
+            question_id=1,
+            language="cpp",
+            source="int main(){}",
+            proven=True,
+            breaking_input=SECRET,
+        ),
+        SimpleNamespace(
+            id=8,
+            question_id=1,
+            language="python",
+            source="print(1)",
+            proven=False,
+            breaking_input=SECRET,
+        ),
+    ]
+    view = hack_question(row, copies)
+    assert SECRET not in json.dumps(view)
+    assert [s["language"] for s in view["solutions"]] == ["cpp", "python"]
 
 
 def test_a_hack_attempt_never_carries_the_verdict() -> None:
     row = SimpleNamespace(
         id=1,
         question_id=1,
+        solution_id=7,
         state="done",
         valid_input=True,
         invalid_reason=None,

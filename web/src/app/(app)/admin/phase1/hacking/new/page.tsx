@@ -10,7 +10,7 @@ export default function NewHackPage() {
   return (
     <PageBody width="wide">
       <PageHeader
-        breadcrumb={<Link href="/admin/phase1?tab=hacking" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Phase 1 · Section B</Link>}
+        breadcrumb={<Link href="/admin/phase1/hacking" className="inline-flex items-center gap-1 hover:text-ink"><Icon.ChevronLeft size={14} /> Hacking questions</Link>}
         title="New hacking question"
       />
       <HackBuilder existing={null} />

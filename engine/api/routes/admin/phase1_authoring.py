@@ -109,7 +109,7 @@ def self_test(_: Staff, section: str, question_id: int, body: dict[str, Any]) ->
         )
     if section == "hacking":
         trial = HackTrial.model_validate(body)
-        return self_tests.self_test_hack(question_id, trial.breaking_input)
+        return self_tests.self_test_hack(question_id, trial.solution_id, trial.breaking_input)
     raise errors.not_found("section")
 
 

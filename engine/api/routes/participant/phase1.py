@@ -22,6 +22,7 @@ class AnswerBody(Body):
 
 
 class AttemptBody(Body):
+    solution_id: int
     input: Annotated[str, Field(max_length=262_144)]
 
 
@@ -57,8 +58,8 @@ def read_hacking(viewer: Participant) -> dict[str, Any]:
 
 @router.post("/hacking/{question_id}/attempts", status_code=202)
 def attempt_hack(viewer: Participant, question_id: int, body: AttemptBody) -> dict[str, int]:
-    """A test input, never code."""
-    return {"id": hacking.submit(viewer.id, question_id, body.input)}
+    """A test input, never code, against the copy of the code the participant was reading."""
+    return {"id": hacking.submit(viewer.id, question_id, body.solution_id, body.input)}
 
 
 @router.post("/finish")

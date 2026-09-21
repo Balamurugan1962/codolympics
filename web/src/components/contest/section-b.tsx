@@ -1,6 +1,13 @@
 "use client";
 
-/** Section B: read the flawed code, craft an input that breaks it. */
+/**
+ * Section B: read the flawed code, craft an input that breaks it.
+ *
+ * The code comes in several languages. Each question opens in the language the
+ * participant prefers (asked at registration); changing it from the dropdown
+ * makes that the preference from then on. The section is re-read whenever an
+ * organiser changes it, so what is on screen is always what is published.
+ */
 import { useCallback, useEffect, useState } from "react";
 
 import { useContest, useEngineEvent } from "@/components/contest-provider";
@@ -17,7 +24,7 @@ import { ContestSkeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
-type Attempt = { id: number; question_id: number; state: string; valid_input: boolean | null; invalid_reason: string | null; hacked: boolean | null; points_awarded: number; created_at: string };
+type Attempt = { id: number; question_id: number; solution_id: number | null; state: string; valid_input: boolean | null; invalid_reason: string | null; hacked: boolean | null; points_awarded: number; created_at: string };
 type Data = { open: boolean; phase_ends_at: string | null; questions: HackView[]; attempts: Attempt[] };
 
 export function SectionB() {
@@ -25,27 +32,39 @@ export function SectionB() {
   const { toast } = useToast();
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [current, setCurrent] = useState(0);
+  const [currentId, setCurrentId] = useState<number | null>(null);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => { try { setData(await api.get<Data>("/api/phase1/hacking")); } catch (err) { setError(errorMessage(err)); } }, []);
   useEffect(() => { void load(); }, [load]);
   useEngineEvent("hack", load);
+  // Organisers edit, publish and reorder while the section is on screen.
+  useEngineEvent("hacking", load);
+  const preferred = state?.me?.preferred_language ?? null;
 
   if (error) return <PageBody><EmptyState icon={<Icon.Bug size={20} />} title="Section B is not open" body={error} /></PageBody>;
   if (!data) return <ContestSkeleton rail={3} code />;
   const finished = Boolean(state?.me?.p1_hacking_finished);
   const locked = !data.open || finished;
-  const q = data.questions[current];
+  // A reorder or an unpublish can move or remove the open question, so it is held by id.
+  const q = data.questions.find((x) => x.id === currentId) ?? data.questions[0];
+  const solution = q ? (q.solutions.find((x) => x.language === preferred) ?? q.solutions[0]) : undefined;
   const attempts = q ? data.attempts.filter((a) => a.question_id === q.id) : [];
   const inFlight = data.attempts.some((a) => a.state !== "done");
   const hackedIds = new Set(data.attempts.filter((a) => a.hacked).map((a) => a.question_id));
 
+  async function chooseLanguage(id: number) {
+    const language = q?.solutions.find((x) => x.id === id)?.language;
+    if (!language) return;
+    try { await api.put("/api/me/language", { language }); await refresh(); }
+    catch (err) { toast({ title: "Language not changed", description: errorMessage(err), tone: "error" }); }
+  }
+
   async function submit() {
-    if (!q) return;
+    if (!q || !solution) return;
     setBusy(true);
-    try { await api.post(`/api/phase1/hacking/${q.id}/attempts`, { input }); toast({ title: "Attempt submitted", description: "Judging. The result appears below.", tone: "info", duration: 2500 }); await load(); }
+    try { await api.post(`/api/phase1/hacking/${q.id}/attempts`, { input, solution_id: solution.id }); toast({ title: "Attempt submitted", description: "Judging. The result appears below.", tone: "info", duration: 2500 }); await load(); }
     catch (err) { toast({ title: "Not submitted", description: errorMessage(err), tone: "error" }); }
     finally { setBusy(false); }
   }
@@ -57,8 +76,8 @@ export function SectionB() {
           <div className="rounded-box border border-line bg-card">
             <div className="flex items-center justify-between border-b border-line px-4 py-3 text-[13px]"><span className="font-semibold">Solutions</span><span className="text-muted-foreground">{hackedIds.size} of {data.questions.length} hacked</span></div>
             <ol className="p-2">{data.questions.map((x, i) => (
-              <li key={x.id}><button onClick={() => { setCurrent(i); setInput(""); }} aria-current={i === current ? "true" : undefined}
-                className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${i === current ? "bg-brand-tint font-semibold text-ink" : "text-muted-foreground hover:bg-muted hover:text-ink"}`}>
+              <li key={x.id}><button onClick={() => { setCurrentId(x.id); setInput(""); }} aria-current={x.id === q?.id ? "true" : undefined}
+                className={`flex w-full items-center gap-2.5 rounded-box px-3 py-2 text-left text-[13px] ${x.id === q?.id ? "bg-brand-tint font-semibold text-ink" : "text-muted-foreground hover:bg-muted hover:text-ink"}`}>
                 <span className={`h-2 w-2 shrink-0 rounded-full ${hackedIds.has(x.id) ? "bg-green" : "border border-line-2"}`} /><span className="truncate">{i + 1}. {x.title}</span><span className="ml-auto text-[11.5px] tabular-nums text-faint">{x.hack_points}</span></button></li>
             ))}</ol>
             <div className="border-t border-line p-3">
@@ -76,13 +95,13 @@ export function SectionB() {
                 <AlertTitle>Section B is closed</AlertTitle>
               </Alert>
             )}
-            <HackQuestionView q={q} index={current} total={data.questions.length} hacked={hackedIds.has(q.id)} />
+            <HackQuestionView q={q} index={data.questions.indexOf(q)} total={data.questions.length} hacked={hackedIds.has(q.id)} solutionId={solution?.id} onSelectSolution={chooseLanguage} />
             <Section title="Your test input" description="Must obey the constraints. You are told whether it was valid and whether it broke the solution, nothing more.">
               <div className="space-y-3">
                 {hackedIds.has(q.id) && <Alert variant="success"><AlertDescription>You have already broken this solution. Further hacks on it score nothing. Move on.</AlertDescription></Alert>}
                 <Textarea rows={5} className="font-mono" disabled={locked} value={input} onChange={(e) => setInput(e.target.value)} placeholder={"e.g.\n-2 3"} aria-label="Test input" />
                 <div className="flex items-center gap-3">
-                  <Button onClick={submit} loading={busy || inFlight} disabled={locked || !input.trim()}><Icon.Bug size={14} /> {inFlight ? "Judging…" : "Submit hack"}</Button>
+                  <Button onClick={submit} loading={busy || inFlight} disabled={locked || !input.trim() || !solution}><Icon.Bug size={14} /> {inFlight ? "Judging…" : `Submit hack against the ${solution?.language ?? ""} code`}</Button>
                   {attempts.length > 0 && <span className="text-[12px] text-faint">{attempts.length} attempt{attempts.length === 1 ? "" : "s"} on this solution</span>}
                 </div>
                 {attempts.length > 0 && (

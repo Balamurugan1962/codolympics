@@ -10,13 +10,21 @@ export type Puzzle = {
   formatRegex: string | null; formatHint: string | null;
 };
 
+/** One copy of the flawed code. Every copy solves the same problem and every copy is wrong somewhere. */
+export type HackSolution = {
+  id: number; language: string; source: string; orderIndex: number;
+  /** A breaking input has been shown to break this copy. */
+  proven: boolean;
+  /** The input that proved it, an answer key, administrators only. */
+  breakingInput: string | null;
+};
+
 export type Hack = {
-  id: number; title: string; statementMd: string; constraintsMd: string; problemId: string; givenSource: string; givenLanguage: string;
+  id: number; title: string; statementMd: string; constraintsMd: string; problemId: string;
+  solutions: HackSolution[];
   hackPoints: number; failPenalty: number; orderIndex: number; published: boolean; voided: boolean; ready: boolean;
   /** Readiness that came from a zip rather than from a run on this install. */
   verifiedElsewhere: boolean;
-  /** The input that proved it breaks — an answer key, administrators only. */
-  breakingInput: string | null;
 };
 
 export type Standing = { participant_id: string; name: string; points: number; provisional: boolean; submitted_at: string | null; disqualified: boolean; advanced: boolean | null; rank: number };
