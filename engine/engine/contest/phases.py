@@ -84,6 +84,29 @@ def phase_announcement(phase: str, minutes: int | None) -> str | None:
     return body
 
 
+# How each timed phase is named when its deadline moves.
+PHASE_NAME: dict[str, str] = {
+    "p1_puzzles": "Section A",
+    "p1_hacking": "Section B",
+    "review": "The review",
+    "auction1": "Auction 1",
+    "coding1": "Coding round 1",
+    "auction2": "Auction 2",
+    "final": "The final round",
+}
+
+
+def extension_announcement(phase: str, minutes: int) -> str:
+    """Told to everyone when a round gets more time.
+
+    Only how much: the countdown on every page already shows the new deadline,
+    in each person's own time zone.
+    """
+    name = PHASE_NAME.get(phase, "The current round")
+    unit = "minute" if minutes == 1 else "minutes"
+    return f"**{name} has been extended by {minutes} {unit}.** The clock at the top has moved."
+
+
 def advance(actor_id: str, reason: str, acknowledge_warnings: bool = False) -> str:
     checks = advance_checks()
     nxt = checks["next"]
@@ -144,7 +167,7 @@ def publish_phase() -> None:
 
 
 def extend(actor_id: str, minutes: int, reason: str) -> None:
-    """Push the current round's deadline back. Every page sees it on its next poll."""
+    """Push the current round's deadline back and tell everyone. Pages see it on the next poll."""
     with db.transaction() as conn:
         c = lock_contest(conn, exclusive=True)
         if c.phase_ends_at is None:
@@ -152,6 +175,8 @@ def extend(actor_id: str, minutes: int, reason: str) -> None:
         base = max(c.phase_ends_at, clock.now())
         new_deadline = base + timedelta(minutes=minutes)
         conn.execute(sa.update(contest).values(phase_ends_at=new_deadline))
+        body = extension_announcement(c.phase, minutes)
+        announce_in(conn, body)
         audit(
             conn,
             actor_id=actor_id,
@@ -161,6 +186,7 @@ def extend(actor_id: str, minutes: int, reason: str) -> None:
             detail={"minutes": minutes},
         )
     publish_phase()
+    events.publish("announce", {"body_md": body})
 
 
 def set_registration(actor_id: str, open_: bool, reason: str) -> None:
