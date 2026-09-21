@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
+import { Hint } from "@/components/ui/hint";
 import { Input } from "@/components/ui/input";
 import { PageHeader, Section } from "@/components/ui/page";
 import { ListSkeleton, SectionSkeleton, Skeleton } from "@/components/ui/skeleton";
@@ -312,8 +313,8 @@ function PowerupFields({ row, draft, onEdit }: { row: Powerup; draft: Partial<Po
 
       <div className="grid gap-4 sm:grid-cols-3">
         <NumberField
-          label={row.kind === "shield" ? "Up for" : "Duration"}
-          hint={row.kind === "shield" ? "seconds, or -1 for until it absorbs an attack" : "seconds"}
+          label={row.kind === "shield" ? <span className="flex items-center gap-1">Up for <Hint>Seconds. Set -1 and a shield stays up until it absorbs an attack.</Hint></span> : "Duration"}
+          hint="seconds"
           min={row.kind === "shield" ? -1 : 1}
           max={3600}
           value={valueOf("durationSeconds")}
@@ -353,7 +354,7 @@ function NumberField({
   value,
   onChange,
 }: {
-  label: string;
+  label: React.ReactNode;
   hint: string;
   min?: number;
   max?: number;
