@@ -108,7 +108,8 @@ shield = Table(
 
 
 # A break from being attacked, after the cap was reached. `number` is how many
-# this person has had, counting this one; the length doubles with it.
+# this person has had, counting this one; the length doubles with it. No end
+# time means for the rest of the contest.
 attack_break = Table(
     "attack_break",
     metadata,
@@ -117,7 +118,7 @@ attack_break = Table(
     Column("number", Integer, nullable=False),
     Column("seconds", Integer, nullable=False),
     timestamp("starts_at", nullable=False),
-    timestamp("ends_at", nullable=False),
+    timestamp("ends_at"),
     created_at(),
     Index("attack_break_participant_idx", "participant_id", "ends_at"),
 )

@@ -111,7 +111,9 @@ def _attackable_targets(
             # With shields revealed, spending an attack is a decision, not a dice roll.
             "shielded": r.user_id in shielded,
             "blacked_out": r.user_id in blacked,
-            # In a break: attacks are refused until then. Shown to all; trying is refused anyway.
+            # In a break: attacks are refused until then, or for good when there is
+            # no end. Shown to all; trying is refused anyway.
+            "off_limits": r.user_id in on_break,
             "break_until": on_break.get(r.user_id),
         }
         for r in people

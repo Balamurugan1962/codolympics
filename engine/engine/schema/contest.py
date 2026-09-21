@@ -52,6 +52,8 @@ contest = Table(
     Column("attack_cap", Integer, nullable=False, server_default=text("0")),
     Column("attack_break_seconds", Integer, nullable=False, server_default=text("300")),
     Column("count_absorbed_attacks", Boolean, nullable=False, server_default=text("true")),
+    # 'break': a timed break that doubles. 'forever': off limits for the rest of the contest.
+    Column("after_cap", Text, nullable=False, server_default=text("'break'")),
     CheckConstraint("id = 1", name="contest_single_row"),
 )
 
