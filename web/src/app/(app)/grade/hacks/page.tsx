@@ -6,7 +6,7 @@ import { Icon } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SearchInput } from "@/components/ui/field";
-import { SimpleSelect } from "@/components/ui/select";
+import { SimpleCombobox } from "@/components/ui/combobox";
 import { PageBody, PageHeader, Section, Toolbar } from "@/components/ui/page";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -36,7 +36,7 @@ export default function HacksPage() {
         <Section padded={false}>
           <Toolbar actions={<span className="text-[12px] text-muted-foreground">{shown.length} of {rows.length}</span>}>
             <SearchInput className="w-64" placeholder="Filter by participant or solution" value={filter} onChange={(e) => setFilter(e.target.value)} />
-            <SimpleSelect className="w-40" value={outcome} onValueChange={setOutcome} aria-label="Outcome"
+            <SimpleCombobox className="w-40" value={outcome} onValueChange={setOutcome} aria-label="Outcome"
               options={[{ value: "all", label: "All outcomes" }, { value: "hacked", label: "Hacked" }, { value: "missed", label: "Did not break" }, { value: "invalid", label: "Invalid input" }, { value: "judging", label: "Judging" }] as const} />
           </Toolbar>
           <Table>

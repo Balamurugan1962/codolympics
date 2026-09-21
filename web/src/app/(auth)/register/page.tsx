@@ -9,14 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { SimpleSelect } from "@/components/ui/select";
+import { SimpleCombobox } from "@/components/ui/combobox";
 import { authClient } from "@/lib/auth-client";
 import { api, errorMessage } from "@/lib/client";
+import { LANGUAGES } from "@/lib/languages";
 
 // Not signed in yet, so /api/languages is unreachable; this list is what the
 // worker image ships. It only sets which language the editor opens in — every
 // language stays available on every question, changeable per submission.
-const LANGUAGES = [["cpp", "C++"], ["c", "C"], ["python", "Python 3"], ["pypy", "PyPy 3"], ["java", "Java 21"], ["javascript", "JavaScript"]];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -51,8 +51,8 @@ export default function RegisterPage() {
           <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required minLength={8} placeholder="At least 8 characters" />
         </Field>
         <Field label="Language to start in" help="Only the editor's default. You can switch language on any question, at any time, as often as you like.">
-          <SimpleSelect className="w-full" size="default" value={language} onValueChange={setLanguage}
-            options={LANGUAGES.map(([key, name]) => ({ value: key, label: name }))} />
+          <SimpleCombobox className="w-full" size="default" value={language} onValueChange={setLanguage}
+            options={LANGUAGES} />
         </Field>
         <Button type="submit" className="w-full" loading={busy}>Create account</Button>
       </form>

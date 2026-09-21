@@ -22,7 +22,7 @@
  * is thirty people waiting.
  */
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Countdown } from "@/components/countdown";
 import { Icon } from "@/components/icons";
@@ -35,7 +35,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { SimpleSelect } from "@/components/ui/select";
+import { SimpleCombobox } from "@/components/ui/combobox";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { Stat, StatRow } from "@/components/ui/stat";
@@ -426,13 +426,13 @@ export default function AuctionControlPage() {
               description="Balances as they stand. A participant sees their own and nobody else's. This table is yours."
               padded={false}
             >
-              <Table>
+              <Table className="[&_td]:px-3 [&_th]:px-3">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Participant</TableHead>
-                    <TableHead className="w-28 text-right">Balance</TableHead>
-                    <TableHead className="w-24 text-right">Owns</TableHead>
-                    <TableHead className="w-40">Can take this lot</TableHead>
+                    <TableHead className="w-px text-right">Balance</TableHead>
+                    <TableHead className="w-px text-right">Owns</TableHead>
+                    <TableHead className="w-px">This lot</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -440,19 +440,19 @@ export default function AuctionControlPage() {
                     const afford = open ? b.balance >= open.base_price : false;
                     return (
                       <TableRow key={b.id} className={cn(b.disqualified && "opacity-50")}>
-                        <TableCell className="font-medium">
+                        <TableCell className="max-w-0 truncate font-medium">
                           {b.name}
                           {b.disqualified && <Badge variant="neutral" className="ml-2">disqualified</Badge>}
                         </TableCell>
                         <TableCell className="text-right font-semibold tabular-nums">{b.balance.toLocaleString()}</TableCell>
                         <TableCell className="text-right tabular-nums">{b.owned}</TableCell>
-                        <TableCell className="text-[12.5px] text-muted-foreground">
+                        <TableCell className="text-[12.5px] whitespace-nowrap text-muted-foreground">
                           {!open ? (
-                            <span className="text-faint">—</span>
+                            <span className="text-faint">-</span>
                           ) : b.disqualified ? (
-                            "no, they are disqualified"
+                            "disqualified"
                           ) : afford ? (
-                            <span className="text-green-dark">yes, up to {b.balance.toLocaleString()}</span>
+                            <span className="text-green-dark">can bid</span>
                           ) : (
                             <span className="text-amber">short by {(open.base_price - b.balance).toLocaleString()}</span>
                           )}
@@ -644,7 +644,13 @@ function OfflineLot({
   act: (action: string, payload: Record<string, unknown>, done: string) => Promise<void>;
   paused: boolean;
 }) {
-  const eligible = balances.filter((b) => !b.disqualified);
+  const eligible = useMemo(() => balances.filter((b) => !b.disqualified), [balances]);
+  // Kept stable between renders: the page re-renders on every poll tick, and a
+  // new options array would reset what the administrator is mid-way through typing.
+  const bidders = useMemo(
+    () => eligible.map((b) => ({ value: b.id, label: b.name, hint: `${b.balance.toLocaleString()} left` })),
+    [eligible],
+  );
   const chosen = eligible.find((b) => b.id === winner) ?? null;
   const asked = Number(price);
   const typed = price.trim() !== "";
@@ -673,13 +679,13 @@ function OfflineLot({
 
       <div className="grid gap-3 border-t pt-4 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-end">
         <Field label="Who won it">
-          <SimpleSelect
-            className="w-full"
-            size="default"
+          <SimpleCombobox
             value={winner}
             onValueChange={onWinner}
-            placeholder="Pick the winning bidder"
-            options={eligible.map((b) => ({ value: b.id, label: `${b.name} — ${b.balance.toLocaleString()} left` }))}
+            clearable
+            placeholder="Type a name"
+            empty="Nobody by that name is bidding."
+            options={bidders}
           />
         </Field>
         <Field label="Hammer price" hint={`min ${lot.base_price}`}>

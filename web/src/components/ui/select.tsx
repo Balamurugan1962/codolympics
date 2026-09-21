@@ -5,6 +5,21 @@ import { cn } from "@/lib/utils"
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 
+/**
+ * The look of a floating list and its rows, shared with the combobox so a
+ * select and a type-to-filter select are the same thing to the eye. The
+ * highlight state differs per primitive (Select focuses the row, Combobox
+ * marks it `data-highlighted`), so each caller adds its own.
+ */
+const listPopupClass =
+  "relative max-h-(--available-height) min-w-[8rem] w-(--anchor-width) origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[closed]:animate-out data-[closed]:fade-out-0 data-[closed]:zoom-out-95 data-[open]:animate-in data-[open]:fade-in-0 data-[open]:zoom-in-95"
+const listItemClass =
+  "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2"
+const listItemIndicatorClass = "absolute right-2 flex size-3.5 items-center justify-center"
+
+/** One entry of a SimpleSelect or SimpleCombobox. */
+export type SelectOption<T extends string = string> = { value: T; label: React.ReactNode; hint?: string }
+
 function Select({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
@@ -74,10 +89,7 @@ function SelectContent({
       <SelectPrimitive.Positioner align={align} sideOffset={4} className="z-50">
         <SelectPrimitive.Popup
           data-slot="select-content"
-          className={cn(
-            "relative max-h-(--available-height) min-w-[8rem] w-(--anchor-width) origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[closed]:animate-out data-[closed]:fade-out-0 data-[closed]:zoom-out-95 data-[open]:animate-in data-[open]:fade-in-0 data-[open]:zoom-in-95",
-            className
-          )}
+          className={cn(listPopupClass, className)}
           {...props}
         >
           <SelectScrollUpButton />
@@ -110,16 +122,10 @@ function SelectItem({
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
-      className={cn(
-        "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
-        className
-      )}
+      className={cn(listItemClass, "focus:bg-accent focus:text-accent-foreground", className)}
       {...props}
     >
-      <span
-        data-slot="select-item-indicator"
-        className="absolute right-2 flex size-3.5 items-center justify-center"
-      >
+      <span data-slot="select-item-indicator" className={listItemIndicatorClass}>
         <SelectPrimitive.ItemIndicator>
           <CheckIcon className="size-4" />
         </SelectPrimitive.ItemIndicator>
@@ -209,7 +215,7 @@ function SimpleSelect<T extends string>({
 }: {
   value: T;
   onValueChange: (v: T) => void;
-  options: readonly { value: T; label: React.ReactNode; hint?: string }[];
+  options: readonly SelectOption<T>[];
   placeholder?: string;
   className?: string;
   size?: "sm" | "default";
@@ -217,7 +223,9 @@ function SimpleSelect<T extends string>({
   "aria-label"?: string;
 }) {
   return (
-    <Select value={value} onValueChange={(v) => onValueChange(v as T)} disabled={disabled}>
+    // Base UI resolves the trigger's text from `items`; without it the trigger
+    // shows the raw value (an id, an enum key) until the list is opened.
+    <Select items={options} value={value} onValueChange={(v) => onValueChange(v as T)} disabled={disabled}>
       <SelectTrigger size={size} className={className} aria-label={ariaLabel}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
@@ -233,4 +241,4 @@ function SimpleSelect<T extends string>({
   );
 }
 
-export { SimpleSelect };
+export { SimpleSelect, listPopupClass, listItemClass, listItemIndicatorClass };
