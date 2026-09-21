@@ -63,30 +63,49 @@ const GROWTH = 1.5;
 /** Long enough that a genuinely stuck job is worth mentioning, not so long nobody sees it. */
 const STALLED_AFTER_MS = 20_000;
 
-type Result = {
-  judgement: Judgement | null;
-  stage: Stage;
-  /** Nothing has changed for a while — the UI can say so rather than spinning silently. */
+/** What a follower is told about the thing it follows. */
+export type Followed<T> = {
+  value: T | null;
+  /** Nothing has changed for a while: the UI can say so rather than spinning silently. */
   stalled: boolean;
   /** The last poll failed. The next one is already scheduled; this is for the UI to be honest. */
   unreachable: boolean;
+  /** The server said the thing no longer exists (or the session did): polling stopped for good. */
+  gone: boolean;
   /** Ask now rather than waiting for the next tick. */
   poke: () => void;
 };
 
-export function useJudgement(submissionId: number | null, initial?: Judgement | null): Result {
-  const [judgement, setJudgement] = useState<Judgement | null>(initial ?? null);
+/**
+ * Follow one server-side job from "sent" to a terminal state.
+ *
+ * `url` is null when there is nothing to follow. `signature` is everything a
+ * competitor would see move; while it stays the same the polling backs off,
+ * and the moment it changes the loop watches closely again. `finished` says
+ * when to stop.
+ */
+export function useFollow<T>(url: string | null, opts: {
+  initial?: T | null;
+  signature: (value: T) => string;
+  finished: (value: T) => boolean;
+}): Followed<T> {
+  const { initial, signature, finished } = opts;
+  const [value, setValue] = useState<T | null>(initial ?? null);
   const [stalled, setStalled] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
+  const [gone, setGone] = useState(false);
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abort = useRef<AbortController | null>(null);
   const delay = useRef(FIRST_MS);
   const inFlight = useRef(false);
   const changedAt = useRef(Date.now());
-  /** A signature of everything a competitor would see move. */
   const seen = useRef("");
   const done = useRef(false);
+  // The callbacks are read through refs so a caller's inline arrow does not
+  // restart the loop on every render.
+  const decide = useRef({ signature, finished });
+  decide.current = { signature, finished };
 
   const clear = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -94,7 +113,7 @@ export function useJudgement(submissionId: number | null, initial?: Judgement | 
   };
 
   const poll = useCallback(async () => {
-    if (submissionId === null || done.current || inFlight.current) return;
+    if (url === null || done.current || inFlight.current) return;
     if (typeof document !== "undefined" && document.hidden) return;
 
     inFlight.current = true;
@@ -103,16 +122,22 @@ export function useJudgement(submissionId: number | null, initial?: Judgement | 
     abort.current = ctl;
 
     try {
-      const res = await fetch(`/api/submissions/${submissionId}`, { signal: ctl.signal, headers: { accept: "application/json" } });
+      const res = await fetch(url, { signal: ctl.signal, headers: { accept: "application/json" } });
+      if (res.status === 401 || res.status === 403 || res.status === 404) {
+        // Not a hiccup: the thing is not ours to see any more. Stop asking.
+        done.current = true;
+        setGone(true);
+        clear();
+        return;
+      }
       if (!res.ok) throw new Error(String(res.status));
-      const body = (await res.json()) as { judgement: Judgement };
-      const j = body.judgement;
+      const next = (await res.json()) as T;
       setUnreachable(false);
-      setJudgement(j);
+      setValue(next);
 
-      const signature = `${j.state}:${j.progress.done}/${j.progress.total}:${j.verdict ?? ""}`;
-      if (signature !== seen.current) {
-        seen.current = signature;
+      const sig = decide.current.signature(next);
+      if (sig !== seen.current) {
+        seen.current = sig;
         changedAt.current = Date.now();
         delay.current = FIRST_MS; // something moved: watch closely again
         setStalled(false);
@@ -121,7 +146,7 @@ export function useJudgement(submissionId: number | null, initial?: Judgement | 
         if (Date.now() - changedAt.current > STALLED_AFTER_MS) setStalled(true);
       }
 
-      if (j.state === "done") {
+      if (decide.current.finished(next)) {
         done.current = true;
         clear();
         return;
@@ -139,7 +164,7 @@ export function useJudgement(submissionId: number | null, initial?: Judgement | 
       clear();
       timer.current = setTimeout(() => void poll(), delay.current);
     }
-  }, [submissionId]);
+  }, [url]);
 
   const poke = useCallback(() => {
     if (done.current) return;
@@ -148,7 +173,7 @@ export function useJudgement(submissionId: number | null, initial?: Judgement | 
     void poll();
   }, [poll]);
 
-  // A new submission is a new life cycle.
+  // A new url is a new life cycle.
   useEffect(() => {
     done.current = false;
     delay.current = FIRST_MS;
@@ -156,8 +181,9 @@ export function useJudgement(submissionId: number | null, initial?: Judgement | 
     changedAt.current = Date.now();
     setStalled(false);
     setUnreachable(false);
-    setJudgement(initial ?? null);
-    if (submissionId === null) {
+    setGone(false);
+    setValue(initial ?? null);
+    if (url === null) {
       clear();
       return;
     }
@@ -169,7 +195,7 @@ export function useJudgement(submissionId: number | null, initial?: Judgement | 
     // `initial` is a starting value only; re-running on every render of it
     // would restart the poll loop continuously.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [submissionId, poll]);
+  }, [url, poll]);
 
   // A hidden tab costs the server nothing and learns nothing. Catch up on return.
   useEffect(() => {
@@ -181,5 +207,20 @@ export function useJudgement(submissionId: number | null, initial?: Judgement | 
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [poke]);
 
-  return { judgement, stage: stageOf(judgement), stalled, unreachable, poke };
+  return { value, stalled, unreachable, gone, poke };
+}
+
+type Result = Omit<Followed<Judgement>, "value"> & { judgement: Judgement | null; stage: Stage };
+
+export function useJudgement(submissionId: number | null, initial?: Judgement | null): Result {
+  const { value, ...rest } = useFollow<{ judgement: Judgement }>(
+    submissionId === null ? null : `/api/submissions/${submissionId}`,
+    {
+      initial: initial ? { judgement: initial } : null,
+      signature: ({ judgement: j }) => `${j.state}:${j.progress.done}/${j.progress.total}:${j.verdict ?? ""}`,
+      finished: ({ judgement: j }) => j.state === "done",
+    },
+  );
+  const judgement = value?.judgement ?? null;
+  return { judgement, stage: stageOf(judgement), ...rest };
 }

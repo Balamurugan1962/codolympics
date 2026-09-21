@@ -8,9 +8,10 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { useContest, useEngineEvent } from "@/components/contest-provider";
+import { Console, type ConsoleTab, explain, useRun } from "@/components/contest/console";
 import { Icon } from "@/components/icons";
 import { Markdown } from "@/components/markdown";
 import { StatementView } from "@/components/problems/statement-view";
@@ -18,15 +19,15 @@ import { Badge, VerdictBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
-import { SimpleSelect } from "@/components/ui/select";
+import { SimpleCombobox } from "@/components/ui/combobox";
 import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SplitPane } from "@/components/ui/split-pane";
+import { SplitPane, VerticalSplit } from "@/components/ui/split-pane";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 import { cn } from "@/lib/utils";
-import { useJudgement, type Judgement as LiveJudgement, type Stage } from "@/lib/use-judgement";
+import { useJudgement, type Judgement as LiveJudgement } from "@/lib/use-judgement";
 
 const CodeEditor = dynamic(() => import("@/components/editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-full bg-[#1e1e1e]" /> });
 
@@ -37,7 +38,8 @@ type Question = {
   samples: { input: string; output: string }[];
   hints: { total: number; revealed: { idx: number; body_md: string; price: number }[]; next: { idx: number; price: number } | null };
   history: { id: number; language: string; created_at: string; judgement: Judgement }[];
-  draft: { source: string; language: string; updated_at: string } | null;
+  // Newest first: the first is the language they were last writing in.
+  drafts: { source: string; language: string; updated_at: string }[];
   submit: { in_flight: boolean; cooldown_ms: number };
   awarded_at: string;
 };
@@ -65,9 +67,15 @@ export default function WorkspacePage() {
   const [saved, setSaved] = useState<"saved" | "saving" | "failed" | "idle">("idle");
   const [tab, setTab] = useState<"problem" | "submissions" | "hints">("problem");
   const [hintDialog, setHintDialog] = useState(false);
+  const [resetDialog, setResetDialog] = useState(false);
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const [panel, setPanel] = useState(true);
+  const [consoleOpen, setConsoleOpen] = useState(true);
+  const [consoleTab, setConsoleTab] = useState<ConsoleTab>("tests");
+  const [customInput, setCustomInput] = useState("");
+  const { run, sending, busy: running, start: startRun } = useRun(id);
+  // What was written in each language, so switching back brings it up again.
+  const codeByLang = useRef<Record<string, string>>({});
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedDraft = useRef(false);
 
@@ -77,10 +85,14 @@ export default function WorkspacePage() {
       setQ(data);
       if (!loadedDraft.current) {
         loadedDraft.current = true;
-        const local = safeGet(`draft:${id}`);
-        const remote = data.draft;
-        const pick = local && (!remote || local.at > Date.parse(remote.updated_at)) ? local : remote ? { source: remote.source, language: remote.language } : null;
-        if (pick) { setSource(pick.source); setLanguage(pick.language); } else { setLanguage(preferred); setSource(TEMPLATE[preferred] ?? TEMPLATE.cpp); }
+        // The server copy of each language, then anything newer this browser kept.
+        for (const d of data.drafts) {
+          const local = safeGet(`draft:${id}:${d.language}`);
+          codeByLang.current[d.language] = local && local.at > Date.parse(d.updated_at) ? local.source : d.source;
+        }
+        const lang = data.drafts[0]?.language ?? preferred;
+        setLanguage(lang);
+        setSource(codeByLang.current[lang] ?? TEMPLATE[lang] ?? TEMPLATE.cpp);
       }
     } catch (err) { setError(errorMessage(err)); }
   }, [id]);
@@ -122,7 +134,8 @@ export default function WorkspacePage() {
 
   function onChange(next: string) {
     setSource(next);
-    safeSet(`draft:${id}`, { source: next, language, at: Date.now() });
+    codeByLang.current[language] = next;
+    safeSet(`draft:${id}:${language}`, { source: next, at: Date.now() });
     setSaved("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
@@ -134,16 +147,27 @@ export default function WorkspacePage() {
   const submit = useCallback(async () => {
     if (!q) return;
     setBusy(true);
-    try { await api.post("/api/submissions", { question_id: id, language, source }); setTab("submissions"); setPanel(true); await load(); }
+    try { await api.post("/api/submissions", { question_id: id, language, source }); setTab("submissions"); setConsoleTab("result"); setConsoleOpen(true); await load(); }
     catch (err) { toast({ title: "Not submitted", description: errorMessage(err), tone: "error" }); }
     finally { setBusy(false); }
   }, [q, id, language, source, load, toast]);
 
+  const runSamples = useCallback(async () => {
+    if (!q || running) return;
+    setConsoleTab("tests"); setConsoleOpen(true);
+    try { await startRun(language, source, customInput.trim() === "" ? null : customInput); }
+    catch (err) { toast({ title: "Not run", description: errorMessage(err), tone: "error" }); }
+  }, [q, running, startRun, language, source, customInput, toast]);
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); void submit(); } };
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "Enter") { e.preventDefault(); void submit(); }
+      if (e.key === "'") { e.preventDefault(); void runSamples(); }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [submit]);
+  }, [submit, runSamples]);
 
   async function cancel() { try { await api.del("/api/submissions/current"); await load(); } catch (err) { toast({ title: "Could not cancel", description: errorMessage(err), tone: "error" }); } }
   async function buyHint() {
@@ -212,30 +236,42 @@ export default function WorkspacePage() {
   const codePane = (
     <div className="flex h-full flex-col bg-[#1e1e1e]">
       <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-3 py-2 text-white/80">
-        <SimpleSelect
-          className="w-44 border-white/20 bg-white/10 text-white hover:border-white/40 [&_svg]:text-white/60"
+        <SimpleCombobox
+          className="w-44 [&_svg]:text-white/60"
+          inputClassName="border-white/20 bg-white/10 text-white hover:border-white/40 focus-visible:border-brand-bright"
           value={language}
           aria-label="Language"
           onValueChange={(v) => {
+            // Each language keeps its own code: first the boilerplate, then
+            // whatever was last written in it. Saving on the switch makes it
+            // the newest draft, so a reload opens in the language left selected.
+            codeByLang.current[language] = source;
+            const next = codeByLang.current[v] ?? TEMPLATE[v] ?? "";
             setLanguage(v);
-            if (!source.trim()) setSource(TEMPLATE[v] ?? "");
+            setSource(next);
+            void api.put(`/api/drafts/${id}`, { source: next, language: v }).catch(() => undefined);
           }}
           options={languages.length === 0 ? [{ value: language, label: language }] : languages.map((l) => ({ value: l.key, label: l.name }))}
         />
-        <button className="rounded px-2 py-1 text-xs hover:bg-white/10" onClick={() => { if (confirm("Replace your code with the template?")) onChange(TEMPLATE[language] ?? ""); }}>Reset</button>
+        <button className="rounded px-2 py-1 text-xs hover:bg-white/10" onClick={() => setResetDialog(true)}>Reset</button>
         <span className="flex items-center gap-1 text-xs"><button className="rounded px-1.5 hover:bg-white/10" onClick={() => setFontSize((f) => Math.max(11, f - 1))} aria-label="Smaller text">A−</button><button className="rounded px-1.5 hover:bg-white/10" onClick={() => setFontSize((f) => Math.min(20, f + 1))} aria-label="Larger text">A+</button></span>
         <span className={`ml-auto text-xs ${saved === "failed" ? "font-semibold text-red" : "text-white/50"}`} aria-live="polite">{saved === "saving" ? "Saving…" : saved === "saved" ? "Saved" : saved === "failed" ? "Not saved!" : ""}</span>
       </div>
-      <div className="min-h-0 flex-1"><CodeEditor value={source} language={language} onChange={onChange} height="100%" fontSize={fontSize} /></div>
-      {latest && (
-        <ResultPanel j={latest} stage={following === null ? "done" : stage} stalled={stalled} unreachable={unreachable}
-          sampleCount={q.sample_count} open={panel} onToggle={() => setPanel((p) => !p)} />
-      )}
+      <VerticalSplit storageKey="console" open={consoleOpen}
+        top={<CodeEditor value={source} language={language} onChange={onChange} height="100%" fontSize={fontSize} />}
+        bottom={
+          <Console tab={consoleTab} onTab={setConsoleTab} open={consoleOpen} onToggle={() => setConsoleOpen((o) => !o)}
+            tests={{ run, sending, samples: q.samples, customInput, onCustomInput: setCustomInput }}
+            verdict={{ judgement: latest, stage: following === null ? "done" : stage, stalled, unreachable }} />
+        } />
       <div className="flex items-center gap-3 border-t border-white/10 px-3 py-2">
-        <span className="hidden text-xs text-white/50 sm:inline"><Kbd>Ctrl</Kbd> + <Kbd>Enter</Kbd> to submit</span>
+        <span className="hidden text-xs text-white/50 sm:inline"><Kbd>Ctrl</Kbd> + <Kbd>'</Kbd> to run, <Kbd>Ctrl</Kbd> + <Kbd>Enter</Kbd> to submit</span>
         <div className="ml-auto flex items-center gap-2">
           {inFlight && <Button variant="ghost" size="sm" className="!text-white/70 hover:!bg-white/10" onClick={cancel}>Cancel</Button>}
-          <Button onClick={submit} loading={busy || inFlight} disabled={!canSubmit}><Icon.Play /> 
+          <Button variant="outline" className="border-white/20 bg-transparent !text-white hover:!bg-white/10" onClick={runSamples} loading={running} disabled={running || q.status === "void"}>
+            <Icon.Terminal /> {running ? "Running…" : "Run"}
+          </Button>
+          <Button onClick={submit} loading={busy || inFlight} disabled={!canSubmit}><Icon.Play />
             {inFlight ? "Judging…" : cooldown > 0 ? `Wait ${Math.ceil(cooldown / 1000)}s` : "Submit"}
           </Button>
         </div>
@@ -244,131 +280,39 @@ export default function WorkspacePage() {
   );
 
   return (
-    <div className="workspace">
+    <Workspace>
       <SplitPane left={problemPane} right={codePane} storageKey="workspace" />
+      <Modal open={resetDialog} onClose={() => setResetDialog(false)} title="Start this language over?">
+        <p className="text-sm">Your {languages.find((l) => l.key === language)?.name ?? language} code for this question is replaced with the blank template. Other languages keep theirs. This cannot be undone.</p>
+        <div className="mt-4 flex justify-end gap-2"><Button variant="outline" onClick={() => setResetDialog(false)}>Keep my code</Button><Button variant="destructive" onClick={() => { onChange(TEMPLATE[language] ?? ""); setResetDialog(false); }}>Reset</Button></div>
+      </Modal>
       <Modal open={hintDialog} onClose={() => setHintDialog(false)} title="Buy a hint">
         <p className="text-sm">Reveal hint <strong>{(q.hints.next?.idx ?? 0) + 1}</strong> for <strong>{q.hints.next?.price}</strong> coins? This cannot be undone.</p>
         <div className="mt-4 flex justify-end gap-2"><Button variant="outline" onClick={() => setHintDialog(false)}>Cancel</Button><Button onClick={buyHint} loading={busy}>Buy for {q.hints.next?.price}</Button></div>
       </Modal>
-    </div>
+    </Workspace>
   );
 }
 
 /**
- * What a verdict means, in words a competitor can act on.
- *
- * Never the abbreviation on its own: "TLE" teaches nothing to someone seeing
- * it for the first time, and a contest is not the place to learn the judge's
- * vocabulary. Where the failure is on a sample it says so, because that means
- * the output format is wrong rather than the algorithm.
+ * Fills the viewport below whatever the shell put above it. The shell can add
+ * a banner (connection lost, disqualified) at any moment, so the top edge is
+ * measured rather than assumed, and re-measured when the page or window
+ * changes size.
  */
-function explain(j: { verdict: string | null; state: string; first_fail: number | null; total: number | null; cancelled: boolean; progress: { done: number; total: number } }, sampleCount: number): string {
-  if (j.cancelled) return "You cancelled this submission. It was not judged and does not count.";
-  const at = j.first_fail !== null ? `test ${j.first_fail + 1}${j.total ? ` of ${j.total}` : ""}` : "a hidden test";
-  const onSample = j.first_fail !== null && j.first_fail < sampleCount;
-  switch (j.verdict) {
-    case "AC": return "Every testcase passed. This question is solved, and it stays solved.";
-    case "WA": return `Wrong answer on ${at}.${onSample ? " That is one of the samples. Check your output format before your logic." : ""}`;
-    case "TLE": return `Too slow on ${at}. The logic may be right; the complexity is not.`;
-    case "MLE": return `Used too much memory on ${at}.`;
-    case "OLE": return `Printed far too much on ${at} — check for a stray debug print or a loop that never ends.`;
-    case "RE": return `Crashed on ${at} — an exception, a bad index, or a non-zero exit code.`;
-    case "CE": return "It did not compile. The compiler's own output is below.";
-    case "IE": return "The judge failed on our side. This is not counted against you. Tell an organiser if it happens again.";
-    default: return "";
-  }
-}
-
-/** The five things that can be true, and how each one should look. */
-const TONE: Record<string, { text: string; bar: string; label: string }> = {
-  AC: { text: "text-green-bright", bar: "bg-green-bright", label: "Accepted" },
-  WA: { text: "text-[#ff8a80]", bar: "bg-[#ff8a80]", label: "Wrong answer" },
-  TLE: { text: "text-[#ff8a80]", bar: "bg-[#ff8a80]", label: "Time limit exceeded" },
-  MLE: { text: "text-[#ff8a80]", bar: "bg-[#ff8a80]", label: "Memory limit exceeded" },
-  OLE: { text: "text-[#ff8a80]", bar: "bg-[#ff8a80]", label: "Output limit exceeded" },
-  RE: { text: "text-[#ff8a80]", bar: "bg-[#ff8a80]", label: "Runtime error" },
-  CE: { text: "text-[#ffcc66]", bar: "bg-[#ffcc66]", label: "Compile error" },
-  IE: { text: "text-white/70", bar: "bg-white/40", label: "Judge error" },
-};
-
-const STAGE_LABEL: Record<Stage, string> = {
-  sending: "Sending to the judge",
-  queued: "Queued, waiting for a free slot",
-  running: "Running",
-  done: "",
-  gone: "",
-};
-
-/**
- * The live state of the newest submission, in the code pane's footer.
- *
- * While it runs this is the only thing on screen that changes, so it says
- * which stage it is at and how far through — a bar that fills is the
- * difference between "it is working" and "it has hung". When it lands it
- * becomes the verdict and stops moving.
- */
-function ResultPanel({ j, stage, stalled, unreachable, sampleCount, open, onToggle }: {
-  j: LiveJudgement; stage: Stage; stalled: boolean; unreachable: boolean; sampleCount: number; open: boolean; onToggle: () => void;
-}) {
-  const running = stage !== "done";
-  const tone = j.verdict ? TONE[j.verdict] : null;
-  const pct = j.progress.total ? Math.round((100 * j.progress.done) / j.progress.total) : 0;
-
-  return (
-    <div className="shrink-0 border-t border-white/10 bg-[#252526] text-white/90">
-      <button className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-white/5" onClick={onToggle} aria-expanded={open}>
-        <Icon.ChevronDown size={14} className={open ? "" : "-rotate-90"} />
-        {running ? (
-          <>
-            <Icon.Spinner size={13} className="text-brand-bright" />
-            <span className="font-semibold">
-              {stage === "running" && j.progress.total ? `Running test ${Math.min(j.progress.done + 1, j.progress.total)} of ${j.progress.total}` : STAGE_LABEL[stage]}
-            </span>
-          </>
-        ) : (
-          <>
-            <span className={cn("size-1.5 rounded-full", tone?.bar ?? "bg-white/40")} />
-            <span className={cn("font-semibold", tone?.text ?? "text-white/80")}>{j.cancelled ? "Cancelled" : (tone?.label ?? j.verdict ?? "Pending")}</span>
-          </>
-        )}
-        <span className="ml-auto text-[11.5px] tabular-nums text-white/45">
-          {!running && j.verdict !== "CE" && j.total ? `${j.passed}/${j.total} tests` : ""}
-          {!running && j.max_time_ms ? ` · ${j.max_time_ms.toFixed(0)} ms` : ""}
-        </span>
-      </button>
-
-      {/* The bar lives outside the collapsible part: someone who has folded the
-          panel away still needs to know whether anything is happening. */}
-      {running && (
-        <div className="h-0.5 w-full bg-white/10">
-          <div className="h-0.5 bg-brand-bright transition-[width] duration-300" style={{ width: `${stage === "running" ? Math.max(4, pct) : 2}%` }} />
-        </div>
-      )}
-
-      {open && (
-        <div className="max-h-48 overflow-auto px-3 pb-3 text-[12.5px]">
-          {running ? (
-            <p className="text-white/60">
-              {stalled
-                ? "Still waiting on the judge. Nothing is lost. It is queued and will be judged."
-                : unreachable
-                  ? "Lost contact with the server for a moment. Still trying; your submission is safe."
-                  : "Your submission is with the judge. You can keep editing while it runs."}
-            </p>
-          ) : (
-            <>
-              <p className="text-white/80">{explain(j, sampleCount)}</p>
-              {j.verdict === "CE" && j.compile_output && (
-                <pre className="mt-2 max-h-32 overflow-auto rounded bg-black/40 p-2 text-[11.5px] leading-relaxed whitespace-pre-wrap text-[#ffcc66]">
-                  {j.compile_output}
-                </pre>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
+function Workspace({ className, ...props }: React.ComponentProps<"div">) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => el.style.setProperty("--workspace-top", `${Math.round(el.getBoundingClientRect().top + window.scrollY)}px`);
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(document.body);
+    window.addEventListener("resize", measure);
+    return () => { watch.disconnect(); window.removeEventListener("resize", measure); };
+  }, []);
+  return <div ref={ref} className={cn("workspace", className)} {...props} />;
 }
 
 function History({ history, sampleCount }: { history: Question["history"]; sampleCount: number; onRestore: (h: Question["history"][number]) => void }) {
@@ -385,7 +329,7 @@ function History({ history, sampleCount }: { history: Question["history"]; sampl
   );
 }
 
-function safeGet(key: string): { source: string; language: string; at: number } | null { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } }
+function safeGet(key: string): { source: string; at: number } | null { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } }
 function safeSet(key: string, value: unknown) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* the server copy still saves */ } }
 
 /**
@@ -399,7 +343,7 @@ function safeSet(key: string, value: unknown) { try { localStorage.setItem(key, 
  */
 function WorkspaceSkeleton() {
   return (
-    <div className="workspace grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" role="status" aria-label="Loading" aria-busy>
+    <Workspace className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" role="status" aria-label="Loading" aria-busy>
       <div className="flex h-full flex-col border-r bg-card">
         <div className="flex items-center gap-3 border-b px-4 py-2.5">
           <Skeleton className="size-4" />
@@ -431,13 +375,16 @@ function WorkspaceSkeleton() {
             <div key={i} className="h-2.5 animate-pulse rounded-[3px] bg-white/5" style={{ width: `${w * 6}%` }} />
           ))}
         </div>
-        {/* The submit bar is the editor's floor. Without it here the editor
-            fills the pane and then shrinks when the real bar arrives. */}
+        {/* The console and the submit bar are the editor's floor. Without them
+            here the editor fills the pane and then shrinks when they arrive. */}
+        <div className="h-[38%] shrink-0 border-t border-white/10 bg-[#252526] px-3 pt-2">
+          <div className="flex gap-3"><div className="h-4 w-20 animate-pulse rounded-[3px] bg-white/10" /><div className="h-4 w-14 animate-pulse rounded-[3px] bg-white/5" /></div>
+        </div>
         <div className="flex shrink-0 items-center gap-3 border-t border-white/10 px-3 py-2">
           <div className="hidden h-4 w-40 animate-pulse rounded-[3px] bg-white/5 sm:block" />
           <div className="ml-auto h-9 w-24 animate-pulse rounded-[3px] bg-white/10" />
         </div>
       </div>
-    </div>
+    </Workspace>
   );
 }

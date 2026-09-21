@@ -353,8 +353,10 @@
 .pane::-webkit-scrollbar-thumb:hover { background: var(--faint); background-clip: content-box; }
 .pane::-webkit-scrollbar-track { background: transparent; }
 
-/* Full-height workspace below the shell (the 56px navbar is all there is). */
-.workspace { height: calc(100vh - 56px); }
+/* Full-height workspace below the shell. `--workspace-top` is measured by the
+   page (navbar, phase rail and any banner above it); the fallback is navbar
+   plus rail for the first paint. */
+.workspace { height: calc(100dvh - var(--workspace-top, 97px)); }
 
 /* Screen-reader only. */
 .sr-only {
