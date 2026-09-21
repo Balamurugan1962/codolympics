@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 
 type Attempt = {
   id: number; input: string; state: string; valid_input: boolean | null; invalid_reason: string | null; hacked: boolean | null;
-  verdict: string | null; points_awarded: number; created_at: string; ended_at: string | null; solution_id: number | null;
+  verdict: string | null; message: string | null; points_awarded: number; created_at: string; ended_at: string | null; solution_id: number | null;
 };
 type Data = {
   participant: { id: string; name: string; username: string | null };
@@ -96,6 +96,7 @@ export default function ParticipantHackPage() {
             <Timeline>
               {q.attempts.map((a, i) => {
                 const done = a.state === "done";
+                const broken = done && a.verdict === "IE";
                 const tone = !done ? "info" : a.valid_input === false ? "warning" : a.hacked ? "success" : "destructive";
                 const took = a.ended_at ? `${Math.max(0, Math.round((Date.parse(a.ended_at) - Date.parse(a.created_at)) / 1000))} s to judge` : null;
                 const language = q.solutions.find((s) => s.id === a.solution_id)?.language;
@@ -109,14 +110,14 @@ export default function ParticipantHackPage() {
                     href={fromHere(`/admin/judge/hack/${a.id}`, here)}
                     chips={
                       <>
-                        {!done ? <Badge variant="info">judging</Badge> : a.valid_input === false ? <Badge variant="warning">invalid input</Badge> : a.hacked ? <Badge variant="success">hacked</Badge> : <Badge variant="destructive">did not break it</Badge>}
+                        {!done ? <Badge variant="info">judging</Badge> : a.valid_input === false ? <Badge variant="warning">invalid input</Badge> : broken ? <Badge variant="destructive">judge error</Badge> : a.hacked ? <Badge variant="success">hacked</Badge> : <Badge variant="destructive">did not break it</Badge>}
                         {language && <span className="text-[12px] text-muted-foreground">against the {languageName(language)} copy</span>}
                         <span className={cn("text-[12.5px] font-semibold tabular-nums", a.points_awarded > 0 ? "text-brand-deep" : a.points_awarded < 0 ? "text-destructive" : "text-faint")}>
                           {a.points_awarded > 0 ? "+" : ""}{a.points_awarded}
                         </span>
                       </>
                     }
-                    summary={[a.invalid_reason, a.verdict ? `judge said ${a.verdict}` : null, took].filter(Boolean).join(", ") || undefined}
+                    summary={[a.invalid_reason, broken ? `the judge could not run it: ${a.message ?? "no reason given"}` : a.verdict ? `judge said ${a.verdict}` : null, took].filter(Boolean).join(", ") || undefined}
                   >
                     <Plain>{a.input}</Plain>
                   </Event>

@@ -373,7 +373,6 @@ function Row({
   children: React.ReactNode;
 }) {
   const k = KIND[w.kind];
-  // A practice run keeps neither code nor output, so there is nothing to open.
   const openable = hrefOf(w) !== null;
   return (
     <TableRow
