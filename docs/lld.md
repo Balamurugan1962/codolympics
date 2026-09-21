@@ -275,8 +275,9 @@ p1_hack_question                -- Section B
   title            text not null
   statement_md     text not null
   constraints_md   text not null
-  given_source     text not null    -- SHOWN to participants; reading it is the task
-  given_language   text not null
+  -- the flawed code lives in p1_hack_solution, one row per language:
+  --   language, source (SHOWN to participants; reading it is the task),
+  --   proven, breaking_input (an answer key, never sent)
   reference_source text not null    -- NEVER served to anyone (US-J7-02)
   reference_language text not null
   validator_py     text not null    -- defines a legal test input
@@ -485,8 +486,8 @@ in the request*, rather than against stored testcases:
 Nothing else in Phase 1 executes anything.
 
 **Nothing secret reaches the browser.** `p1_question.answer_key`, `model_answer`,
-`p1_hack_question.reference_source` and `validator_py` are excluded from every
-participant-facing query, exactly as `jury_detail` is in Phase 2. `given_source` is
+`p1_hack_solution.breaking_input` and `validator_py` are excluded from every
+participant-facing query, exactly as `jury_detail` is in Phase 2. The solution `source` is
 the deliberate exception — it is meant to be read. A contract test asserts the rest.
 
 **Format is the client's job; correctness is the validator's.** `format_regex` and
