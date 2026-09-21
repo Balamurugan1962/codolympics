@@ -19,6 +19,7 @@
  * longest is the one that is wrong. What has finished is a record you search,
  * so it is newest-first, filterable and paged from the URL.
  */
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Icon } from "@/components/icons";
@@ -36,7 +37,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { api } from "@/lib/client";
 import { cn } from "@/lib/utils";
 
-import { WorkDrawer } from "./work-drawer";
 import { Elapsed, KIND, STATE_WORDS, type Work, type WorkKind, duration } from "./work";
 
 type Feed = {
@@ -55,14 +55,15 @@ const IDLE_MS = 6000;
 const KINDS: ({ key: "all"; label: string } | { key: WorkKind; label: string })[] = [
   { key: "all", label: "Everything" },
   { key: "submission", label: "Code" },
+  { key: "run", label: "Runs" },
   { key: "hack", label: "Hacks" },
   { key: "validator", label: "Validator" },
 ];
 
 export default function JudgePage() {
+  const router = useRouter();
   const [feed, setFeed] = useState<Feed | null>(null);
   const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState<Work | null>(null);
   const [kind, setKind] = useState<"all" | WorkKind>("all");
   const [filter, setFilter] = useState("");
   const inFlight = useRef(false);
@@ -218,7 +219,7 @@ export default function JudgePage() {
                 </TableHeader>
                 <TableBody>
                   {running.map((w) => (
-                    <Row key={w.key} w={w} selected={open?.key === w.key} onOpen={() => setOpen(w)}>
+                    <Row key={w.key} w={w} onOpen={() => { if (w.ref) router.push(`/admin/judge/${w.ref}`); }}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className={cn("size-1.5 shrink-0 rounded-full", w.state === "running" ? "animate-pulse bg-blue" : "bg-amber-bg")} />
@@ -326,10 +327,10 @@ export default function JudgePage() {
                   </TableHeader>
                   <TableBody>
                     {paged.rows.map((w) => (
-                      <Row key={w.key} w={w} selected={open?.key === w.key} onOpen={() => setOpen(w)} time>
+                      <Row key={w.key} w={w} onOpen={() => { if (w.ref) router.push(`/admin/judge/${w.ref}`); }} time>
                         <TableCell>
                           <div className="flex min-w-0 items-center gap-1.5">
-                            {w.kind === "submission" ? <VerdictBadge verdict={w.verdict} /> : w.label ? <Badge variant={w.tone}>{w.label}</Badge> : null}
+                            {w.kind === "submission" || w.kind === "run" ? <VerdictBadge verdict={w.verdict} /> : w.label ? <Badge variant={w.tone}>{w.label}</Badge> : null}
                             <span className="truncate text-[12.5px] text-muted-foreground" title={w.outcome ?? ""}>
                               {w.outcome}
                             </span>
@@ -349,7 +350,6 @@ export default function JudgePage() {
         </div>
       )}
 
-      <WorkDrawer work={open} onClose={() => setOpen(null)} />
     </PageBody>
   );
 }
@@ -361,32 +361,31 @@ export default function JudgePage() {
  */
 function Row({
   w,
-  selected,
   onOpen,
   time = false,
   children,
 }: {
   w: Work;
-  selected: boolean;
   onOpen: () => void;
   time?: boolean;
   children: React.ReactNode;
 }) {
   const k = KIND[w.kind];
+  // A practice run keeps neither code nor output, so there is nothing to open.
+  const openable = w.ref !== null;
   return (
     <TableRow
-      data-state={selected ? "selected" : undefined}
-      tabIndex={0}
-      role="button"
-      onClick={onOpen}
+      tabIndex={openable ? 0 : undefined}
+      role={openable ? "button" : undefined}
+      onClick={openable ? onOpen : undefined}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        if (openable && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
           onOpen();
         }
       }}
       className={cn(
-        "cursor-pointer focus-visible:bg-accent focus-visible:outline-none",
+        openable && "cursor-pointer focus-visible:bg-accent focus-visible:outline-none",
         w.state === "error" && "bg-red-tint/40",
         w.superseded && "opacity-55",
       )}
