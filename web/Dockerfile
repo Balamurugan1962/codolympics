@@ -9,7 +9,6 @@ RUN pnpm build
 
 FROM node:22-slim
 WORKDIR /app
-RUN corepack enable
 ENV NODE_ENV=production
 COPY --from=build /app ./
 # Never run as root.
@@ -17,4 +16,7 @@ RUN useradd --system --uid 10002 web && chown -R web /app
 USER web
 EXPOSE 3000
 # The engine owns the schema and migrates it; the web app only serves.
-CMD ["pnpm", "start"]
+# Started with node directly: `pnpm start` would have corepack fetch pnpm at
+# run time, and the hall has no internet (nor does the web user have a home
+# to cache it in).
+CMD ["node", "node_modules/next/dist/bin/next", "start"]
