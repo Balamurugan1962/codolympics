@@ -475,3 +475,32 @@ def test_every_purchase_and_attack_is_recorded(market: dict[str, int]) -> None:
     attack("alice", "bob", market)
     events = rows(sa.select(powerup_event).order_by(powerup_event.c.id))
     assert [e.kind for e in events] == ["purchase", "use"] and events[1].target_id == "bob"
+
+
+def test_the_organiser_sees_what_they_bought_and_used_and_what_landed_on_them(
+    market: dict[str, int],
+) -> None:
+    from engine.admin import dossier
+
+    buying.buy("alice", market["blackout"], rid())
+    buying.buy("bob", market["shield"], rid())
+    assert attack("alice", "bob", market)["outcome"] == "shielded"
+
+    alice = dossier.powerups("alice")
+    kinds = [(e["kind"], e["actor"], e["target"], e["mine"]) for e in alice["events"]]
+    assert kinds == [("blocked", "Alice", "Bob", True), ("purchase", "Alice", None, True)]
+    assert alice["events"][1]["cost"] == 100 and alice["events"][1]["powerup"] == "Blackout"
+    assert all(e["at"] for e in alice["events"])
+    assert [(h["name"], h["quantity"], h["purchased"]) for h in alice["holdings"]] == [
+        ("Blackout", 0, 1)
+    ]
+
+    bob = dossier.powerups("bob")
+    assert [(e["kind"], e["mine"]) for e in bob["events"]] == [
+        ("blocked", False),
+        ("purchase", True),
+    ]
+    assert len(bob["shields"]) == 1
+    assert bob["shields"][0]["absorbed_by"] == "Alice" and not bob["shields"][0]["up"]
+
+    raises_code("not_found", lambda: dossier.powerups("nobody"))

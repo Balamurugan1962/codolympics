@@ -28,7 +28,11 @@ from engine.schema import (
     p1_hack_solution,
     p1_question,
     participant,
+    powerup,
+    powerup_event,
+    powerup_inventory,
     question,
+    shield,
     submission,
     user,
 )
@@ -445,3 +449,101 @@ def _named(conn: sa.Connection, participant_id: str) -> dict[str, Any]:
     if who is None:
         raise errors.not_found("participant")
     return {"id": who.id, "name": who.name, "username": who.username}
+
+
+# --- powerups: what they bought, what they used and what landed on them -----
+
+
+def powerups(participant_id: str) -> dict[str, Any]:
+    """Every powerup this participant bought or used, and every one used on
+    them, newest first, with what they hold right now and their shields. The
+    page for "I never bought that" and "my blackout did nothing"."""
+    with db.transaction() as conn:
+        who = _named(conn, participant_id)
+        names = dict(conn.execute(sa.select(user.c.id, user.c.name)).all())
+        return {
+            "participant": who,
+            "holdings": _holding_rows(conn, participant_id),
+            "shields": _shield_rows(conn, participant_id, names),
+            "events": _powerup_event_rows(conn, participant_id, names),
+        }
+
+
+def _holding_rows(conn: sa.Connection, participant_id: str) -> list[dict[str, Any]]:
+    found = conn.execute(
+        sa.select(powerup_inventory, powerup.c.name, powerup.c.kind)
+        .join(powerup, powerup.c.id == powerup_inventory.c.powerup_id)
+        .where(powerup_inventory.c.participant_id == participant_id)
+        .order_by(powerup.c.sort_order, powerup.c.id)
+    ).all()
+    return [
+        {
+            "powerup_id": r.powerup_id,
+            "name": r.name,
+            "kind": r.kind,
+            "quantity": r.quantity,
+            "purchased": r.purchased,
+        }
+        for r in found
+    ]
+
+
+def _shield_rows(
+    conn: sa.Connection, participant_id: str, names: dict[str, str]
+) -> list[dict[str, Any]]:
+    found = conn.execute(
+        sa.select(shield, powerup.c.name)
+        .outerjoin(powerup, powerup.c.id == shield.c.powerup_id)
+        .where(shield.c.participant_id == participant_id)
+        .order_by(shield.c.id.desc())
+    ).all()
+    now = clock.now()
+    return [
+        {
+            "id": r.id,
+            "name": r.name or "Shield",
+            "seconds": r.seconds,
+            "starts_at": clock.iso(r.starts_at),
+            "ends_at": clock.iso(r.ends_at),
+            "absorbed_at": clock.iso(r.absorbed_at),
+            "absorbed_by": names.get(r.absorbed_by) if r.absorbed_by else None,
+            "up": r.absorbed_at is None and (r.ends_at is None or r.ends_at > now),
+        }
+        for r in found
+    ]
+
+
+def _powerup_event_rows(
+    conn: sa.Connection, participant_id: str, names: dict[str, str]
+) -> list[dict[str, Any]]:
+    found = conn.execute(
+        sa.select(
+            powerup_event,
+            powerup.c.name.label("powerup_name"),
+            powerup.c.kind.label("powerup_kind"),
+        )
+        .outerjoin(powerup, powerup.c.id == powerup_event.c.powerup_id)
+        .where(
+            sa.or_(
+                powerup_event.c.actor_id == participant_id,
+                powerup_event.c.target_id == participant_id,
+            )
+        )
+        .order_by(powerup_event.c.id.desc())
+    ).all()
+    return [
+        {
+            "id": r.id,
+            "kind": r.kind,
+            "powerup": r.powerup_name or (r.detail or {}).get("name"),
+            "powerup_kind": r.powerup_kind,
+            "actor_id": r.actor_id,
+            "actor": names.get(r.actor_id, r.actor_id),
+            "target": names.get(r.target_id, r.target_id) if r.target_id else None,
+            "mine": r.actor_id == participant_id,
+            "cost": r.cost,
+            "seconds": (r.detail or {}).get("seconds"),
+            "at": clock.iso(r.created_at),
+        }
+        for r in found
+    ]

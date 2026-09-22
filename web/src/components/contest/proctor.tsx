@@ -218,9 +218,31 @@ function watchWaysOut(report: (kind: Kind) => Promise<void>): () => void {
   document.addEventListener("fullscreenchange", onFullscreen);
   window.addEventListener("blur", onBlur);
   document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("keydown", absorbEscape, true);
   return () => {
     document.removeEventListener("fullscreenchange", onFullscreen);
     window.removeEventListener("blur", onBlur);
     document.removeEventListener("visibilitychange", onVisibility);
+    window.removeEventListener("keydown", absorbEscape, true);
   };
+}
+
+/**
+ * Esc while held on the page: leave whatever is being typed in (a field, the
+ * code editor), and otherwise do nothing. The page never wants the browser's
+ * own Esc, and where the key is locked this is all Esc does. Where it is not
+ * (Firefox, or plain http, where the lock is unavailable) the browser still
+ * leaves full screen on its own before the page hears the key; nothing here
+ * can hold it. Dialogs still close on it: they listen on the document, and
+ * the event goes on to them.
+ */
+function absorbEscape(e: KeyboardEvent) {
+  if (e.key !== "Escape") return;
+  e.preventDefault();
+  const el = document.activeElement;
+  if (el instanceof HTMLElement && el !== document.body && (el.matches("input, textarea, select") || el.isContentEditable)) {
+    el.blur();
+    // Leaving the field is the whole of it; the editor must not also act on the key.
+    e.stopPropagation();
+  }
 }

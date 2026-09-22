@@ -82,6 +82,7 @@ const LEDGER_LABEL: Record<string, string> = {
   starting_balance: "Starting balance",
   bid_won: "Won at auction",
   hint: "Hint bought",
+  powerup: "Powerup bought",
   refund: "Refunded",
   admin_adjust: "Adjusted by an organiser",
 };
@@ -305,7 +306,16 @@ export default function ParticipantPage() {
           </TabsContent>
 
           <TabsContent value="money">
-            <Section title="Ledger" description="Every coin in and out, newest first, with the balance they saw at the time." padded={false}>
+            <Section
+              title="Ledger"
+              description="Every coin in and out, newest first, with the balance they saw at the time."
+              padded={false}
+              actions={
+                <Link href={`/admin/participants/${id}/powerups`} className="inline-flex items-center gap-1 text-[12.5px] font-medium text-brand hover:underline">
+                  Powerups bought and used <Icon.ArrowRight size={12} />
+                </Link>
+              }
+            >
               {p2.ledger.length === 0 ? (
                 <EmptyState compact icon={<Icon.Coins />} title="Nothing recorded yet" />
               ) : (
