@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "type": "puzzle",
+  "title": "Every factor of 36",
+  "body_md": "List as many **positive factors of 36** as you can, one per line.\n\nEach correct, distinct factor earns points. There are nine.",
+  "category": "constraint",
+  "kind": "set",
+  "grading": "validator",
+  "points": 0,
+  "explain_points": 0,
+  "config": {
+    "caseSensitive": false
+  },
+  "points_per_entry": 3,
+  "max_entries": 20,
+  "validator_file": "validator.py",
+  "format_hint": "one number per line",
+  "model_answer": "1, 2, 3, 4, 6, 9, 12, 18, 36.",
+  "verified": false,
+  "was_published": false
+}

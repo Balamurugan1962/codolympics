@@ -1,0 +1,30 @@
+{
+  "format": 1,
+  "type": "puzzle",
+  "title": "Put the build in order",
+  "body_md": "A build system must run these steps so that nothing runs before what it depends on.\n\n- **compile** needs the sources fetched\n- **test** needs the binary\n- **fetch** needs nothing\n- **package** needs the tests to have passed\n\nDrag the steps into a valid order.",
+  "category": "constraint",
+  "kind": "sequence",
+  "grading": "auto",
+  "points": 12,
+  "explain_points": 0,
+  "config": {
+    "items": [
+      "compile",
+      "test",
+      "fetch",
+      "package"
+    ]
+  },
+  "answer_key": {
+    "order": [
+      2,
+      0,
+      1,
+      3
+    ]
+  },
+  "model_answer": "fetch → compile → test → package.",
+  "verified": false,
+  "was_published": false
+}
