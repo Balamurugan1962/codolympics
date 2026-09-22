@@ -9,6 +9,7 @@ from pydantic import Field
 
 from engine.accounts import management, registration
 from engine.admin import corrections, dossier, overview
+from engine.contest import proctor
 from engine.phase1 import selection
 
 from ...auth import Admin, Staff
@@ -114,6 +115,13 @@ def disqualify(viewer: Admin, participant_id: str, body: ReasonBody) -> dict[str
 @router.post("/participants/{participant_id}/requalify")
 def requalify(viewer: Admin, participant_id: str, body: ReasonBody) -> dict[str, bool]:
     selection.disqualify(viewer.id, participant_id, body.reason, undo=True)
+    return {"ok": True}
+
+
+@router.post("/participants/{participant_id}/unlock")
+def unlock(viewer: Admin, participant_id: str, body: ReasonBody) -> dict[str, bool]:
+    """Let a participant locked out for leaving the page back in, with a clean count."""
+    proctor.unlock(viewer.id, participant_id, body.reason)
     return {"ok": True}
 
 

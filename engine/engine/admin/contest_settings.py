@@ -22,6 +22,8 @@ SETTINGS = (
     "attack_break_seconds",
     "count_absorbed_attacks",
     "after_cap",
+    "proctoring",
+    "proctor_warnings",
     "starting_balance",
     "bid_increment",
     "countdown_seconds",

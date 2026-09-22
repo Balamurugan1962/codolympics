@@ -54,6 +54,10 @@ contest = Table(
     Column("count_absorbed_attacks", Boolean, nullable=False, server_default=text("true")),
     # 'break': a timed break that doubles. 'forever': off limits for the rest of the contest.
     Column("after_cap", Text, nullable=False, server_default=text("'break'")),
+    # While a round runs, a participant's browser stays in full screen and
+    # focused. After `proctor_warnings` alerts the next one locks the account.
+    Column("proctoring", Boolean, nullable=False, server_default=text("true")),
+    Column("proctor_warnings", Integer, nullable=False, server_default=text("3")),
     CheckConstraint("id = 1", name="contest_single_row"),
 )
 
@@ -70,7 +74,21 @@ participant = Table(
     timestamp("p1_hacking_finished_at"),
     timestamp("disqualified_at"),
     Column("disqualified_reason", Text),
+    # Times they left the page since the last unlock, and whether that locked them.
+    Column("proctor_alerts", Integer, nullable=False, server_default=text("0")),
+    timestamp("proctor_locked_at"),
     CheckConstraint("balance >= 0", name="balance_nonnegative"),
+)
+
+# One row each time a participant left the page: which way, and when.
+proctor_event = Table(
+    "proctor_event",
+    metadata,
+    Column("id", BigInteger, primary_key=True, autoincrement=True),
+    participant_ref("participant_id", cascade=True),
+    Column("kind", Text, nullable=False),
+    created_at(),
+    Index("proctor_event_participant_idx", "participant_id", "id"),
 )
 
 announcement = Table(

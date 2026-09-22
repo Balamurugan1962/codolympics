@@ -105,5 +105,7 @@ def phase_snapshot(c: sa.Row) -> dict[str, Any]:
         # phases carry coins and a shop is the engine's rule, and a copy of the
         # list in the frontend is a copy that can disagree with the refusals.
         "in_phase2": in_phase2(c.phase),
+        # Whether pages must hold full screen while a round runs.
+        "proctoring": c.proctoring,
         "server_now": clock.now_ms(),
     }

@@ -20,6 +20,7 @@ from engine.auction.board import snapshot as auction_snapshot
 from engine.coding.questions import owned_questions
 from engine.coding.scoring import frozen_at, phase2_standings
 from engine.coding.submission_views import submit_status
+from engine.contest import proctor
 from engine.contest.messages import recent_announcements, unread
 from engine.contest.rules import auction_round, get_contest, is_auction, is_phase2, phase_snapshot
 from engine.core import db, events
@@ -57,7 +58,7 @@ def _participant_state(conn: sa.Connection, c: sa.Row, participant_id: str) -> d
         sa.select(participant).where(participant.c.user_id == participant_id)
     ).one_or_none()
     return {
-        "me": _me(conn, p) if p else None,
+        "me": _me(conn, c, p) if p else None,
         "questions": owned_questions(conn, participant_id),
         "rank": _my_rank(conn, c, participant_id),
         "submit": submit_status(conn, participant_id),
@@ -68,7 +69,7 @@ def _participant_state(conn: sa.Connection, c: sa.Row, participant_id: str) -> d
     }
 
 
-def _me(conn: sa.Connection, p: sa.Row) -> dict[str, Any]:
+def _me(conn: sa.Connection, c: sa.Row, p: sa.Row) -> dict[str, Any]:
     return {
         "balance": p.balance,
         "disqualified": p.disqualified_at is not None,
@@ -77,6 +78,7 @@ def _me(conn: sa.Connection, p: sa.Row) -> dict[str, Any]:
         "p1_hacking_finished": p.p1_hacking_finished_at is not None,
         # The language the editor opens in. A preference, never a restriction.
         "preferred_language": p.preferred_language,
+        "proctor": proctor.state_of(c, p),
     }
 
 

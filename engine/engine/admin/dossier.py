@@ -12,6 +12,7 @@ from typing import Any
 import sqlalchemy as sa
 
 from engine.coding.scoring import phase2_standings
+from engine.contest import proctor
 from engine.core import clock, db, errors
 from engine.phase1.standings import answer_pending, phase1_standings
 from engine.schema import (
@@ -51,6 +52,7 @@ def dossier(participant_id: str) -> dict[str, Any]:
         p2_mine = next((s for s in p2_all if s["participant_id"] == participant_id), None)
         return {
             "participant": _who(who, adv),
+            "left_page": proctor.alerts_for(conn, participant_id),
             "phase1": {
                 "standing": p1_mine,
                 "of": sum(1 for s in p1_all if not s["disqualified"]),
@@ -80,6 +82,8 @@ def _who(who: sa.Row, adv: sa.Row | None) -> dict[str, Any]:
         "p1_hacking_finished_at": clock.iso(who.p1_hacking_finished_at),
         "advanced": adv.advanced if adv else None,
         "advancement_reason": adv.reason if adv else None,
+        "proctor_alerts": who.proctor_alerts,
+        "proctor_locked_at": clock.iso(who.proctor_locked_at),
     }
 
 
