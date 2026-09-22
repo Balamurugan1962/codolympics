@@ -82,6 +82,12 @@ def read_participant_hack(_: Staff, participant_id: str, question_id: int) -> di
     return dossier.hack_question(participant_id, question_id)
 
 
+@router.get("/participants/{participant_id}/powerups")
+def read_participant_powerups(_: Staff, participant_id: str) -> dict[str, Any]:
+    """What they bought and used, and what was used on them, with the time of each."""
+    return dossier.powerups(participant_id)
+
+
 @router.delete("/participants/{participant_id}")
 def remove_participant(viewer: Admin, participant_id: str, body: ReasonBody) -> dict[str, bool]:
     management.remove(viewer.id, participant_id, body.reason)

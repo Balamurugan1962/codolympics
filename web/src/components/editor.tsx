@@ -37,7 +37,20 @@ export function CodeEditor({ value, language, onChange, height = "60vh", readOnl
       value={value}
       theme="vs-dark"
       onChange={(v) => onChange?.(v ?? "")}
-      options={{ fontSize, minimap: { enabled: false }, scrollBeyondLastLine: false, tabSize: 4, readOnly, automaticLayout: true, wordWrap: "off", lineNumbersMinChars: 3, padding: { top: 8 } }}
+      options={{
+        fontSize,
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        tabSize: 4,
+        readOnly,
+        automaticLayout: true,
+        wordWrap: "off",
+        lineNumbersMinChars: 3,
+        padding: { top: 8 },
+        // Once the editor is scrolled to its end the wheel goes on to the page;
+        // by default Monaco swallows it and the page under the pointer is stuck.
+        scrollbar: { alwaysConsumeMouseWheel: false },
+      }}
     />
   );
 }
