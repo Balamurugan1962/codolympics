@@ -48,6 +48,15 @@ daemon() { # pidfile logfile command...
   echo $! > "$pidfile"
 }
 
+# Ubuntu's docker.io package ships no Compose plugin, and without it
+# `docker compose -f` falls through to plain docker, which only says
+# "unknown shorthand flag: 'f'". Say what is actually missing.
+need_compose() {
+  docker compose version >/dev/null 2>&1 && return
+  die "docker compose (v2 plugin) is missing. On Ubuntu: apt-get install -y docker-compose-v2, or
+    mkdir -p /usr/local/lib/docker/cli-plugins && curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose"
+}
+
 wait_http() { # url label seconds
   local i=0
   until curl -sf -m 2 -o /dev/null "$1"; do
@@ -101,6 +110,7 @@ migrate() {
 
 up_postgres() {
   need docker
+  need_compose
   if docker compose -f "$WEB/docker-compose.yml" ps --status running postgres 2>/dev/null | grep -q postgres; then
     say "postgres already running"
   else
@@ -233,6 +243,7 @@ cmd_smoke() {
 }
 
 cmd_prod() {
+  need docker; need_compose
   [ -f "$ROOT/.env" ] || die "create $ROOT/.env from .env.example first (secrets and BETTER_AUTH_URL)"
   say "bringing up the whole stack in Docker"
   docker compose -f "$ROOT/docker-compose.yml" up -d --build
