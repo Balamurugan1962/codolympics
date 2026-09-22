@@ -47,6 +47,16 @@ const TITLE: Record<Exclude<Screen, "ok">, string> = {
 
 /** Full screen is asked of every browser that can do it; the rest are watched for focus alone. */
 const canFullscreen = () => typeof document !== "undefined" && document.fullscreenEnabled;
+
+/**
+ * Esc leaves full screen in every browser, and Esc is a key a coder presses
+ * all day (closing the editor's suggestions, closing a dialog). Where the
+ * browser allows it (Chrome and its relatives, over https or on localhost)
+ * the key is locked, so leaving takes a press-and-hold and a slip of the
+ * finger is not an alert. Firefox has no such thing; there Esc is a real exit.
+ */
+type KeyboardLock = { lock?: (keys?: string[]) => Promise<void>; unlock?: () => void };
+const keyboard = () => (navigator as Navigator & { keyboard?: KeyboardLock }).keyboard;
 const held = () => (!canFullscreen() || !!document.fullscreenElement) && document.hasFocus() && !document.hidden;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -167,6 +177,7 @@ function useHeldOnPage(): Hold | null {
   useEffect(() => {
     if (enforced) return watchWaysOut(report);
     // Between rounds the screen is theirs again; the next round starts at the gate.
+    keyboard()?.unlock?.();
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
     show("gate");
   }, [enforced, report]);
@@ -179,6 +190,7 @@ function useHeldOnPage(): Hold | null {
     try {
       if (canFullscreen() && !document.fullscreenElement) {
         await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+        await keyboard()?.lock?.(["Escape"]).catch(() => undefined);
       }
       window.focus();
       // Checked now, not assumed from the click: a refused request leaves the screen up.
