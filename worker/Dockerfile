@@ -10,9 +10,18 @@
 # the sandbox even though it is present in the image.
 FROM criyle/go-judge:v1.12.3
 
+# apt over HTTPS. Campus networks tend to tamper with plain HTTP (a captive
+# portal or transparent proxy answers instead of the mirror, and apt reports
+# "Clearsigned file isn't valid" or a hash mismatch). The base image has no
+# CA certificates, so they come from the Python image the judge is built on,
+# which is pulled anyway; ca-certificates proper is installed right after.
+COPY --from=python:3.12-slim-bookworm /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources
+
 # Add languages here. Keep the list tight: every toolchain is image size, and
 # image size is contest-day deploy time.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      ca-certificates \
       gcc g++ \
       python3 \
       openjdk-21-jdk-headless \
@@ -32,7 +41,7 @@ ARG PYPY_SHA256_amd64=2bcab031cef7a37fe1930b51f7091e78a191ae63f80eca00a265d3378c
 ARG PYPY_SHA256_arm64=ed3b27a95257a8bb88707042e6bb5fe64569d47ef44bdc9842c730667637dfbd
 RUN set -eux; \
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl ca-certificates; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl; \
     # dpkg --print-architecture works under a plain `docker build`; the buildx
     # TARGETARCH arg is empty there, which would silently pick the wrong build.
     arch="$(dpkg --print-architecture)"; \
