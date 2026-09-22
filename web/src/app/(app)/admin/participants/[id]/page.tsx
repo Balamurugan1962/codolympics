@@ -16,8 +16,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { LEFT_HOW } from "@/components/admin/left-page-alerts";
 import { ActionDialog, type Action, type ActionKind, type ParticipantRow, type UnsoldQuestion } from "@/components/admin/participant-actions";
-import { useContest } from "@/components/contest-provider";
+import { useContest, useEngineEvent } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { LocalTime } from "@/components/local-time";
 import { Markdown } from "@/components/markdown";
@@ -41,7 +42,10 @@ type Dossier = {
     disqualified: boolean; disqualified_reason: string | null; registered_at: string;
     p1_puzzles_finished_at: string | null; p1_hacking_finished_at: string | null;
     advanced: boolean | null; advancement_reason: string | null;
+    proctor_alerts: number; proctor_locked_at: string | null;
   };
+  /** Every time they left the page, newest first. */
+  left_page: { id: number; kind: "fullscreen" | "blur" | "hidden"; created_at: string }[];
   phase1: {
     standing: { rank: number; points: number; provisional: boolean; submitted_at: string | null } | null;
     of: number;
@@ -124,6 +128,9 @@ export default function ParticipantPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEngineEvent("proctor", (e) => {
+    if (e.data.participant_id === id) void load().catch(() => undefined);
+  });
 
   if (error) {
     return (
@@ -150,7 +157,7 @@ export default function ParticipantPage() {
   const inPhase2 = ["auction1", "coding1", "auction2", "final"].includes(phase);
   const spent = p2.ledger.filter((l) => l.delta < 0).reduce((s, l) => s + l.delta, 0);
   const owned = p2.owned.filter((o) => !o.voided_at);
-  const row: ParticipantRow = { ...p, owned: owned.length };
+  const row: ParticipantRow = { ...p, owned: owned.length, proctor_locked: p.proctor_locked_at !== null };
   const act = (kind: ActionKind) => setAction({ kind, p: row });
 
   return (
@@ -161,6 +168,7 @@ export default function ParticipantPage() {
         chips={
           <>
             {p.disqualified && <Badge variant="destructive">Disqualified</Badge>}
+            {p.proctor_locked_at && <Badge variant="destructive">Locked out</Badge>}
             {p.advanced === true && <Badge variant="success">In Phase 2</Badge>}
             {p.advanced === false && <Badge variant="neutral">Not selected</Badge>}
           </>
@@ -192,12 +200,33 @@ export default function ParticipantPage() {
                   { label: "Puzzles finished", value: p.p1_puzzles_finished_at ? <LocalTime iso={p.p1_puzzles_finished_at} /> : <span className="font-normal text-faint">never pressed finish</span> },
                   { label: "Hacking finished", value: p.p1_hacking_finished_at ? <LocalTime iso={p.p1_hacking_finished_at} /> : <span className="font-normal text-faint">never pressed finish</span> },
                   ...(p.advancement_reason ? [{ label: "Selection", value: p.advancement_reason }] : []),
+                  {
+                    label: "Left the page",
+                    value: d.left_page.length === 0
+                      ? <span className="font-normal text-faint">never</span>
+                      : `${d.left_page.length} time${d.left_page.length === 1 ? "" : "s"}${p.proctor_alerts < d.left_page.length ? `, ${p.proctor_alerts} since the last unlock` : ""}`,
+                  },
+                  ...(p.proctor_locked_at ? [{ label: "Locked out", value: <LocalTime iso={p.proctor_locked_at} /> }] : []),
                 ]}
               />
             </AsideBlock>
+            {d.left_page.length > 0 && (
+              <AsideBlock title="How they left">
+                <ul className="space-y-1.5 text-[12.5px]">
+                  {d.left_page.slice(0, 8).map((e) => (
+                    <li key={e.id} className="flex items-baseline justify-between gap-3">
+                      <span>{LEFT_HOW[e.kind]}</span>
+                      <span className="shrink-0 text-faint"><LocalTime iso={e.created_at} /></span>
+                    </li>
+                  ))}
+                  {d.left_page.length > 8 && <li className="text-faint">and {d.left_page.length - 8} more</li>}
+                </ul>
+              </AsideBlock>
+            )}
             <AsideBlock title="Actions">
               <ActionList
                 items={[
+                  ...(p.proctor_locked_at ? [{ label: "Unlock", icon: <Icon.Unlock />, onSelect: () => act("unlock") }] : []),
                   { label: "Adjust balance", icon: <Icon.Coins />, onSelect: () => act("adjust") },
                   ...(inPhase2 && owned.length === 0 && unsold.length ? [{ label: "Assign an unsold question", icon: <Icon.Gavel />, onSelect: () => act("assign") }] : []),
                   { label: "Reset password", icon: <Icon.Lock />, onSelect: () => act("password") },

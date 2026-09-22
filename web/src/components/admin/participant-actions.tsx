@@ -26,8 +26,11 @@ export type ParticipantRow = {
   owned: number;
   disqualified: boolean;
   disqualified_reason: string | null;
+  /** Times they left the page since the last unlock, and whether that locked them. */
+  proctor_alerts: number;
+  proctor_locked: boolean;
 };
-export type ActionKind = "adjust" | "password" | "rename" | "disqualify" | "requalify" | "remove" | "assign";
+export type ActionKind = "adjust" | "password" | "rename" | "disqualify" | "requalify" | "remove" | "assign" | "unlock";
 export type Action = { kind: ActionKind; p: ParticipantRow };
 export type UnsoldQuestion = { id: string; title: string; basePrice: number };
 
@@ -62,6 +65,7 @@ export function ActionDialog({
     requalify: `Reverse ${p.name}'s disqualification`,
     remove: `Remove ${p.name}'s account?`,
     assign: `Assign a question to ${p.name}`,
+    unlock: `Unlock ${p.name}`,
   };
   const destructive = kind === "disqualify" || kind === "remove";
 
@@ -73,7 +77,7 @@ export function ActionDialog({
       if (kind === "adjust") await api.post(`${b}/adjust`, { reason, delta: Number(v.delta) });
       if (kind === "password") await api.post(`${b}/password`, { reason, password: v.password });
       if (kind === "rename") await api.post(`${b}/rename`, { reason, name: v.name });
-      if (kind === "disqualify" || kind === "requalify") await api.post(`${b}/${kind}`, { reason });
+      if (kind === "disqualify" || kind === "requalify" || kind === "unlock") await api.post(`${b}/${kind}`, { reason });
       if (kind === "remove") await api.del(b, { reason });
       if (kind === "assign") await api.post(`/api/admin/questions/${v.qid}/assign`, { reason, participant_id: p.id, price: Number(v.price) });
       await onDone(titles[kind].replace("?", "") + ", done");
@@ -120,6 +124,15 @@ export function ActionDialog({
           <Alert variant="warning">
             <Icon.Alert />
             <AlertDescription>They leave the leaderboard and cannot advance. Reversible, and their work is kept either way.</AlertDescription>
+          </Alert>
+        )}
+        {kind === "unlock" && (
+          <Alert variant="warning">
+            <Icon.Alert />
+            <AlertDescription>
+              They left the page {p.proctor_alerts} times and were locked out. Unlocking lets them back in with the count cleared, so
+              they get the full number of warnings again.
+            </AlertDescription>
           </Alert>
         )}
         {kind === "remove" && (
