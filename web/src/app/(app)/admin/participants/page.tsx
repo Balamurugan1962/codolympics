@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { useContest } from "@/components/contest-provider";
+import { useContest, useEngineEvent } from "@/components/contest-provider";
 import { Icon } from "@/components/icons";
 import { Pagination, usePaged } from "@/components/ui/pagination";
 import { PHASE_LABEL } from "@/components/shell";
@@ -56,6 +56,8 @@ export default function PeoplePage() {
   useEffect(() => {
     void load();
   }, [load]);
+  // Somebody leaving the page, or being locked out, shows in the Status column at once.
+  useEngineEvent("proctor", () => void load().catch(() => undefined));
 
   const phase = state?.contest.phase ?? "";
   const inPhase2 = ["auction1", "coding1", "auction2", "final"].includes(phase);
@@ -63,6 +65,7 @@ export default function PeoplePage() {
   const shown = all.filter((r) => !filter || r.name.toLowerCase().includes(filter.toLowerCase()) || (r.username ?? "").toLowerCase().includes(filter.toLowerCase()));
   const paged = usePaged(shown, { param: "page" });
   const ownNothing = inPhase2 ? all.filter((r) => r.owned === 0 && !r.disqualified).length : 0;
+  const lockedOut = all.filter((r) => r.proctor_locked).length;
   const money = all.reduce((s, r) => s + r.balance, 0);
 
   return (
@@ -88,8 +91,15 @@ export default function PeoplePage() {
         </Section>
       ) : (
         <div className="space-y-5">
-          <StatRow cols={4}>
+          <StatRow cols={5}>
             <Stat label="Registered" value={all.length} icon={<Icon.Users size={13} />} hint={`${all.filter((r) => r.disqualified).length} disqualified`} />
+            <Stat
+              label="Locked out"
+              value={lockedOut}
+              tone={lockedOut ? "destructive" : "default"}
+              icon={<Icon.Lock size={13} />}
+              hint={lockedOut ? "left the page too often, waiting on you" : `${all.filter((r) => r.proctor_alerts > 0).length} with a warning`}
+            />
             <Stat
               label="Own nothing"
               value={ownNothing}
@@ -159,6 +169,10 @@ export default function PeoplePage() {
                     <TableCell>
                       {p.disqualified ? (
                         <StatusDot tone="destructive">Disqualified</StatusDot>
+                      ) : p.proctor_locked ? (
+                        <StatusDot tone="destructive">Locked out</StatusDot>
+                      ) : p.proctor_alerts > 0 ? (
+                        <StatusDot tone="warning">Left the page {p.proctor_alerts === 1 ? "once" : `${p.proctor_alerts} times`}</StatusDot>
                       ) : inPhase2 && p.owned === 0 ? (
                         <StatusDot tone="warning">Owns nothing</StatusDot>
                       ) : (
@@ -176,6 +190,7 @@ export default function PeoplePage() {
                             ? [{ label: "Assign an unsold question", icon: <Icon.Gavel size={15} />, onSelect: () => setAction({ kind: "assign", p }) }]
                             : []),
                           { separator: true as const },
+                          ...(p.proctor_locked ? [{ label: "Unlock", icon: <Icon.Unlock size={15} />, onSelect: () => setAction({ kind: "unlock", p }) }] : []),
                           p.disqualified
                             ? { label: "Reverse disqualification", icon: <Icon.Undo size={15} />, onSelect: () => setAction({ kind: "requalify", p }) }
                             : { label: "Disqualify", icon: <Icon.Ban size={15} />, danger: true, onSelect: () => setAction({ kind: "disqualify", p }) },

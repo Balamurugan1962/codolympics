@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 
 import { AnnouncementOverlay } from "./announcement-overlay";
 import { BlackoutOverlay } from "./contest/blackout-overlay";
+import { Proctor } from "./contest/proctor";
 import { PhaseRail, WHERE } from "./contest/phase-rail";
 import { boardShown } from "@/lib/boards";
 import { ContestLoading } from "./contest/waiting";
@@ -275,6 +276,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       {/* Above every screen, and outside <main> so nothing it covers is
           unmounted. The page underneath is still there when it lifts. */}
       {viewer.role === "participant" && <BlackoutOverlay />}
+      {viewer.role === "participant" && <Proctor />}
     </div>
   );
 }

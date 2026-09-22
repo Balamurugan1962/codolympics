@@ -28,11 +28,15 @@ import { api } from "@/lib/client";
 
 export type ContestState = {
   viewer: { id: string; name: string; username: string; role: "participant" | "evaluator" | "admin" };
-  contest: { phase: string; phase_ends_at: string | null; registration_open: boolean; leaderboard_mode: string; p1_leaderboard_mode: string; in_phase2: boolean; server_now: number };
+  contest: { phase: string; phase_ends_at: string | null; registration_open: boolean; leaderboard_mode: string; p1_leaderboard_mode: string; in_phase2: boolean; proctoring: boolean; server_now: number };
   announcements: { id: number; bodyMd: string; createdAt: string }[];
   /** The newest event id when this state was read: where polling starts. */
   event_cursor: number;
-  me?: { balance: number; disqualified: boolean; advanced: boolean; p1_puzzles_finished: boolean; p1_hacking_finished: boolean; preferred_language: string | null } | null;
+  me?: {
+    balance: number; disqualified: boolean; advanced: boolean; p1_puzzles_finished: boolean; p1_hacking_finished: boolean; preferred_language: string | null;
+    /** Whether the page must hold full screen, and how many times they have left it. */
+    proctor: { enabled: boolean; alerts: number; warnings: number; locked: boolean };
+  } | null;
   questions?: { id: string; title: string; difficulty: string; score: number; status: string; price_paid: number; awarded_at: string; attempts: number; progress: "solved" | "judging" | "attempted" | "unattempted" }[];
   rank?: { rank: number; score: number; solved: number; total_time_ms: number } | null;
   auction?: AuctionSnapshot | null;

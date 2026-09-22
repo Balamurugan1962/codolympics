@@ -18,6 +18,7 @@ import { api } from "@/lib/client";
 import { cn } from "@/lib/utils";
 
 import { AnnouncementOverlay } from "../announcement-overlay";
+import { LeftPageAlerts } from "./left-page-alerts";
 import { useContest } from "../contest-provider";
 import { Countdown } from "../countdown";
 import { Icon } from "../icons";
@@ -322,6 +323,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
+        {viewer.role === "admin" && <LeftPageAlerts />}
         <main className="flex-1">
           {role === "evaluator" && ADMIN_ONLY.some((p) => pathname.startsWith(p)) ? <NotForYou /> : children}
         </main>

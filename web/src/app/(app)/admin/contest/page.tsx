@@ -41,7 +41,14 @@ type C = {
   p1SelectionBasis: string;
   p1LeaderboardMode: string;
   leaderboardMode: string;
+  proctoring: boolean;
+  proctorWarnings: number;
 };
+
+const SUPERVISION = [
+  { value: "on", label: "On. Held on the page during rounds" },
+  { value: "off", label: "Off. Nothing is watched" },
+] as const;
 
 const AUCTION_STYLE = [
   { value: "online", label: "Online. They bid from their seats" },
@@ -129,6 +136,8 @@ export default function SettingsPage() {
         p1_selection_basis: c.p1SelectionBasis,
         p1_leaderboard_mode: c.p1LeaderboardMode,
         leaderboard_mode: c.leaderboardMode,
+        proctoring: c.proctoring,
+        proctor_warnings: c.proctorWarnings,
       });
       setC(saved);
       setOrig(saved);
@@ -247,6 +256,20 @@ export default function SettingsPage() {
           <SettingRow label="Final round" description="The last solving round. The contest ends when it closes.">
             {numberField("finalMinutes", "minutes")}
           </SettingRow>
+        </Section>
+
+        <Section title="Supervision" description="Keeping every competitor on the page while a round runs." padded={false}>
+          <SettingRow
+            label="Lock to the page"
+            description="While a round runs, the browser holds the contest in full screen with the window focused. Leaving full screen, switching window or hiding the tab is an alert, and you are told of every one."
+          >
+            <SimpleCombobox className="w-full" size="default" value={c.proctoring ? "on" : "off"} onValueChange={(v) => set("proctoring", v === "on")} options={SUPERVISION} />
+          </SettingRow>
+          {c.proctoring && (
+            <SettingRow label="Warnings before a lock" description="After this many alerts the next one locks the account. Only you can unlock it, and unlocking starts the count again. 0 locks on the first alert.">
+              {numberField("proctorWarnings", "alerts")}
+            </SettingRow>
+          )}
         </Section>
 
         <SetupTransfer />
