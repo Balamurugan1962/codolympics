@@ -16,7 +16,7 @@ COPY engine ./engine
 COPY api ./api
 
 # Never run as root; the problems volume is the only thing this container writes.
-RUN useradd --system --uid 10003 engine && mkdir -p /problems && chown engine /problems
+RUN useradd --no-create-home --shell /usr/sbin/nologin --uid 10003 engine && mkdir -p /problems && chown engine /problems
 USER engine
 
 EXPOSE 8080

@@ -11,8 +11,8 @@ FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app ./
-# Never run as root.
-RUN useradd --system --uid 10002 web && chown -R web /app
+# Never run as root. Not --system: that caps the UID at SYS_UID_MAX (999).
+RUN useradd --no-create-home --shell /usr/sbin/nologin --uid 10002 web && chown -R web /app
 USER web
 EXPOSE 3000
 # The engine owns the schema and migrates it; the web app only serves.

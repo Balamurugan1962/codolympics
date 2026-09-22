@@ -17,7 +17,7 @@ COPY app ./app
 COPY openapi.yaml ./openapi.yaml
 
 # Never run as root: this container is reachable from the backend network.
-RUN useradd --system --uid 10001 judge
+RUN useradd --no-create-home --shell /usr/sbin/nologin --uid 10001 judge
 USER judge
 
 EXPOSE 8000
