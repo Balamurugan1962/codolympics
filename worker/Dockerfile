@@ -15,8 +15,14 @@ FROM criyle/go-judge:v1.12.3
 # "Clearsigned file isn't valid" or a hash mismatch). The base image has no
 # CA certificates, so they come from the Python image the judge is built on,
 # which is pulled anyway; ca-certificates proper is installed right after.
+#
+# apt is told where the bundle is: OpenSSL finds roots through the hashed
+# links in /etc/ssl/certs that update-ca-certificates writes, and without
+# ca-certificates installed there are none, so the bundle alone verifies
+# nothing ("certificate verify failed" on every mirror).
 COPY --from=python:3.12-slim-bookworm /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+    && echo 'Acquire::https::CaInfo "/etc/ssl/certs/ca-certificates.crt";' > /etc/apt/apt.conf.d/99-ca-bundle
 
 # Add languages here. Keep the list tight: every toolchain is image size, and
 # image size is contest-day deploy time.
