@@ -3,6 +3,10 @@
 `codolympics-demo-setup.zip` — a complete contest, ready to import under
 **Settings → Setup, out and back in → Import a setup**.
 
+To write Phase 1 questions of your own, see
+[phase1-example/README.md](phase1-example/README.md) and the example set
+`phase1-example.zip` beside it.
+
 ## Logins it creates
 
 | Who   | Password        | Role          |
