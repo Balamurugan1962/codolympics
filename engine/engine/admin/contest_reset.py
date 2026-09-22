@@ -72,6 +72,8 @@ SETTINGS_DEFAULTS = {
     "p1_selection_basis": "",
     "p1_leaderboard_mode": "hidden",
     "leaderboard_mode": "live",
+    "proctoring": True,
+    "proctor_warnings": 3,
 }
 
 

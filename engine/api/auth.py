@@ -15,7 +15,10 @@ Two checks, in this order, on every request:
    on the very next request.
 
 Roles are enforced here, on the server, for every route: hiding a button is
-never the control.
+never the control. Nor is the locked screen: a participant locked out for
+leaving the page can still read, but every write is refused here until an
+administrator unlocks them. Only the alert report itself gets through, so a
+locked page can learn that it is locked.
 """
 
 from __future__ import annotations
@@ -33,6 +36,8 @@ from engine.accounts.viewer import Viewer, viewer_for_session_token
 from engine.core import errors
 from engine.core.config import settings
 
+# The one write a locked participant may make: reporting that they left the page.
+LOCK_PATH = "/api/proctor/"
 COOKIE_NAMES = ("__Secure-better-auth.session_token", "better-auth.session_token")
 
 
@@ -64,6 +69,8 @@ def require(*roles: str) -> Callable[[Request], Viewer]:
         viewer = current_viewer(request)
         if roles and viewer.role not in roles:
             raise errors.forbidden()
+        if viewer.locked and request.method != "GET" and not request.url.path.startswith(LOCK_PATH):
+            raise errors.conflict("locked", "your account is locked until an organiser unlocks it")
         return viewer
 
     return dependency

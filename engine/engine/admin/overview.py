@@ -50,6 +50,8 @@ def participants_overview() -> list[dict[str, Any]]:
             "owned": owned.get(p.user_id, 0),
             "disqualified": p.disqualified_at is not None,
             "disqualified_reason": p.disqualified_reason,
+            "proctor_alerts": p.proctor_alerts,
+            "proctor_locked": p.proctor_locked_at is not None,
         }
         for p in people
     ]

@@ -50,7 +50,7 @@ RUN_TABLES = (
     "event", "bid", "lot", "ownership", "hint_purchase", "ledger", "judgement", "submission",
     "practice_run", "draft", "notification", "announcement", "audit_log", "p1_answer",
     "p1_hack_attempt", "p1_advancement", "powerup_event", "powerup_inventory", "blackout", "shield",
-    "attack_break",
+    "attack_break", "proctor_event",
     "participant", "hint", "question", "p1_question", "p1_hack_question", "powerup", "session",
     "account",
 )
@@ -83,6 +83,8 @@ def clean(schema: None) -> Iterator[None]:
                 attack_break_seconds=300,
                 count_absorbed_attacks=True,
                 after_cap="break",
+                proctoring=True,
+                proctor_warnings=3,
                 bid_increment=10,
                 countdown_seconds=60,
                 opening_window_seconds=60,

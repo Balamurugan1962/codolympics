@@ -128,3 +128,55 @@ def test_an_engine_refusal_keeps_its_code_and_status() -> None:
 
 def test_an_unknown_route_is_a_json_404() -> None:
     assert get("/api/nothing-here").json()["error"] == "not_found"
+
+
+# --- locked out for leaving the page ------------------------------------------
+
+
+def post(path: str, cookie: str, json: dict | None = None):
+    return client.post(
+        path, json=json or {}, headers=TOKEN, cookies={"better-auth.session_token": cookie}
+    )
+
+
+def test_alerts_count_up_and_then_lock_out_every_write() -> None:
+    add_user("alice")
+    cookie = sign_in("alice")
+    seen = [
+        post("/api/proctor/alert", cookie, {"kind": k}).json() for k in ("blur", "hidden", "blur")
+    ]
+    assert [s["alerts"] for s in seen] == [1, 2, 3]
+    assert all(s["locked"] is False for s in seen)
+
+    locked = post("/api/proctor/alert", cookie, {"kind": "fullscreen"}).json()
+    assert locked == {"enabled": True, "alerts": 4, "warnings": 3, "locked": True}
+    # Reads still work, so the page can show the locked screen; every write is refused.
+    assert get("/api/state", cookie).json()["me"]["proctor"]["locked"] is True
+    refused = post("/api/bids", cookie, {"lot_id": 1, "amount": 100})
+    assert (refused.status_code, refused.json()["error"]) == (409, "locked")
+    # Reporting again while locked changes nothing.
+    assert post("/api/proctor/alert", cookie, {"kind": "blur"}).json()["alerts"] == 4
+
+
+def test_only_an_administrator_unlocks_and_the_count_starts_again() -> None:
+    add_user("alice")
+    add_user("root", role="admin", balance=None)
+    alice, root = sign_in("alice"), sign_in("root")
+    for _ in range(4):
+        post("/api/proctor/alert", alice, {"kind": "blur"})
+    assert post("/api/admin/participants/alice/unlock", alice, {"reason": "me"}).status_code == 403
+
+    freed = post("/api/admin/participants/alice/unlock", root, {"reason": "spoke to them"})
+    assert freed.status_code == 200
+    me = get("/api/state", alice).json()["me"]["proctor"]
+    assert me == {"enabled": True, "alerts": 0, "warnings": 3, "locked": False}
+    again = post("/api/admin/participants/alice/unlock", root, {"reason": "twice"})
+    assert again.json()["error"] == "not_locked"
+
+
+def test_alerts_are_not_counted_while_supervision_is_off() -> None:
+    add_user("alice")
+    with db.transaction() as conn:
+        conn.execute(sa.text("update contest set proctoring = false"))
+    state = post("/api/proctor/alert", sign_in("alice"), {"kind": "blur"}).json()
+    assert state == {"enabled": False, "alerts": 0, "warnings": 3, "locked": False}

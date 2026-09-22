@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 import sqlalchemy as sa
 
 from engine.core import db
-from engine.schema import session, user
+from engine.schema import participant, session, user
 
 
 @dataclass(frozen=True)
@@ -21,6 +21,8 @@ class Viewer:
     name: str
     username: str
     role: str
+    # A participant locked out for leaving the page: reads are fine, writes are refused.
+    locked: bool = False
 
     def as_dict(self) -> dict[str, str]:
         return {
@@ -38,8 +40,16 @@ def viewer_for_session_token(token: str) -> Viewer | None:
     """
     with db.transaction() as conn:
         row = conn.execute(
-            sa.select(user.c.id, user.c.name, user.c.username, user.c.role, user.c.banned)
+            sa.select(
+                user.c.id,
+                user.c.name,
+                user.c.username,
+                user.c.role,
+                user.c.banned,
+                participant.c.proctor_locked_at,
+            )
             .join(session, session.c.user_id == user.c.id)
+            .outerjoin(participant, participant.c.user_id == user.c.id)
             .where(session.c.token == token, session.c.expires_at > naive_utc_now())
         ).one_or_none()
     if row is None or row.banned:
@@ -49,6 +59,7 @@ def viewer_for_session_token(token: str) -> Viewer | None:
         name=row.name,
         username=row.username or row.name,
         role=row.role or "participant",
+        locked=row.proctor_locked_at is not None,
     )
 
 

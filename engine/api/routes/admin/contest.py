@@ -35,6 +35,9 @@ class ContestPatch(Body):
     attack_break_seconds: Annotated[int | None, Field(ge=1, le=7200)] = None
     count_absorbed_attacks: bool | None = None
     after_cap: Literal["break", "forever"] | None = None
+    proctoring: bool | None = None
+    # 0 locks on the first alert.
+    proctor_warnings: Annotated[int | None, Field(ge=0, le=100)] = None
     starting_balance: Annotated[int | None, Field(ge=0)] = None
     bid_increment: Annotated[int | None, Field(ge=1)] = None
     countdown_seconds: Annotated[int | None, Field(ge=0)] = None  # 0 disables the countdown

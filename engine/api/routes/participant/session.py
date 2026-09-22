@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query
 from pydantic import Field
@@ -10,7 +10,7 @@ from pydantic import Field
 from engine.accounts.preferences import set_preferred_language
 from engine.accounts.registration import register_participant
 from engine.coding import scoring
-from engine.contest import messages
+from engine.contest import messages, proctor
 from engine.core import events
 from engine.judge import languages
 from engine.marketplace.blackouts import blackout_for
@@ -75,6 +75,16 @@ def register(body: Registration) -> dict[str, str]:
 def mark_notifications_read(viewer: Participant) -> dict[str, bool]:
     messages.mark_all_read(viewer.id)
     return {"ok": True}
+
+
+class ProctorAlert(Body):
+    kind: Literal["fullscreen", "blur", "hidden"]
+
+
+@router.post("/proctor/alert")
+def report_left_page(viewer: Participant, body: ProctorAlert) -> dict[str, Any]:
+    """The page left full screen, lost focus or was hidden. Says where they now stand."""
+    return proctor.report(viewer.id, body.kind)
 
 
 @router.get("/blackout")
