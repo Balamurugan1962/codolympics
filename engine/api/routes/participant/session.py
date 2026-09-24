@@ -26,6 +26,8 @@ class Registration(Body):
     username: Annotated[str, Field(min_length=2, max_length=32)]
     password: Annotated[str, Field(min_length=8, max_length=128)]
     preferred_language: Annotated[str | None, Field(max_length=32)] = None
+    mobile: Annotated[str, Field(min_length=1, max_length=24)]
+    email: Annotated[str | None, Field(max_length=254)] = None
 
 
 @router.get("/state")
@@ -67,7 +69,9 @@ def register(body: Registration) -> dict[str, str]:
 
     The only route that needs no session; the page signs in afterwards.
     """
-    user_id = register_participant(body.username, body.password, body.preferred_language)
+    user_id = register_participant(
+        body.username, body.password, body.preferred_language, body.mobile, body.email
+    )
     return {"id": user_id}
 
 

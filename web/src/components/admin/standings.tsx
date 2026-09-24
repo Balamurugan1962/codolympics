@@ -23,6 +23,9 @@ import { Pagination, usePaged } from "@/components/ui/pagination";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
+import { copyText } from "@/lib/clipboard";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
 export type P1Row = {
@@ -33,6 +36,8 @@ export type P1Row = {
   submitted_at: string | null;
   disqualified: boolean;
   advanced: boolean | null;
+  mobile?: string | null;
+  email?: string | null;
   rank: number;
 };
 export type P2Row = {
@@ -106,6 +111,7 @@ export function Phase1Standings({ rows, compact = false }: { rows: P1Row[] | nul
             <TableHead className="w-16 text-right">Rank</TableHead>
             <TableHead>Participant</TableHead>
             <TableHead className="text-right">Points</TableHead>
+            {!compact && <TableHead className="hidden md:table-cell">Mobile</TableHead>}
             {!compact && <TableHead className="hidden sm:table-cell">Finished</TableHead>}
             {!compact && <TableHead>Status</TableHead>}
           </TableRow>
@@ -127,6 +133,9 @@ export function Phase1Standings({ rows, compact = false }: { rows: P1Row[] | nul
                 {r.points}
                 {r.provisional && <span className="ml-1 text-[11px] font-normal text-amber">*</span>}
               </TableCell>
+              {!compact && (
+                <TableCell className="hidden tabular-nums text-muted-foreground md:table-cell">{r.mobile ?? <span className="text-faint">—</span>}</TableCell>
+              )}
               {!compact && (
                 <TableCell className="hidden text-muted-foreground sm:table-cell">
                   {r.submitted_at ? <LocalTime iso={r.submitted_at} /> : <span className="text-faint">never finished</span>}
@@ -267,6 +276,63 @@ export function StandingsCard({
       padded={false}
     >
       {phase === "phase1" ? <Phase1Standings rows={rows1} compact /> : <Phase2Standings rows={rows2} compact />}
+    </Section>
+  );
+}
+
+/** Once the selection is made: who goes through, and the numbers to reach them on. */
+export function SelectedList({ rows }: { rows: P1Row[] | null }) {
+  const { toast } = useToast();
+  const chosen = (rows ?? []).filter((r) => r.advanced === true).sort((a, b) => a.rank - b.rank);
+  if (chosen.length === 0) return null;
+  const numbers = chosen.map((r) => r.mobile).filter(Boolean).join("\n");
+
+  function csv() {
+    const cell = (v: string | number | null | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [["Rank", "Name", "Points", "Mobile", "Email"].map(cell).join(",")];
+    for (const r of chosen) lines.push([r.rank, r.name, r.points, r.mobile, r.email].map(cell).join(","));
+    const url = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "selected-for-phase-2.csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <Section
+      title={`Selected for Phase 2 (${chosen.length})`}
+      description="The people who go through, best first, with the numbers to reach them on."
+      padded={false}
+      actions={
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={async () => toast(await copyText(numbers) ? { title: "Numbers copied", description: `${numbers ? numbers.split("\n").length : 0} on the clipboard, one per line.`, tone: "success" } : { title: "Could not copy", description: "Select them from the table instead.", tone: "error" })}>
+            <Icon.Copy size={13} /> Copy numbers
+          </Button>
+          <Button size="sm" variant="outline" onClick={csv}><Icon.Download size={13} /> CSV</Button>
+        </div>
+      }
+    >
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-16 text-right">Rank</TableHead>
+            <TableHead>Participant</TableHead>
+            <TableHead className="text-right">Points</TableHead>
+            <TableHead>Mobile</TableHead>
+            <TableHead className="hidden sm:table-cell">Email</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {chosen.map((r) => (
+            <TableRow key={r.participant_id}>
+              <TableCell className="text-right"><Rank rank={r.rank} /></TableCell>
+              <TableCell><Link href={`/admin/participants/${r.participant_id}`} className="font-medium hover:text-brand-deep hover:underline">{r.name}</Link></TableCell>
+              <TableCell className="text-right font-semibold tabular-nums">{r.points}</TableCell>
+              <TableCell className="tabular-nums">{r.mobile ? <a href={`tel:${r.mobile}`} className="hover:underline">{r.mobile}</a> : <span className="text-faint">—</span>}</TableCell>
+              <TableCell className="hidden text-muted-foreground sm:table-cell">{r.email ?? <span className="text-faint">—</span>}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </Section>
   );
 }

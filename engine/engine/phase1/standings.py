@@ -24,7 +24,7 @@ from engine.schema import (
 )
 
 
-def phase1_standings(conn: sa.Connection) -> list[dict[str, Any]]:
+def phase1_standings(conn: sa.Connection, with_contact: bool = False) -> list[dict[str, Any]]:
     """Ranked by points, then by the earlier "finish" time -- the rulebook's tiebreak.
 
     Disqualified participants are listed last and unranked.
@@ -41,7 +41,11 @@ def phase1_standings(conn: sa.Connection) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for p in people:
         total = totals.get(p.user_id, [0, False])
-        rows.append(_standing(p, total, advanced.get(p.user_id)))
+        row = _standing(p, total, advanced.get(p.user_id))
+        if with_contact:
+            row["mobile"] = p.mobile
+            row["email"] = p.contact_email
+        rows.append(row)
     finished = {p.user_id: _finished_at(p) for p in people}
     # Never pressing finish sorts after everyone who did.
     never_finished = datetime.max.replace(tzinfo=UTC)

@@ -23,6 +23,8 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [language, setLanguage] = useState("cpp");
+  const [mobile, setMobile] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -30,7 +32,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setBusy(true); setError(null);
     try {
-      await api.post("/api/register", { username: username.trim(), password, preferred_language: language });
+      await api.post("/api/register", { username: username.trim(), password, preferred_language: language, mobile: mobile.trim(), email: email.trim() || undefined });
       const { error } = await authClient.signIn.username({ username: username.trim().replace(/\s+/g, "_").toLowerCase(), password });
       if (error) throw new Error("Registered, but sign-in failed. Try signing in.");
       router.push("/welcome"); router.refresh();
@@ -49,6 +51,12 @@ export default function RegisterPage() {
         </Field>
         <Field label="Password" hint="8+ characters" help="An organiser can reset this for you if you forget it.">
           <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required minLength={8} placeholder="At least 8 characters" />
+        </Field>
+        <Field label="Mobile number" hint="required" help="Only the organisers see it. It is how they reach you if you are selected.">
+          <Input value={mobile} onChange={(e) => setMobile(e.target.value)} type="tel" inputMode="tel" autoComplete="tel" required minLength={10} maxLength={16} placeholder="e.g. 9876543210" />
+        </Field>
+        <Field label="Email" hint="optional" help="Only the organisers see it.">
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" maxLength={254} placeholder="you@example.com" />
         </Field>
         <Field label="Language to start in" help="Only the editor's default. You can switch language on any question, at any time, as often as you like.">
           <SimpleCombobox className="w-full" size="default" value={language} onValueChange={setLanguage}

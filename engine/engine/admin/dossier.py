@@ -82,6 +82,8 @@ def _who(who: sa.Row, adv: sa.Row | None) -> dict[str, Any]:
         "disqualified": who.disqualified_at is not None,
         "disqualified_reason": who.disqualified_reason,
         "registered_at": clock.iso(who.created_at),
+        "mobile": who.mobile,
+        "email": who.contact_email,
         "p1_puzzles_finished_at": clock.iso(who.p1_puzzles_finished_at),
         "p1_hacking_finished_at": clock.iso(who.p1_hacking_finished_at),
         "advanced": adv.advanced if adv else None,

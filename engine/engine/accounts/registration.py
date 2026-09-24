@@ -94,7 +94,33 @@ def _new_user(
     return user_id
 
 
-def _enrol(conn: sa.Connection, user_id: str, balance: int, preferred_language: str | None) -> None:
+MOBILE = re.compile(r"^\+?\d{10,13}$")
+EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def clean_contact(
+    mobile: str | None, email: str | None, *, mobile_required: bool
+) -> tuple[str | None, str | None]:
+    """A mobile number as digits with an optional +, and an email address if one was given."""
+    number = re.sub(r"[\s().-]", "", mobile or "")
+    if not number and mobile_required:
+        raise errors.invalid("a mobile number is required")
+    if number and not MOBILE.match(number):
+        raise errors.invalid("mobile number: 10 to 13 digits, with an optional + at the start")
+    address = (email or "").strip()
+    if address and (len(address) > 254 or not EMAIL.match(address)):
+        raise errors.invalid("that email address does not look right")
+    return number or None, address or None
+
+
+def _enrol(
+    conn: sa.Connection,
+    user_id: str,
+    balance: int,
+    preferred_language: str | None,
+    mobile: str | None = None,
+    contact_email: str | None = None,
+) -> None:
     """Add the participant, with the coins they are due right now.
 
     In Phase 1 that is none: coins buy questions at auction, hints and powerups,
@@ -108,19 +134,28 @@ def _enrol(conn: sa.Connection, user_id: str, balance: int, preferred_language: 
             user_id=user_id,
             balance=0,
             preferred_language=preferred_language,
+            mobile=mobile,
+            contact_email=contact_email,
         )
     )
     wallet.settle_starting_balance(conn, user_id, entitled=True, amount=balance, held=False)
 
 
-def register_participant(display_name: str, password: str, preferred_language: str | None) -> str:
+def register_participant(
+    display_name: str,
+    password: str,
+    preferred_language: str | None,
+    mobile: str | None,
+    email: str | None,
+) -> str:
     """Self-registration at a machine in the hall."""
+    number, address = clean_contact(mobile, email, mobile_required=True)
     with db.transaction() as conn:
         c = lock_contest(conn)  # registration cannot close halfway through someone registering
         if not c.registration_open or c.phase != "registration":
             raise errors.conflict("registration_closed", "registration is closed")
         user_id = _new_user(conn, display_name, password, "participant", preferred_language)
-        _enrol(conn, user_id, 0, preferred_language)
+        _enrol(conn, user_id, 0, preferred_language, number, address)
     return user_id
 
 

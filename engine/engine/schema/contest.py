@@ -68,6 +68,9 @@ participant = Table(
     Column("user_id", Text, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True),
     Column("balance", Integer, nullable=False, server_default=text("0")),
     Column("preferred_language", Text),
+    # Contact details for the organisers only: never in a participant-facing view.
+    Column("mobile", Text),
+    Column("contact_email", Text),
     created_at("registered_at"),
     timestamp("last_judgement_ended_at"),
     timestamp("p1_puzzles_finished_at"),

@@ -20,7 +20,7 @@ from engine.contest import phases
 from engine.core import clock, db, events
 from engine.phase1 import selection
 from engine.phase1.answers import distinct_entries, normalise_answer, score_auto
-from engine.schema import announcement, contest, hint, ownership, user
+from engine.schema import announcement, contest, hint, ownership, participant, user
 
 # --- phases -----------------------------------------------------------------------
 
@@ -127,7 +127,9 @@ def test_hints_unlock_in_order_and_run_out() -> None:
 
 def test_two_people_registering_one_name_at_once_get_one_account() -> None:
     def register_same_name() -> str:
-        return registration.register_participant("Same Name", "password123", "cpp")
+        return registration.register_participant(
+            "Same Name", "password123", "cpp", "9876543210", None
+        )
 
     results = at_once([register_same_name for _ in range(5)])
     assert sum(isinstance(r, str) for r in results) == 1
@@ -139,8 +141,8 @@ def test_two_people_registering_one_name_at_once_get_one_account() -> None:
 
 
 def test_coins_arrive_when_phase_2_selection_is_made() -> None:
-    through = registration.register_participant("Through", "password123", "cpp")
-    out = registration.register_participant("Out", "password123", "cpp")
+    through = registration.register_participant("Through", "password123", "cpp", "9876543210", None)
+    out = registration.register_participant("Out", "password123", "cpp", "9876543210", None)
     assert balance_of(through) == balance_of(out) == 0
 
     selection.set_advancement("admin", [through], "top of the board")
@@ -162,7 +164,7 @@ def test_registration_is_refused_once_closed() -> None:
     set_contest(registration_open=False)
     raises_code(
         "registration_closed",
-        lambda: registration.register_participant("late", "password123", None),
+        lambda: registration.register_participant("late", "password123", None, "9876543210", None),
     )
 
 
@@ -229,3 +231,44 @@ def test_phase_one_is_a_single_window() -> None:
     assert next_phase("registration") == "p1_puzzles"
     assert next_phase("p1_puzzles") == "review"
     assert next_phase("ended") is None
+
+
+def test_registration_needs_a_mobile_number_and_only_checks_an_email_if_given() -> None:
+    from engine.accounts import registration
+
+    raises_code(
+        "invalid_request",
+        lambda: registration.register_participant("NoPhone", "password123", None, "", None),
+    )
+    raises_code(
+        "invalid_request",
+        lambda: registration.register_participant("BadPhone", "password123", None, "12345", None),
+    )
+    raises_code(
+        "invalid_request",
+        lambda: registration.register_participant(
+            "BadMail", "password123", None, "9876543210", "not-an-email"
+        ),
+    )
+    who = registration.register_participant(
+        "Reachable", "password123", None, "+91 98765-43210", " me@example.com "
+    )
+    row = rows(sa.select(participant).where(participant.c.user_id == who))[0]
+    assert (row.mobile, row.contact_email) == ("+919876543210", "me@example.com")
+    other = registration.register_participant("NoMail", "password123", None, "9876543210", None)
+    assert (
+        rows(sa.select(participant).where(participant.c.user_id == other))[0].contact_email is None
+    )
+
+
+def test_only_the_staff_leaderboard_carries_contact_details() -> None:
+    from engine.accounts import registration
+    from engine.coding import scoring
+    from engine.phase1 import standings
+
+    registration.register_participant(
+        "Callable", "password123", None, "9876543210", "c@example.com"
+    )
+    staff = scoring.for_staff()["phase1"][0]
+    assert staff["mobile"] == "9876543210" and staff["email"] == "c@example.com"
+    assert "mobile" not in standings.standings()[0]

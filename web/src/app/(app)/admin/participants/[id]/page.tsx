@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 type Dossier = {
   participant: {
     id: string; name: string; username: string | null; balance: number; preferred_language: string | null;
-    disqualified: boolean; disqualified_reason: string | null; registered_at: string;
+    disqualified: boolean; disqualified_reason: string | null; registered_at: string; mobile: string | null; email: string | null;
     p1_puzzles_finished_at: string | null; p1_hacking_finished_at: string | null;
     advanced: boolean | null; advancement_reason: string | null;
     proctor_alerts: number; proctor_locked_at: string | null;
@@ -197,6 +197,8 @@ export default function ParticipantPage() {
               <Facts
                 items={[
                   { label: "Registered", value: <LocalTime iso={p.registered_at} withDate /> },
+                  { label: "Mobile", value: p.mobile ?? <span className="font-normal text-faint">not given</span> },
+                  { label: "Email", value: p.email ?? <span className="font-normal text-faint">not given</span> },
                   { label: "Writes first in", value: p.preferred_language ? languageName(p.preferred_language) : "not chosen" },
                   { label: "Puzzles finished", value: p.p1_puzzles_finished_at ? <LocalTime iso={p.p1_puzzles_finished_at} /> : <span className="font-normal text-faint">never pressed finish</span> },
                   { label: "Hacking finished", value: p.p1_hacking_finished_at ? <LocalTime iso={p.p1_hacking_finished_at} /> : <span className="font-normal text-faint">never pressed finish</span> },

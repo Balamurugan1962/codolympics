@@ -133,4 +133,7 @@ def for_participants() -> dict[str, Any]:
 def for_staff() -> dict[str, Any]:
     """Both boards in full, ignoring the hidden/frozen setting."""
     with db.transaction() as conn:
-        return {"phase1": phase1_standings(conn), "phase2": phase2_standings(conn)}
+        return {
+            "phase1": phase1_standings(conn, with_contact=True),
+            "phase2": phase2_standings(conn),
+        }
