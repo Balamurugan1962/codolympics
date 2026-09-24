@@ -289,6 +289,8 @@
 .prose-statement h3 { font-size: 1.02em; margin: 1.2em 0 .4em; }
 .prose-statement p { margin: .7em 0; }
 .prose-statement a { color: var(--brand-deep); text-decoration: underline; text-underline-offset: 2px; }
+.prose-statement img { max-width: 100%; height: auto; margin: .8em auto; display: block; border-radius: var(--radius); }
+.prose-statement .katex-display { overflow-x: auto; overflow-y: hidden; }
 .prose-statement pre {
   background: var(--muted);
   border: 1px solid var(--border);
