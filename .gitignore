@@ -56,3 +56,4 @@ demo/codolympics-setup-*.zip
 /questions/
 /current-question.txt
 /judge/problems/q*/
+/judge/problems/hack-*/
