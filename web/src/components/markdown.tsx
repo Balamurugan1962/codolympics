@@ -5,6 +5,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
+import { parseAlt } from "@/lib/statement-images";
 import { cn } from "@/lib/utils";
 
 const INLINE_IMAGE = /^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$/;
@@ -18,7 +19,18 @@ function urlTransform(url: string): string {
 export function Markdown({ children, className }: { children: string; className?: string }) {
   return (
     <div className={cn("prose-statement", className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} urlTransform={urlTransform}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        urlTransform={urlTransform}
+        components={{
+          img: ({ src, alt }) => {
+            const { text, width } = parseAlt(alt ?? "");
+            // eslint-disable-next-line @next/next/no-img-element
+            return <img src={typeof src === "string" ? src : undefined} alt={text} style={width ? { width, maxWidth: "100%" } : undefined} />;
+          },
+        }}
+      >
         {children}
       </ReactMarkdown>
     </div>

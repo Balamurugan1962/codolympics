@@ -10,7 +10,7 @@ import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 import { Markdown } from "../markdown";
-import { imageToDataUri, joinStatement, nextImageName, splitStatement } from "@/lib/statement-images";
+import { imageToDataUri, joinStatement, nextImageName, splitStatement, widthOf, withWidth } from "@/lib/statement-images";
 
 import { Segmented } from "./choice";
 
@@ -94,6 +94,20 @@ export function MarkdownEditor({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img.uri} alt={img.name} className="size-8 rounded object-cover" />
               <code>{img.name}</code>
+              <input
+                aria-label={`Width of ${img.name}`}
+                title="Width in pixels (300) or a share of the statement (50%). Empty is the picture's own size."
+                placeholder="width"
+                disabled={disabled}
+                defaultValue={widthOf(body, img.name)}
+                onBlur={(e) => {
+                  const next = withWidth(body, img.name, e.target.value);
+                  if (next === null) { setProblem("A width is a number of pixels like 300, or a percentage like 50%."); return; }
+                  setProblem(null);
+                  onChange(joinStatement(next, images));
+                }}
+                className="h-6 w-16 rounded border bg-transparent px-1.5 text-[11.5px] placeholder:text-faint"
+              />
               <button type="button" aria-label={`Remove ${img.name}`} disabled={disabled} className="ml-1 text-faint hover:text-destructive" onClick={() => drop(images.filter((i) => i.name !== img.name))}>×</button>
             </span>
           ))}

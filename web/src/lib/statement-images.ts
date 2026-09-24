@@ -57,3 +57,30 @@ export async function imageToDataUri(file: File): Promise<string> {
   }
   throw new Error("That picture is too detailed to embed. Crop it or use a simpler one.");
 }
+
+/** A size rides in the alt text after a bar, `![Figure 1|300][img1]` or `|50%`, and nowhere else. */
+const SIZE = /^(\d{1,4})(?:px)?$|^(\d{1,3})%$/;
+
+export function parseAlt(alt: string): { text: string; width: string | undefined } {
+  const at = alt.lastIndexOf("|");
+  if (at < 0) return { text: alt, width: undefined };
+  const found = SIZE.exec(alt.slice(at + 1).trim());
+  if (!found) return { text: alt, width: undefined };
+  return { text: alt.slice(0, at), width: found[2] ? `${found[2]}%` : `${found[1]}px` };
+}
+
+function marker(name: string): RegExp {
+  return new RegExp(`!\\[([^\\]]*)\\]\\[${name}\\]`);
+}
+
+export function widthOf(body: string, name: string): string {
+  const found = marker(name).exec(body);
+  return found ? (parseAlt(found[1]).width ?? "").replace("px", "") : "";
+}
+
+/** Sets or clears the width in the picture's marker. Returns null when the size is not a size. */
+export function withWidth(body: string, name: string, width: string): string | null {
+  const wanted = width.trim();
+  if (wanted && !SIZE.test(wanted)) return null;
+  return body.replace(marker(name), (_all, alt: string) => `![${parseAlt(alt).text}${wanted ? `|${wanted}` : ""}][${name}]`);
+}
