@@ -48,10 +48,63 @@ export function AuctionFloor() {
    * that fails — a silent freeze reads as a broken page and everyone reloads. */
   const paused = auction.paused;
   /* Offline the bidding happens out loud in the room and an organiser records
-   * each sale. There is nothing to press here, so the screen stops pretending
-   * there is: no ring, no bid button, no feed. What it keeps is the board —
-   * what is up now, what went for how much, and to whom. */
-  const offline = auction.mode === "offline";
+   * each sale. There is nothing to press here, so the screen shows only what
+   * a bidder needs to decide: the coins left, the questions already won, and
+   * what is up now. */
+  if (auction.mode === "offline") {
+    const owned = state.questions ?? [];
+    return (
+      <PageBody width="wide" className="animate-fade-in">
+        <PageHeader breadcrumb={`Auction ${auction.round}`} title="Auction" />
+        <div className="grid gap-4 lg:grid-cols-3">
+          <section className="overflow-hidden rounded-box border border-line bg-card lg:col-span-2">
+            {!lot ? (
+              <EmptyState icon={<Icon.Clock size={20} />} title="Between lots" body="The next question is announced in the room." />
+            ) : (
+              <div className="p-6">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-deep">Now offering</div>
+                <h2 className="mt-1 text-[28px] leading-tight font-semibold tracking-[-0.01em]">{lot.topic || "Topic not set"}</h2>
+                <div className="mt-4 grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Difficulty</div>
+                    <div className="mt-1"><Badge variant={lot.difficulty === "hard" ? "destructive" : lot.difficulty === "medium" ? "warning" : "success"}>{lot.difficulty}</Badge></div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Base price</div>
+                    <div className="mt-0.5 text-[26px] font-semibold tabular-nums leading-none">{lot.base_price}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Points</div>
+                    <div className="mt-0.5 text-[26px] font-semibold tabular-nums leading-none">{lot.score}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+          <div className="space-y-4">
+            <section className="rounded-box border border-line bg-card p-5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Coins left</div>
+              <div className="mt-1 text-[32px] font-semibold tabular-nums leading-none">{balance.toLocaleString()}</div>
+            </section>
+            <Section title="Your questions" description={owned.length ? `${owned.length} won` : undefined} padded={false}>
+              {owned.length === 0 ? (
+                <p className="px-5 py-4 text-[13px] text-muted-foreground">You have not won a question yet.</p>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {owned.map((q) => (
+                    <li key={q.id} className="px-5 py-2.5 text-[13px]">
+                      <div className="truncate font-semibold">{q.title}</div>
+                      <div className="text-[11.5px] text-faint">{q.difficulty} · {q.score} pts · paid {q.price_paid}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Section>
+          </div>
+        </div>
+      </PageBody>
+    );
+  }
 
   async function bid() {
     if (!lot) return;
@@ -69,11 +122,7 @@ export function AuctionFloor() {
       <PageHeader
         breadcrumb={`Auction ${auction.round} · lot ${position || "—"} of ${auction.order.length}`}
         title="Auction"
-        description={
-          offline
-            ? "The auctioneer runs this in the room. Bid out loud; an organiser records each sale and this board follows."
-            : "Bids rise by a fixed step. Every bid restarts the countdown, so bidding last does not win. Bidding more does."
-        }
+        description="Bids rise by a fixed step. Every bid restarts the countdown, so bidding last does not win. Bidding more does."
       />
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
@@ -97,12 +146,6 @@ export function AuctionFloor() {
                     </p>
                   </div>
                   <div className="flex justify-center">
-                    {offline ? (
-                      <div className="flex size-[120px] flex-col items-center justify-center rounded-full border-2 border-line text-center">
-                        <Icon.Gavel size={22} className="text-brand" />
-                        <span className="mt-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-faint uppercase">in the room</span>
-                      </div>
-                    ) : (
                     <div key={hasBids ? lot.bidding_ends_at ?? "manual" : lot.no_bid_deadline ?? "manual"} className={hasBids && !paused ? "pulse-once rounded-full" : ""}>
                       <CountdownRing
                         until={paused ? null : hasBids ? lot.bidding_ends_at : lot.no_bid_deadline}
@@ -110,37 +153,29 @@ export function AuctionFloor() {
                         label={paused ? "paused" : hasBids ? (lot.bidding_ends_at ? "to close" : "manual close") : "to open bids"}
                       />
                     </div>
-                    )}
                   </div>
                 </div>
 
                 <div className={`grid gap-4 border-t border-line px-5 py-4 sm:grid-cols-3 ${mine ? "bg-brand-tint" : hasBids ? "bg-muted" : "bg-card"}`}>
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">{offline ? "Base price" : "Highest bid"}</div>
-                    <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none">{offline ? lot.base_price : lot.current_bid ?? "—"}</div>
-                    <div className="mt-1.5 text-[12.5px] text-muted-foreground">{offline ? "bidding starts here" : lot.current_bidder_name ? <>{lot.current_bidder_name}{mine && <Badge variant="success" className="ml-2">you</Badge>}</> : "no bids yet"}</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Highest bid</div>
+                    <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none">{lot.current_bid ?? "—"}</div>
+                    <div className="mt-1.5 text-[12.5px] text-muted-foreground">{lot.current_bidder_name ? <>{lot.current_bidder_name}{mine && <Badge variant="success" className="ml-2">you</Badge>}</> : "no bids yet"}</div>
                   </div>
-                  {!offline && (
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Next bid</div>
-                      <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none text-brand-deep">{lot.next_bid}</div>
-                      <div className="mt-1.5 text-[12.5px] text-muted-foreground">+{auction.increment} each time</div>
-                    </div>
-                  )}
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Next bid</div>
+                    <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none text-brand-deep">{lot.next_bid}</div>
+                    <div className="mt-1.5 text-[12.5px] text-muted-foreground">+{auction.increment} each time</div>
+                  </div>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Your coins</div>
                     <div className="mt-0.5 text-[24px] font-semibold tabular-nums leading-none">{balance.toLocaleString()}</div>
-                    <div className="mt-1.5 text-[12.5px] text-muted-foreground">{offline ? "raise your hand to bid" : affordable ? `${stepsLeft} more step${stepsLeft === 1 ? "" : "s"} after this` : "not enough for the next bid"}</div>
+                    <div className="mt-1.5 text-[12.5px] text-muted-foreground">{affordable ? `${stepsLeft} more step${stepsLeft === 1 ? "" : "s"} after this` : "not enough for the next bid"}</div>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:flex-row sm:items-center">
-                  {offline ? (
-                    <span className="text-[13px] text-muted-foreground">
-                      <span className="font-semibold text-ink">Bidding happens in the room.</span> Call your bid out loud. An organiser records
-                      the sale here, and your balance and the board update the moment they do.
-                    </span>
-                  ) : eligible ? (
+                  {eligible ? (
                     <>
                       <Button size="lg" onClick={bid} loading={busy} disabled={paused || mine || !affordable} className="sm:min-w-44"><Icon.Gavel size={16} /> 
                         {paused ? "Paused" : mine ? "You're winning" : `Bid ${lot.next_bid}`}
@@ -157,7 +192,6 @@ export function AuctionFloor() {
             )}
           </section>
 
-          {!offline && (
           <Section title="Bid feed" description={lot ? "Live, newest first." : undefined} padded={false}>
             {auction.recent_bids.length === 0 ? (
               <p className="px-5 py-4 text-[13px] text-muted-foreground">No bids on this question yet.</p>
@@ -173,7 +207,6 @@ export function AuctionFloor() {
               </ul>
             )}
           </Section>
-          )}
         </div>
 
         <Section title="Running order" description={`${sold} sold · ${auction.order.filter((o) => o.state === "unsold").length} unsold · ${auction.order.filter((o) => o.state === "pending").length} to come`} padded={false} className="lg:sticky lg:top-28 lg:self-start">
