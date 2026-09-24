@@ -45,3 +45,9 @@ judge/.venv/
 # Locally installed agent skills (tool cache, not project source)
 .agents/
 .claude/
+
+# The real contest's questions and answers, and exports that carry password hashes:
+# this repository is public, so none of it may be committed.
+/actual/
+demo/codolympics-setup-*.zip
+*.sql
