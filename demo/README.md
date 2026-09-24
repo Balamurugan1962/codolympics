@@ -7,6 +7,10 @@ To write Phase 1 questions of your own, see
 [phase1-example/README.md](phase1-example/README.md) and the example set
 `phase1-example.zip` beside it.
 
+To write Phase 2 problems of your own, see
+[phase2-example/README.md](phase2-example/README.md) and the example set
+`phase2-example.zip` beside it.
+
 ## Logins it creates
 
 | Who   | Password        | Role          |

@@ -1,0 +1,24 @@
+{
+  "format": 1,
+  "type": "problem",
+  "id": "peak-element",
+  "details": {
+    "title": "A Peak Element",
+    "topic": "search",
+    "difficulty": "medium",
+    "score": 200,
+    "base_price": 70,
+    "statement_md": "Given `n` distinct integers, print the index (0-based) of **any** element that is strictly greater than both of its neighbours. Treat the position just outside either end of the array as `-∞`, so the first or last element counts as a peak when it beats its one real neighbour.\n\n### Input\n```\nn\na1 a2 … an\n```\n\n### Output\nThe index of any one peak element. Several may exist; any is accepted.\n\n### Constraints\n- `1 ≤ n ≤ 200000`\n- `-10^9 ≤ ai ≤ 10^9`, all distinct\n- A peak always exists.\n",
+    "sample_count": 2,
+    "hints": [
+      {
+        "price": 20,
+        "body_md": "You don't need to find every peak, only one. What happens as you walk the array comparing each value to the one right after it?"
+      },
+      {
+        "price": 40,
+        "body_md": "Walk left to right. The moment a value is bigger than the one after it, that position is a peak — the array rose into it and then fell away. If it never falls, the last element is the peak."
+      }
+    ]
+  }
+}
