@@ -43,6 +43,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 # /usr/local/bin is already on the sandbox PATH.
 ARG PYPY_VERSION=7.3.23
 ARG PYPY_PYTHON=3.11
+# Where the tarball comes from: the official site by default, or a local mirror on a network that blocks it.
+ARG PYPY_BASE_URL=https://downloads.python.org/pypy
 ARG PYPY_SHA256_amd64=2bcab031cef7a37fe1930b51f7091e78a191ae63f80eca00a265d3378c3a645b
 ARG PYPY_SHA256_arm64=ed3b27a95257a8bb88707042e6bb5fe64569d47ef44bdc9842c730667637dfbd
 RUN set -eux; \
@@ -57,7 +59,7 @@ RUN set -eux; \
       *) echo "no PyPy build for $arch" >&2; exit 1 ;; \
     esac; \
     tarball="pypy${PYPY_PYTHON}-v${PYPY_VERSION}-${slug}.tar.gz"; \
-    curl -fsSL -o /tmp/pypy.tar.gz "https://downloads.python.org/pypy/${tarball}"; \
+    curl -fsSL -o /tmp/pypy.tar.gz "${PYPY_BASE_URL}/${tarball}"; \
     echo "${sha}  /tmp/pypy.tar.gz" | sha256sum -c -; \
     mkdir -p /usr/local/pypy3; \
     tar -xzf /tmp/pypy.tar.gz -C /usr/local/pypy3 --strip-components=1; \

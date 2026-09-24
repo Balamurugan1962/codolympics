@@ -26,7 +26,10 @@ services:
     networks: [internal]
 
   go-judge:
-    build: ./worker
+    build:
+      context: ./worker
+      args:
+        PYPY_BASE_URL: ${PYPY_BASE_URL:-https://downloads.python.org/pypy}
     image: fyp-judge-worker:1.0
     restart: unless-stopped
     privileged: true
