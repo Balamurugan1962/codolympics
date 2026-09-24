@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useContest, useEngineEvent } from "@/components/contest-provider";
+import { BlackoutFun } from "@/components/contest/blackout-fun";
 import { Icon } from "@/components/icons";
 import { api } from "@/lib/client";
 
@@ -85,8 +86,9 @@ export function BlackoutOverlay() {
       role="alertdialog"
       aria-modal="true"
       aria-label="You have been blacked out"
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-navy px-6 text-center text-white"
+      className="fixed inset-0 z-[100] flex overflow-y-auto bg-navy px-6 py-8 text-center text-white"
     >
+      <div className="m-auto flex flex-col items-center">
       <div className="flex size-14 items-center justify-center rounded-full bg-white/10">
         <Icon.Ban size={26} />
       </div>
@@ -111,10 +113,13 @@ export function BlackoutOverlay() {
         </p>
       )}
 
-      <p className="mt-8 max-w-sm text-[12.5px] leading-relaxed text-white/50">
+      <BlackoutFun />
+
+      <p className="mt-6 max-w-sm text-[12.5px] leading-relaxed text-white/50">
         Nothing is lost. Your work is saved and you will come back to exactly where you were. Refreshing or opening another tab
         will not clear this. The clock is on the server.
       </p>
+      </div>
     </div>
   );
 }
