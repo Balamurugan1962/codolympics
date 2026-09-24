@@ -5,11 +5,22 @@ from __future__ import annotations
 import sqlalchemy as sa
 
 from engine.accounts import wallet
+from engine.auction.board import publish_snapshot
 from engine.auction.sales import current_owner, refund_note, refund_sale
 from engine.contest.messages import notify
 from engine.core import clock, db, errors, events
 from engine.core.audit import audit
-from engine.schema import announcement, ownership, question
+from engine.packages import volume
+from engine.schema import (
+    announcement,
+    draft,
+    hint_purchase,
+    lot,
+    ownership,
+    practice_run,
+    question,
+    submission,
+)
 
 
 def void_question(
@@ -178,3 +189,58 @@ def transfer_ownership(
             detail=detail,
         )
     events.publish("leaderboard")
+
+
+def delete_question(
+    actor_id: str, question_id: str, reason: str, remove_package: bool = False
+) -> dict[str, int]:
+    """Remove a question that nothing has happened to: never sold, attempted, or bought a hint for.
+
+    Its hints and any lot that has not opened go with it. The judge package stays unless
+    asked for, because it is the expensive part to rewrite. Anything with history is voided.
+    """
+    with db.transaction() as conn:
+        q = conn.execute(
+            sa.select(question).where(question.c.id == question_id).with_for_update()
+        ).one_or_none()
+        if q is None:
+            raise errors.not_found("question")
+        history = {
+            "sales": (ownership, ownership.c.question_id),
+            "submissions": (submission, submission.c.question_id),
+            "practice runs": (practice_run, practice_run.c.question_id),
+            "hint purchases": (hint_purchase, hint_purchase.c.question_id),
+        }
+        for name, (table, col) in history.items():
+            found = conn.execute(
+                sa.select(sa.func.count()).select_from(table).where(col == question_id)
+            ).scalar_one()
+            if found:
+                raise errors.conflict(
+                    "has_history", f"it has {found} {name}, so void it instead of deleting it"
+                )
+        opened = conn.execute(
+            sa.select(sa.func.count())
+            .select_from(lot)
+            .where(lot.c.question_id == question_id, lot.c.state.notin_(("pending", "withdrawn")))
+        ).scalar_one()
+        if opened:
+            raise errors.conflict(
+                "has_history", "it has been offered at auction, so void it instead of deleting it"
+            )
+        lots = conn.execute(sa.delete(lot).where(lot.c.question_id == question_id)).rowcount
+        conn.execute(sa.delete(draft).where(draft.c.question_id == question_id))
+        conn.execute(sa.delete(question).where(question.c.id == question_id))
+        audit(
+            conn,
+            actor_id=actor_id,
+            action="question.delete",
+            target=question_id,
+            reason=reason,
+            detail={"title": q.title, "package_removed": remove_package, "lots_removed": lots},
+        )
+    if remove_package:
+        volume.delete_package(question_id)
+    if lots:
+        publish_snapshot()
+    return {"lots": lots}

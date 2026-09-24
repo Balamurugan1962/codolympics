@@ -378,6 +378,7 @@ function ProveCopy({ hack, copy, onChanged }: { hack: Hack; copy: HackSolution; 
 
 function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChanged?: () => Promise<void> }) {
   const { toast } = useToast();
+  const router = useRouter();
   const proven = hack.solutions.filter((x) => x.proven).length;
 
   return (
@@ -400,6 +401,7 @@ function Verify({ hack, dirty, onChanged }: { hack: Hack; dirty: boolean; onChan
           {!hack.ready && !hack.published && <span className="text-[12px] text-muted-foreground">Publishing unlocks once every copy has a proven breaking input.</span>}
           <span className="flex-1" />
           {!hack.voided && <ReasonAction label="Void" variant="destructive" title="Void this question?" description="It scores for nobody and every total is recomputed. This cannot be undone." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/hacking/${hack.id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await onChanged?.(); }} />}
+          <ActionButton label="Delete" variant="destructive" confirm={{ title: "Delete this question?", body: "Removes it completely. It only works while nobody has attempted it; once someone has, void it instead. This cannot be undone.", label: "Delete" }} onAct={async () => { await api.del(`/api/admin/phase1/hacking/${hack.id}`, { reason: `Deleted “${hack.title}”.` }); toast({ title: "Deleted", tone: "success" }); router.push("/admin/phase1"); }} />
         </div>
       </Section>
     </>

@@ -20,7 +20,7 @@ from engine.core import db, errors, events
 from engine.core.audit import audit
 from engine.core.serialize import rows, to_camel
 from engine.phase1 import solutions
-from engine.schema import p1_answer, p1_hack_question, p1_question
+from engine.schema import p1_answer, p1_hack_attempt, p1_hack_question, p1_question
 
 PUZZLE_FIELDS = (
     "title",
@@ -165,21 +165,38 @@ def update(
     _changed(section)
 
 
-def delete_puzzle(actor_id: str, question_id: int, reason: str) -> None:
+def delete_question(actor_id: str, section: str, question_id: int, reason: str) -> None:
+    """Remove a question altogether, if nobody has done anything with it yet.
+
+    Answers and attempts are people's work and results, so a question that has any
+    is voided instead: it leaves the contest but the record stays.
+    """
+    table = table_for(section)
+    history = p1_answer if section == "puzzles" else p1_hack_attempt
     with db.transaction() as conn:
-        q = get_question(conn, p1_question, question_id, lock=True)
-        if q.published:
+        get_question(conn, table, question_id, lock=True)
+        used = conn.execute(
+            sa.select(sa.func.count())
+            .select_from(history)
+            .where(history.c.question_id == question_id)
+        ).scalar_one()
+        if used:
+            noun = "answered" if section == "puzzles" else "attempted"
             raise errors.conflict(
-                "published", "unpublish or void a published question instead of deleting it"
+                "has_history",
+                f"{used} {'answers' if section == 'puzzles' else 'attempts'} exist: "
+                f"someone has {noun} this question, so void it instead of deleting it",
             )
-        conn.execute(sa.delete(p1_question).where(p1_question.c.id == question_id))
+        conn.execute(sa.delete(table).where(table.c.id == question_id))
+        noun = "puzzle" if section == "puzzles" else "hack"
         audit(
             conn,
             actor_id=actor_id,
-            action="p1.puzzle.delete",
+            action=f"p1.{noun}.delete",
             target=str(question_id),
             reason=reason,
         )
+    _changed(section)
 
 
 def set_published(

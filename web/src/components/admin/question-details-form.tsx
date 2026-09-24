@@ -12,7 +12,6 @@ import { ChoiceCards } from "../ui/choice";
 import { FormGrid } from "../ui/field";
 import { Field } from "../ui/field";
 import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
 import { MarkdownEditor } from "../ui/markdown-editor";
 import { difficultyLabel, difficultyVariant } from "@/lib/difficulty";
 
@@ -128,8 +127,8 @@ export function HintsEditor({ hints, onChange }: { hints: QuestionDetails["hints
                 <Field label="Price" help="Deducted from the buyer's balance.">
                   <Input type="number" min={0} step={1} value={h.price} onChange={(e) => update(i, { price: Number(e.target.value) })} />
                 </Field>
-                <Field label="Text" hint="Markdown">
-                  <Textarea rows={3} value={h.body_md} placeholder="Think about what happens when n = 1." onChange={(e) => update(i, { body_md: e.target.value })} />
+                <Field label="Text" hint="Markdown, up to 20,000 characters">
+                  <MarkdownEditor rows={4} maxChars={20_000} images={false} value={h.body_md} placeholder="Think about what happens when n = 1." note="Markdown · maths ($…$), code, HTML tags" onChange={(v) => update(i, { body_md: v })} />
                 </Field>
               </div>
             </li>

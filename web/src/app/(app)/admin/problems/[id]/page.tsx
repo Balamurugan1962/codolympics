@@ -34,6 +34,7 @@ import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
 import type { P, Q } from "../page";
+import { Markdown } from "@/components/markdown";
 
 type Report = { ok: boolean; issues: string[]; reference: { verdict: string; first_fail: number | null; passed: number; max_time_ms: number } | null; wrong_solution: { verdict: string } | null; checker: { compiled: boolean; output: string } | null };
 type Tab = "package" | "details" | "preview";
@@ -135,6 +136,16 @@ export default function ProblemPage() {
                 </div>
               )}
             </AsideBlock>
+            {question && (
+              <AsideBlock title="Delete it">
+                <p className="mb-3 text-[12.5px] text-muted-foreground">Removes the question and its hints for good. It only works while nothing has happened to it: never sold, attempted or bought a hint for. Otherwise void it.</p>
+                <ReasonAction label="Delete this question" variant="destructive" size="sm" title={`Delete ${id}?`}
+                  description="This cannot be undone. The judge package is kept unless you tick the box."
+                  defaultReason={`${id} is not needed; removing it.`}
+                  fields={[{ name: "remove_package", label: "Also delete the judge package and its test data", type: "checkbox" }]}
+                  onConfirm={async (reason, values) => { await api.del(`/api/admin/questions/${id}`, { reason, remove_package: values.remove_package === "1" }); toast({ title: "Question deleted", tone: "success" }); router.push("/admin/problems"); }} />
+              </AsideBlock>
+            )}
             {question && question.status !== "void" && !hackOnly && (
               <AsideBlock title="Take it out of play">
                 <p className="mb-3 text-[12.5px] text-muted-foreground">Voiding scores it for nobody. The owner is refunded the price and every hint bought.</p>
@@ -316,7 +327,7 @@ function Package({ id, problem, question, version: live, onChange }: { id: strin
               <Checklist items={[
                 ...(report.reference ? [{ ok: report.reference.verdict === "AC", label: `Reference: ${report.reference.verdict}`, detail: `${report.reference.passed} passed, slowest ${report.reference.max_time_ms} ms${report.reference.first_fail !== null ? `, first failure on test ${report.reference.first_fail}` : ""}` }] : []),
                 ...(report.wrong_solution ? [{ ok: report.wrong_solution.verdict !== "AC", label: `Wrong solution: ${report.wrong_solution.verdict}`, detail: report.wrong_solution.verdict === "AC" ? "it passed everything. The tests do not catch it" : "rejected, as it should be" }] : []),
-                ...(report.checker ? [{ ok: report.checker.compiled, label: report.checker.compiled ? "Checker compiles" : "Checker does not compile", detail: report.checker.output || undefined }] : []),
+                ...(report.checker ? [{ ok: report.checker.compiled, label: report.checker.compiled ? "Checker compiles" : "Checker does not compile", detail: report.checker.compiled ? undefined : report.checker.output }] : []),
                 ...report.issues.map((i) => ({ ok: false, label: i })),
               ]} />
             </AlertDescription></Alert>
@@ -450,7 +461,7 @@ function Preview({ id, problem, question }: { id: string; problem: P | null; que
             {question.hints.map((h) => (
               <li key={h.idx} className="flex gap-4 py-2.5 text-[13px]">
                 <span className="w-24 shrink-0 font-semibold tabular-nums text-muted-foreground">Hint {h.idx + 1} · {h.price}</span>
-                <span className="min-w-0 flex-1 whitespace-pre-wrap">{h.bodyMd}</span>
+                <div className="min-w-0 flex-1"><Markdown className="prose-sm">{h.bodyMd}</Markdown></div>
               </li>
             ))}
           </ol>

@@ -21,6 +21,8 @@ export function MarkdownEditor({
   placeholder,
   disabled,
   id,
+  maxChars = 200_000,
+  images: allowImages = true,
   note = "Markdown · maths ($…$), tables, code blocks · paste or drop an image",
   className,
 }: {
@@ -30,6 +32,10 @@ export function MarkdownEditor({
   placeholder?: string;
   disabled?: boolean;
   id?: string;
+  /** The most the field can hold, images included: a statement 200,000, a hint 20,000. */
+  maxChars?: number;
+  /** Whether pictures can be added. A hint is too short to carry one. */
+  images?: boolean;
   note?: string;
   className?: string;
 }) {
@@ -55,7 +61,7 @@ export function MarkdownEditor({
         nextBody = `${nextBody.slice(0, at)}${mark}${nextBody.slice(at)}`;
       }
       const joined = joinStatement(nextBody, nextImages);
-      if (joined.length > 200_000) throw new Error("Statements are limited to 200,000 characters, images included. Remove or shrink a picture.");
+      if (joined.length > maxChars) throw new Error(`This is limited to ${maxChars.toLocaleString()} characters, images included. Remove or shrink a picture.`);
       onChange(joined);
     } catch (err) {
       setProblem(err instanceof Error ? err.message : "That picture could not be added.");
@@ -77,11 +83,11 @@ export function MarkdownEditor({
         onChange={(e) => onChange(joinStatement(e.target.value, images))}
         onPaste={(e) => {
           const files = Array.from(e.clipboardData.files);
-          if (files.some((f) => f.type.startsWith("image/"))) { e.preventDefault(); void addImages(files); }
+          if (allowImages && files.some((f) => f.type.startsWith("image/"))) { e.preventDefault(); void addImages(files); }
         }}
         onDrop={(e) => {
           const files = Array.from(e.dataTransfer.files);
-          if (files.some((f) => f.type.startsWith("image/"))) { e.preventDefault(); void addImages(files); }
+          if (allowImages && files.some((f) => f.type.startsWith("image/"))) { e.preventDefault(); void addImages(files); }
         }}
         rows={rows}
         spellCheck
@@ -142,8 +148,8 @@ export function MarkdownEditor({
           ]}
         />
         <div className="flex items-center gap-2">
-          <input ref={picker} type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden onChange={(e) => { void addImages(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
-          <button type="button" disabled={disabled} onClick={() => picker.current?.click()} className="rounded-md border bg-card px-2 py-1 text-[11.5px] font-semibold hover:bg-muted disabled:opacity-50">Add image</button>
+          {allowImages && <><input ref={picker} type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden onChange={(e) => { void addImages(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
+          <button type="button" disabled={disabled} onClick={() => picker.current?.click()} className="rounded-md border bg-card px-2 py-1 text-[11.5px] font-semibold hover:bg-muted disabled:opacity-50">Add image</button></>}
           <span className="hidden pr-1 text-[11px] text-faint sm:block">{note}</span>
         </div>
       </div>

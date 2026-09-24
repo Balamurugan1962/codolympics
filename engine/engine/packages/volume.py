@@ -69,6 +69,15 @@ def latest_or_current(problem_id: str) -> str | None:
     return versions[-1] if versions else None
 
 
+def delete_package(problem_id: str) -> bool:
+    """Remove one problem's versions from the volume. True if there was anything to remove."""
+    target = dir_for(problem_id)
+    if not target.is_dir() or target.is_symlink():
+        return False
+    shutil.rmtree(target, ignore_errors=True)
+    return True
+
+
 def delete_all_packages() -> int:
     """Remove every package from the volume. Only the full contest wipe calls this."""
     try:

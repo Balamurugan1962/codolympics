@@ -52,6 +52,10 @@ class OutcomeBody(ReasonBody):
     outcome: Literal["stand", "refund", "void"]
 
 
+class DeleteBody(ReasonBody):
+    remove_package: bool = False
+
+
 class AssignBody(ReasonBody):
     participant_id: str
     price: Annotated[int, Field(ge=0)]
@@ -88,6 +92,12 @@ def void_question(viewer: Admin, question_id: str, body: VoidBody) -> dict[str, 
         viewer.id, question_id, body.reason, body.refund_price, body.refund_hints
     )
     return {"ok": True}
+
+
+@router.delete("/{question_id}")
+def delete_question(viewer: Admin, question_id: str, body: DeleteBody) -> dict[str, int]:
+    """Only for a question nothing has happened to; anything else is voided instead."""
+    return corrections.delete_question(viewer.id, question_id, body.reason, body.remove_package)
 
 
 @router.post("/{question_id}/rejudge")

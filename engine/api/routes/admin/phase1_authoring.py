@@ -87,10 +87,8 @@ def update_question(
 def delete_question(
     viewer: Admin, section: str, question_id: int, body: ReasonBody
 ) -> dict[str, bool]:
-    """Only an unpublished puzzle can be deleted; anything else is voided instead."""
-    if section != "puzzles":
-        raise errors.not_found("section")
-    authoring.delete_puzzle(viewer.id, question_id, body.reason)
+    """Deleted if nobody has answered or attempted it; otherwise it is voided instead."""
+    authoring.delete_question(viewer.id, section, question_id, body.reason)
     return {"ok": True}
 
 

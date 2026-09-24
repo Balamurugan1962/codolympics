@@ -557,7 +557,7 @@ function Verify({ puzzle, view, dirty, onChanged }: { puzzle: Puzzle; view: Puzz
           {!puzzle.ready && !puzzle.published && <span className="text-[12px] text-muted-foreground">Publishing unlocks when the self-test passes.</span>}
           <span className="flex-1" />
           {!puzzle.voided && <ReasonAction label="Void" variant="destructive" title="Void this puzzle?" description="It scores for nobody and every total is recomputed. This cannot be undone." onConfirm={async (reason) => { await api.post(`/api/admin/phase1/puzzles/${puzzle.id}/void`, { reason }); toast({ title: "Voided", tone: "success" }); await onChanged?.(); }} />}
-          {!puzzle.published && <ActionButton label="Delete" variant="destructive" confirm={{ title: "Delete this puzzle?", body: "Only drafts can be deleted. This cannot be undone.", label: "Delete" }} onAct={async () => { await api.del(`/api/admin/phase1/puzzles/${puzzle.id}`, { reason: `Deleted the draft “${puzzle.title}”.` }); toast({ title: "Deleted", tone: "success" }); router.push("/admin/phase1"); }} />}
+          <ActionButton label="Delete" variant="destructive" confirm={{ title: "Delete this puzzle?", body: "Removes it completely. It only works while nobody has answered it; once someone has, void it instead. This cannot be undone.", label: "Delete" }} onAct={async () => { await api.del(`/api/admin/phase1/puzzles/${puzzle.id}`, { reason: `Deleted “${puzzle.title}”.` }); toast({ title: "Deleted", tone: "success" }); router.push("/admin/phase1"); }} />
         </div>
         {state === "void" && <p className="mt-3 text-[12.5px] text-muted-foreground">This puzzle is void.</p>}
       </Section>
