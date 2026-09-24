@@ -44,6 +44,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/client";
 import { cn } from "@/lib/utils";
+import { difficultyLabel } from "@/lib/difficulty";
 
 type Lot = {
   id: number;
@@ -381,7 +382,7 @@ export default function AuctionControlPage() {
                           <span className="block truncate font-medium">{l.title}</span>
                           <span className="font-mono text-[11px] text-faint">{l.question_id}</span>
                         </TableCell>
-                        <TableCell className="hidden capitalize text-muted-foreground sm:table-cell">{l.difficulty}</TableCell>
+                        <TableCell className="hidden capitalize text-muted-foreground sm:table-cell">{difficultyLabel(l.difficulty)}</TableCell>
                         <TableCell className="text-right tabular-nums">{l.score}</TableCell>
                         <TableCell className="text-right tabular-nums">{l.base_price}</TableCell>
                         <TableCell>

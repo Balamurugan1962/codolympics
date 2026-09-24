@@ -28,6 +28,7 @@ import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 import { cn } from "@/lib/utils";
 import { useJudgement, type Judgement as LiveJudgement } from "@/lib/use-judgement";
+import { difficultyLabel, difficultyVariant } from "@/lib/difficulty";
 
 const CodeEditor = dynamic(() => import("@/components/editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-full bg-[#1e1e1e]" /> });
 
@@ -192,7 +193,7 @@ export default function WorkspacePage() {
       <div className="flex items-center gap-3 border-b border-line px-4 py-2">
         <Link href="/dashboard" className="text-faint hover:text-ink" aria-label="Back to my questions"><Icon.ChevronLeft /></Link>
         <h1 className="truncate text-[15px] font-semibold">{q.title}</h1>
-        {q.difficulty && <Badge variant={q.difficulty === "hard" ? "destructive" : q.difficulty === "medium" ? "warning" : "success"}>{q.difficulty}</Badge>}
+        {q.difficulty && <Badge variant={difficultyVariant(q.difficulty)}>{difficultyLabel(q.difficulty)}</Badge>}
         {q.score !== null && <Badge variant="neutral">{q.score} pts</Badge>}
         {solved && <Badge variant="success"><Icon.Check size={12} strokeWidth={3} /> Solved</Badge>}
       </div>

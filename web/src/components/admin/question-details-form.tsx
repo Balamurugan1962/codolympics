@@ -14,9 +14,10 @@ import { Field } from "../ui/field";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { MarkdownEditor } from "../ui/markdown-editor";
+import { difficultyLabel, difficultyVariant } from "@/lib/difficulty";
 
 export type QuestionDetails = {
-  title: string; topic: string; difficulty: "easy" | "medium" | "hard"; score: number; base_price: number; auction_order: number;
+  title: string; topic: string; difficulty: "very_easy" | "easy" | "medium" | "hard"; score: number; base_price: number; auction_order: number;
   statement_md: string; sample_count: number; hints: { price: number; body_md: string }[];
 };
 
@@ -44,7 +45,7 @@ export function hintIssues(hints: QuestionDetails["hints"]): string[] {
 }
 
 export function DifficultyBadge({ d }: { d: string }) {
-  return <Badge variant={d === "hard" ? "destructive" : d === "medium" ? "warning" : "success"}>{d}</Badge>;
+  return <Badge variant={difficultyVariant(d)}>{difficultyLabel(d)}</Badge>;
 }
 
 export function QuestionBasicsFields({ d, onChange, testcases }: { d: QuestionDetails; onChange: (d: QuestionDetails) => void; testcases: number | null }) {
@@ -65,9 +66,10 @@ export function QuestionBasicsFields({ d, onChange, testcases }: { d: QuestionDe
         <ChoiceCards
           value={d.difficulty}
           onChange={(v) => set("difficulty", v)}
-          cols={3}
+          cols={4}
           size="sm"
           options={[
+            { value: "very_easy", label: "Very easy", description: "Nearly everyone solves it. The cheapest, the lowest score." },
             { value: "easy", label: "Easy", description: "Most finalists solve it. Cheap, low score." },
             { value: "medium", label: "Medium", description: "A real problem. The middle of the auction." },
             { value: "hard", label: "Hard", description: "Few will solve it. Expensive, high score." },

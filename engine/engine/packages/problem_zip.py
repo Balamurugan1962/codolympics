@@ -275,7 +275,7 @@ def _import_details(
     reason: str,
     result: ProblemImport,
 ) -> None:
-    difficulty = str(details.get("difficulty", ""))
+    difficulty = str(details.get("difficulty", "")).strip().lower().replace(" ", "_")
     if difficulty not in DIFFICULTIES:
         raise errors.invalid(f'unknown difficulty "{difficulty}"')
     hints = details.get("hints")

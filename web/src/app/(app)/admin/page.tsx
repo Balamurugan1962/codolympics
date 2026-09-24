@@ -32,6 +32,7 @@ import { Stepper } from "@/components/ui/stepper";
 import { Summary, SummaryItem } from "@/components/ui/summary";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/client";
+import { difficultyLabel } from "@/lib/difficulty";
 
 type Health = { judge: { status: string } | null; backlog: { pending: number; inFlight: number; retrying: number; internalErrors: number } };
 type Checks = { next: string | null; blockers: string[]; warnings: string[] };
@@ -494,7 +495,7 @@ function LiveAuction() {
             {/* The board is blind, so this card names the topic like everyone
                 else sees it. The question's own name is on Auction control. */}
             <span className="block truncate text-[15px] font-semibold">{lot.topic || "Topic not set"}</span>
-            <span className="text-[12px] text-muted-foreground capitalize">{lot.difficulty}</span>
+            <span className="text-[12px] text-muted-foreground capitalize">{difficultyLabel(lot.difficulty)}</span>
           </SummaryItem>
           <SummaryItem label="Highest bid">
             <span className="text-[15px] font-semibold tabular-nums">{lot.current_bid ?? "—"}</span>{" "}

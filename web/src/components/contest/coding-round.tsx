@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, Section } from "@/components/ui/page";
 import { Stat, StatRow } from "@/components/ui/stat";
 import { cn } from "@/lib/utils";
+import { difficultyLabel, difficultyVariant } from "@/lib/difficulty";
 
 const PROGRESS: Record<string, { dot: string; label: string; rank: number }> = {
   unattempted: { dot: "bg-line-2", label: "Not started", rank: 0 },
@@ -124,8 +125,8 @@ export function CodingRound() {
                       </div>
                       <div className="hidden items-center gap-2 sm:flex">
                         {q.difficulty && (
-                          <Badge variant={q.difficulty === "hard" ? "destructive" : q.difficulty === "medium" ? "warning" : "success"}>
-                            {q.difficulty}
+                          <Badge variant={difficultyVariant(q.difficulty)}>
+                            {difficultyLabel(q.difficulty)}
                           </Badge>
                         )}
                         {q.score !== null && <Badge variant="neutral">{q.score} pts</Badge>}

@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageBody, PageHeader, Section } from "@/components/ui/page";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
+import { difficultyLabel, difficultyVariant } from "@/lib/difficulty";
 
 export function AuctionFloor() {
   const { state, serverNow } = useContest();
@@ -67,7 +68,7 @@ export function AuctionFloor() {
                 <div className="mt-4 grid grid-cols-3 gap-4">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Difficulty</div>
-                    <div className="mt-1"><Badge variant={lot.difficulty === "hard" ? "destructive" : lot.difficulty === "medium" ? "warning" : "success"}>{lot.difficulty}</Badge></div>
+                    <div className="mt-1"><Badge variant={difficultyVariant(lot.difficulty)}>{difficultyLabel(lot.difficulty)}</Badge></div>
                   </div>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Base price</div>
@@ -94,7 +95,7 @@ export function AuctionFloor() {
                   {owned.map((q) => (
                     <li key={q.id} className="px-5 py-2.5 text-[13px]">
                       <div className="truncate font-semibold">{q.title}</div>
-                      <div className="text-[11.5px] text-faint">{q.difficulty} · {q.score} pts · paid {q.price_paid}</div>
+                      <div className="text-[11.5px] text-faint">{difficultyLabel(q.difficulty ?? "")} · {q.score} pts · paid {q.price_paid}</div>
                     </li>
                   ))}
                 </ul>
@@ -136,7 +137,7 @@ export function AuctionFloor() {
                     <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-deep">Now offering</div>
                     <h2 className="mt-1 text-[24px] leading-tight font-semibold tracking-[-0.01em]">{lot.topic || "Topic not set"}</h2>
                     <div className="mt-2.5 flex flex-wrap gap-2">
-                      <Badge variant={lot.difficulty === "hard" ? "destructive" : lot.difficulty === "medium" ? "warning" : "success"}>{lot.difficulty}</Badge>
+                      <Badge variant={difficultyVariant(lot.difficulty)}>{difficultyLabel(lot.difficulty)}</Badge>
                       <Badge variant="navy">{lot.score} points</Badge>
                       <Badge variant="neutral">base {lot.base_price} coins</Badge>
                     </div>
@@ -216,7 +217,7 @@ export function AuctionFloor() {
                 <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${o.state === "open" ? "bg-brand text-white" : o.state === "closed" ? "bg-line-2 text-ink" : "border border-line-2 text-faint"}`}>{o.order}</span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{o.topic || "Topic not set"}</div>
-                  <div className="text-[11.5px] text-faint">{o.difficulty} · {o.score} pts · base {o.base_price}</div>
+                  <div className="text-[11.5px] text-faint">{difficultyLabel(o.difficulty)} · {o.score} pts · base {o.base_price}</div>
                 </div>
                 {o.state === "closed" ? (
                   <span className="flex shrink-0 flex-col items-end gap-0.5">

@@ -21,6 +21,7 @@ import { DetailSkeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/client";
 import { fromHere, useCameFrom, useHere } from "@/lib/came-from";
 import { languageName } from "@/lib/languages";
+import { difficultyLabel, difficultyVariant } from "@/lib/difficulty";
 
 type Submission = {
   id: number; language: string; source: string; created_at: string; ended_at: string | null; state: string; verdict: string | null;
@@ -80,7 +81,7 @@ export default function ParticipantQuestionPage() {
         chips={
           <>
             {q.voided_at ? <Badge variant="neutral">Voided</Badge> : solved ? <Badge variant="success">Solved</Badge> : <Badge variant="warning">Unsolved</Badge>}
-            <Badge variant={q.difficulty === "hard" ? "destructive" : q.difficulty === "medium" ? "warning" : "success"}>{q.difficulty}</Badge>
+            <Badge variant={difficultyVariant(q.difficulty)}>{difficultyLabel(q.difficulty)}</Badge>
           </>
         }
         meta={`${d.participant.name}'s work on this question, in the order it happened.`}
