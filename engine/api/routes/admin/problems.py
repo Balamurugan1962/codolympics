@@ -34,6 +34,12 @@ class ValidateBody(Body):
     language: str | None = None
 
 
+class LimitsBody(ReasonBody):
+    version: Version
+    time_limit_ms: Annotated[int, Field(ge=100, le=30_000)]
+    memory_limit_mb: Annotated[int, Field(ge=16, le=2048)]
+
+
 class SamplesBody(Body):
     version: Version | None = None
     count: Annotated[int, Field(ge=0, le=20)]
@@ -102,6 +108,15 @@ def export_problem(_: Staff, problem_id: str) -> Response:
 def validate_version(_: Staff, problem_id: str, body: ValidateBody) -> dict[str, Any]:
     sources = body.model_dump(exclude_none=True, exclude={"version"})
     return validation.validate_and_record(problem_id, body.version, sources)
+
+
+@router.post("/{problem_id}/limits")
+def change_limits(viewer: Staff, problem_id: str, body: LimitsBody) -> dict[str, str]:
+    """New limits become the next version, unpublished: validate it, then publish."""
+    version = volume.copy_with_limits(
+        viewer.id, problem_id, body.version, body.time_limit_ms, body.memory_limit_mb, body.reason
+    )
+    return {"version": version}
 
 
 @router.post("/{problem_id}/blast-radius")

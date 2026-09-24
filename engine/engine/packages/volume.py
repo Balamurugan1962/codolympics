@@ -109,6 +109,53 @@ def upload_package(actor_id: str, problem_id: str, zip_bytes: bytes, reason: str
     return version
 
 
+def copy_with_limits(
+    actor_id: str,
+    problem_id: str,
+    base_version: str,
+    time_limit_ms: int,
+    memory_limit_mb: int,
+    reason: str,
+) -> str:
+    """Copy a version into the next one with new limits, leaving the original untouched.
+
+    validation.json stays behind: a proof against the old limits says nothing
+    about the new ones.
+    """
+    source = dir_for(problem_id, base_version)
+    if not VERSION.match(base_version) or not source.is_dir():
+        raise errors.not_found("package version")
+    target, version = _claim_next_version(problem_id)
+    shutil.copytree(
+        source, target, dirs_exist_ok=True, ignore=shutil.ignore_patterns("validation.json")
+    )
+    meta_path = target / "problem.json"
+    meta = json.loads(meta_path.read_text())
+    before = {
+        "time_limit_ms": meta.get("time_limit_ms"),
+        "memory_limit_mb": meta.get("memory_limit_mb"),
+    }
+    meta["time_limit_ms"] = time_limit_ms
+    meta["memory_limit_mb"] = memory_limit_mb
+    meta_path.write_text(json.dumps(meta, indent=2) + "\n")
+    with db.transaction() as conn:
+        audit(
+            conn,
+            actor_id=actor_id,
+            action="problem.limits",
+            target=problem_id,
+            reason=reason,
+            detail={
+                "from": base_version,
+                "version": version,
+                "before": before,
+                "time_limit_ms": time_limit_ms,
+                "memory_limit_mb": memory_limit_mb,
+            },
+        )
+    return version
+
+
 def _package_files(files: dict[str, bytes]) -> dict[str, bytes]:
     names = [n for n in files if not Path(n).name.startswith(".")]
     if not names:

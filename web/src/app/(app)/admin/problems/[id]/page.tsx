@@ -233,14 +233,35 @@ function Package({ id, problem, question, version: live, onChange }: { id: strin
         title="Versions"
         description="Each upload is a complete package. Only the live one is judged."
         actions={
-          <Collapsible>
-            <CollapsibleTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-card px-2.5 text-[12.5px] font-semibold hover:bg-muted [&[data-state=open]]:bg-muted">
-              <Icon.Upload size={13} /> Add {nextVersion}
-            </CollapsibleTrigger>
-            <CollapsibleContent className="absolute right-4 z-10 mt-2 w-[min(28rem,calc(100vw-4rem))] rounded-box border border-line bg-card p-4 shadow-md">
-              <UploadVersion id={id} onChange={onChange} next={nextVersion} />
-            </CollapsibleContent>
-          </Collapsible>
+          <div className="flex items-center gap-2">
+            {!problem.hack_only && (
+              <ReasonAction
+                label="Change limits"
+                title={`Change the limits of ${version}`}
+                description={`Copies ${version} into ${nextVersion} with these limits, left unpublished. Validate it, then publish it. The figures shown are the live version's, or the newest upload's.`}
+                defaultReason="The tests need different limits."
+                confirmLabel={`Create ${nextVersion}`}
+                disabled={!version}
+                fields={[
+                  { name: "time_limit_ms", label: "Time limit (ms)", type: "number", defaultValue: String(problem.time_limit_ms), help: "100 to 30000. The contest standard is 1000." },
+                  { name: "memory_limit_mb", label: "Memory limit (MB)", type: "number", defaultValue: String(problem.memory_limit_mb), help: "16 to 2048." },
+                ]}
+                onConfirm={async (reason, values) => {
+                  const made = await api.post<{ version: string }>(`/api/admin/problems/${id}/limits`, { version, time_limit_ms: Number(values.time_limit_ms), memory_limit_mb: Number(values.memory_limit_mb), reason });
+                  toast({ title: `Created ${made.version}`, description: "New limits, not live yet. Validate it, then publish.", tone: "success" });
+                  onChange();
+                }}
+              />
+            )}
+            <Collapsible>
+              <CollapsibleTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-card px-2.5 text-[12.5px] font-semibold hover:bg-muted [&[data-state=open]]:bg-muted">
+                <Icon.Upload size={13} /> Add {nextVersion}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="absolute right-4 z-10 mt-2 w-[min(28rem,calc(100vw-4rem))] rounded-box border border-line bg-card p-4 shadow-md">
+                <UploadVersion id={id} onChange={onChange} next={nextVersion} />
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
         }
         padded={false}
         className="relative"
