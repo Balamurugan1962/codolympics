@@ -25,6 +25,7 @@ from engine.contest.rules import get_contest
 from engine.core import clock, db, errors
 from engine.core.audit import audit
 from engine.core.serialize import to_camel
+from engine.marketplace import catalogue
 from engine.packages.phase1_zip import export_many as export_phase1
 from engine.packages.phase1_zip import import_package as import_phase1
 from engine.packages.problem_zip import all_problem_ids, import_problem, problems_bundle
@@ -34,6 +35,17 @@ from engine.schema import account, contest, p1_hack_question, p1_question, quest
 FORMAT = 1
 
 SETTINGS = (
+    "auction_mode",
+    "marketplace_open",
+    "reveal_attacker",
+    "reveal_shields",
+    "attack_cap",
+    "attack_break_seconds",
+    "attack_cooldown_seconds",
+    "count_absorbed_attacks",
+    "after_cap",
+    "proctoring",
+    "proctor_warnings",
     "starting_balance",
     "bid_increment",
     "countdown_seconds",
@@ -50,6 +62,9 @@ SETTINGS = (
 
 # The zip format predates the engine and names settings in camelCase.
 CAMEL = {name: to_camel(name) for name in SETTINGS}
+
+# The powerup catalogue rides along by kind: the price, length and phases are rules of the day.
+POWERUP_FIELDS = tuple(catalogue.EDITABLE)
 
 
 def export_setup(include_staff: bool) -> tuple[str, bytes]:
@@ -83,10 +98,18 @@ def _contest_doc(conn: sa.Connection, ids: list[str]) -> dict[str, Any]:
         "type": "setup",
         "exported_at": clock.iso(clock.now()),
         "settings": {CAMEL[k]: getattr(c, k) for k in SETTINGS},
+        "powerups": _powerups_doc(),
         "auction_order": list(questions),
         "phase1_order": {"puzzles": list(puzzles), "hacking": list(hacks)},
         "contains": {"problems": len(ids), "puzzles": len(puzzles), "hacks": len(hacks)},
     }
+
+
+def _powerups_doc() -> list[dict[str, Any]]:
+    return [
+        {"kind": item.kind, **{to_camel(f): getattr(item, f) for f in POWERUP_FIELDS}}
+        for item in catalogue.catalogue()
+    ]
 
 
 def _staff_doc(conn: sa.Connection) -> dict[str, Any]:
@@ -117,6 +140,7 @@ def _staff_doc(conn: sa.Connection) -> dict[str, Any]:
 @dataclass
 class SetupSummary:
     settings: bool = False
+    powerups: int = 0
     staff: int = 0
     problems: int = 0
     puzzles: int = 0
@@ -145,13 +169,23 @@ def import_setup(actor_id: str, zip_bytes: bytes, reason: str) -> dict[str, Any]
             " already happened is touched."
         )
     _import_settings(meta.get("settings"), summary)
+    _import_powerups(actor_id, meta.get("powerups"), reason, summary)
     _import_staff(files.get(f"{prefix}staff.json"), summary)
     imported = _import_problems(actor_id, files, prefix, reason, summary)
     _restore_auction_order(meta.get("auction_order"))
     _import_phase1(actor_id, files, prefix, reason, imported, summary)
     _closing_warnings(phase, summary)
     with db.transaction() as conn:
-        counted = ("settings", "staff", "problems", "puzzles", "hacks", "verified", "published")
+        counted = (
+            "settings",
+            "powerups",
+            "staff",
+            "problems",
+            "puzzles",
+            "hacks",
+            "verified",
+            "published",
+        )
         detail = {k: getattr(summary, k) for k in counted}
         audit(conn, actor_id=actor_id, action="setup.import", reason=reason, detail=detail)
     publish_phase()
@@ -169,6 +203,29 @@ def _import_settings(settings: dict[str, Any] | None, summary: SetupSummary) -> 
     with db.transaction() as conn:
         conn.execute(sa.update(contest).values(**patch))
     summary.settings = True
+
+
+def _import_powerups(
+    actor_id: str, items: list[dict[str, Any]] | None, reason: str, summary: SetupSummary
+) -> None:
+    """Set each catalogue entry the zip names, matched by kind. Nothing is created or removed."""
+    if not items:
+        return
+    by_kind = {row.kind: row.id for row in catalogue.catalogue()}
+    for item in items:
+        powerup_id = by_kind.get(str(item.get("kind")))
+        patch = {f: item[to_camel(f)] for f in POWERUP_FIELDS if to_camel(f) in item}
+        if powerup_id is None or not patch:
+            summary.warnings.append(
+                f'Skipped the "{item.get("kind")}" powerup: not in this catalogue.'
+            )
+            continue
+        try:
+            catalogue.save(actor_id, powerup_id, patch, reason)
+        except errors.EngineError as err:
+            summary.warnings.append(f'Powerup "{item.get("kind")}": {err.message}')
+            continue
+        summary.powerups += 1
 
 
 def _import_staff(raw: bytes | None, summary: SetupSummary) -> None:
