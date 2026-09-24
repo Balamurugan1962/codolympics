@@ -21,7 +21,7 @@ import { Icon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 /** The day as a competitor was taught it, not the nine phases the engine tracks. */
-const STEPS = ["Puzzles", "Hacking", "Auction", "Coding", "Result"] as const;
+const STEPS = ["Phase 1", "Auction", "Coding", "Result"] as const;
 
 /**
  * Which step a phase belongs to, what has just started, and the one line of
@@ -32,14 +32,14 @@ const STEPS = ["Puzzles", "Hacking", "Auction", "Coding", "Result"] as const;
  */
 export const WHERE: Record<string, { step: number; started: string; todo: string }> = {
   registration: { step: 0, started: "Registration is open", todo: "Waiting for the organisers to start" },
-  p1_puzzles: { step: 1, started: "Section A has started: the puzzles", todo: "Answer the puzzles. Change any answer until it closes" },
-  p1_hacking: { step: 2, started: "Section B has started: hacking", todo: "Break the given solutions with a test input" },
-  review: { step: 2, started: "Section B is over", todo: "Marking in progress. Nothing to do" },
-  auction1: { step: 3, started: "Auction 1 has started", todo: "Bid for the questions you want to solve" },
-  coding1: { step: 4, started: "Coding round 1 has started", todo: "Solve the questions you own" },
-  auction2: { step: 3, started: "Auction 2 has started", todo: "Bid for what is left, or keep solving" },
-  final: { step: 4, started: "The final round has started", todo: "Last round. Solve what you own" },
-  ended: { step: 5, started: "The contest has ended", todo: "The contest is over" },
+  p1_puzzles: { step: 1, started: "Phase 1 has started: puzzles and hacking", todo: "Answer the puzzles and break the given solutions, in any order" },
+  p1_hacking: { step: 1, started: "Phase 1 has started: puzzles and hacking", todo: "Answer the puzzles and break the given solutions, in any order" },
+  review: { step: 1, started: "Phase 1 is over", todo: "Marking in progress. Nothing to do" },
+  auction1: { step: 2, started: "Auction 1 has started", todo: "Bid for the questions you want to solve" },
+  coding1: { step: 3, started: "Coding round 1 has started", todo: "Solve the questions you own" },
+  auction2: { step: 2, started: "Auction 2 has started", todo: "Bid for what is left, or keep solving" },
+  final: { step: 3, started: "The final round has started", todo: "Last round. Solve what you own" },
+  ended: { step: 4, started: "The contest has ended", todo: "The contest is over" },
 };
 
 export type ShieldState = { active: boolean; ends_at: string | null; queued: number };

@@ -18,8 +18,7 @@ import { useEffect } from "react";
 
 import { AuctionFloor } from "@/components/contest/auction-floor";
 import { CodingRound } from "@/components/contest/coding-round";
-import { SectionA } from "@/components/contest/section-a";
-import { SectionB } from "@/components/contest/section-b";
+import { Phase1 } from "@/components/contest/phase1";
 import { ContestLoading, Ended, NotSelected, Reviewing, Waiting } from "@/components/contest/waiting";
 import { useContest } from "@/components/contest-provider";
 
@@ -40,9 +39,8 @@ export default function ContestPage() {
 
   switch (phase) {
     case "p1_puzzles":
-      return <SectionA />;
     case "p1_hacking":
-      return <SectionB />;
+      return <Phase1 />;
     case "review":
       return <Reviewing />;
     case "auction1":

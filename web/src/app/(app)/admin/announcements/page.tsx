@@ -107,7 +107,7 @@ export default function AnnouncementsPage() {
             value={text}
             onChange={setText}
             rows={7}
-            placeholder="**Section B opens at 11:30.** Finish your puzzle answers before then."
+            placeholder="**Phase 1 closes at 11:30.** Make sure your puzzle answers are saved."
           />
           <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-[11.5px] text-faint">Start from:</span>

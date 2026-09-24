@@ -1,6 +1,6 @@
 """The contest row and the phase machine.
 
-    registration -> p1_puzzles -> p1_hacking -> review
+    registration -> p1_puzzles (puzzles and hacking together) -> review
                  -> auction1 -> coding1 -> auction2 -> final -> ended
 
 The contest row is also the lock that keeps phase changes and participant
@@ -39,9 +39,14 @@ def lock_contest(conn: sa.Connection, *, exclusive: bool = False) -> sa.Row:
     return conn.execute(query).one()
 
 
+# Phase 1 is one window: puzzles and hacking are open together under the
+# `p1_puzzles` clock, so the separate hacking phase is never entered.
+SKIPPED_PHASES = ("p1_hacking",)
+
+
 def next_phase(phase: str) -> str | None:
-    i = PHASES.index(phase)
-    return PHASES[i + 1] if i < len(PHASES) - 1 else None
+    following = [p for p in PHASES[PHASES.index(phase) + 1 :] if p not in SKIPPED_PHASES]
+    return following[0] if following else None
 
 
 def is_auction(phase: str) -> bool:

@@ -67,7 +67,7 @@ SETTINGS_DEFAULTS = {
     "ownership_cap": None,
     "coding1_minutes": 90,
     "final_minutes": 60,
-    "p1_puzzles_minutes": 45,
+    "p1_puzzles_minutes": 90,
     "p1_hacking_minutes": 45,
     "p1_selection_basis": "",
     "p1_leaderboard_mode": "hidden",

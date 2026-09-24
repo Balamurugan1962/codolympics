@@ -54,8 +54,7 @@ export type Powerup = {
 
 /** Only the phases where a powerup could sensibly do anything. */
 const PHASE_CHOICES: [string, string][] = [
-  ["p1_puzzles", "Section A"],
-  ["p1_hacking", "Section B"],
+  ["p1_puzzles", "Phase 1"],
   ["auction1", "Auction 1"],
   ["coding1", "Coding 1"],
   ["auction2", "Auction 2"],

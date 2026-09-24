@@ -69,7 +69,7 @@ export default function HacksPage() {
       {!rows ? (
         <PageSkeleton stats={4} rows={8} cols={5} />
       ) : rows.length === 0 ? (
-        <EmptyState icon={<Icon.Bug size={20} />} title="No hack attempts yet" body="Attempts appear here as soon as Section B opens." />
+        <EmptyState icon={<Icon.Bug size={20} />} title="No hack attempts yet" body="Attempts appear here as soon as Phase 1 opens." />
       ) : (
         <>
           <Figures

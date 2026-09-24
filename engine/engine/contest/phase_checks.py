@@ -66,8 +66,7 @@ def _checks_for(
             p1_question.c.voided.is_(False),
         )
         if live_puzzles == 0:
-            blockers.append("no puzzle is published, Section A would open empty")
-    if nxt == "p1_hacking":
+            blockers.append("no puzzle is published, Phase 1 would open with no puzzles")
         _hacking_checks(conn, blockers, warnings)
     if nxt == "auction1":
         _auction_checks(conn, packages or {}, blockers, warnings)
@@ -86,7 +85,7 @@ def _hacking_checks(conn: sa.Connection, blockers: list[str], warnings: list[str
         )
     ).all()
     if not hacks:
-        blockers.append("no hacking question is published, Section B would open empty")
+        blockers.append("no hacking question is published, Phase 1 would open with no hacking")
     for h in hacks:
         # An attempt is judged against the live package; with none published,
         # every attempt fails silently.

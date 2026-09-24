@@ -35,10 +35,10 @@ def phase1_leaderboard(role: str) -> dict[str, Any]:
 
 
 def phase1_results(participant_id: str) -> dict[str, Any]:
-    """A participant's own Phase 1 breakdown once Section A has closed. Never the answer key."""
+    """A participant's own Phase 1 breakdown once Phase 1 has closed. Never the answer key."""
     with db.transaction() as conn:
         if get_contest(conn).phase in ("registration", "p1_puzzles"):
-            raise errors.conflict("not_yet", "results are available once Section A closes")
+            raise errors.conflict("not_yet", "results are available once Phase 1 closes")
         answers = conn.execute(
             sa.select(
                 p1_answer,

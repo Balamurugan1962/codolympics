@@ -1,4 +1,4 @@
-"""Section B with the flawed code in several languages: authoring, attempts and scoring."""
+"""Phase 1 hacking with the flawed code in several languages: authoring, attempts and scoring."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from conftest import add_user, raises_code, rows, scalar, set_contest
 from engine.core import db
 from engine.judge import client as judge_client
 from engine.packages import phase1_zip
-from engine.phase1 import authoring, hack_jobs, hacking, self_tests
-from engine.schema import event, p1_hack_attempt, p1_hack_solution
+from engine.phase1 import authoring, hack_jobs, hacking, puzzles, self_tests
+from engine.schema import event, p1_hack_attempt, p1_hack_solution, participant
 
 ORGANISER = "org"
 BUGGY_CPP = "int main(){ /* cpp bug */ }"
@@ -93,7 +93,24 @@ def prove_all(question_id: int) -> None:
 
 
 def open_section() -> None:
-    set_contest(phase="p1_hacking", phase_ends_at=None)
+    set_contest(phase="p1_puzzles", phase_ends_at=None)
+
+
+def test_one_finish_closes_both_sections_at_the_same_moment() -> None:
+    who = add_user("finisher")
+    open_section()
+    puzzles.finish_phase1(who)
+    row = rows(sa.select(participant).where(participant.c.user_id == who))[0]
+    assert row.p1_puzzles_finished_at is not None
+    assert row.p1_puzzles_finished_at == row.p1_hacking_finished_at
+
+    def attempt() -> None:
+        with db.transaction() as conn:
+            hacking._check_may_attempt(conn, who)
+
+    raises_code("finished", attempt)
+    set_contest(phase="review")
+    raises_code("section_closed", lambda: puzzles.finish_phase1(who))
 
 
 def event_names() -> list[str]:

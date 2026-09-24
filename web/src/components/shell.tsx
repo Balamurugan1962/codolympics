@@ -51,11 +51,10 @@ const CONNECTION = {
 
 export type Step = { key: string; label: string; short?: string };
 
-/** The contest, in order. Administrators see all nine; a competitor only ever sees the one they are in. */
+/** The contest, in order. Administrators see every one; a competitor only ever sees the one they are in. */
 export const PHASE_STEPS: Step[] = [
   { key: "registration", label: "Registration", short: "Reg" },
-  { key: "p1_puzzles", label: "Puzzles", short: "A" },
-  { key: "p1_hacking", label: "Hacking", short: "B" },
+  { key: "p1_puzzles", label: "Phase 1", short: "P1" },
   { key: "review", label: "Review", short: "Rev" },
   { key: "auction1", label: "Auction 1", short: "A1" },
   { key: "coding1", label: "Coding 1", short: "C1" },

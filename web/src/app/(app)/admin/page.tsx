@@ -314,7 +314,7 @@ function RegistrationPanel({ ready }: { ready: Readiness | null }) {
               </Link>
             </>
           ) : (
-            <>Every check passes. Close registration when the roster is final, then start Section A.</>
+            <>Every check passes. Close registration when the roster is final, then start Phase 1.</>
           )}
         </p>
       </Section>
@@ -324,7 +324,7 @@ function RegistrationPanel({ ready }: { ready: Readiness | null }) {
 
 /** A section is running: the board it feeds, and how far through people are. */
 function Phase1Panel({ phase, rows }: { phase: string; rows: P1Row[] | null }) {
-  const section = phase === "p1_puzzles" ? "Section A is open" : "Section B is open";
+  const section = "Phase 1 is open";
   const finished = rows?.filter((r) => r.submitted_at).length ?? 0;
   const scoring = rows?.filter((r) => r.points > 0).length ?? 0;
 

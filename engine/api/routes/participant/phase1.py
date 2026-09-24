@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from fastapi import APIRouter
 from pydantic import Field
@@ -24,10 +24,6 @@ class AnswerBody(Body):
 class AttemptBody(Body):
     solution_id: int
     input: Annotated[str, Field(max_length=262_144)]
-
-
-class FinishBody(Body):
-    section: Literal["puzzles", "hacking"]
 
 
 @router.get("/puzzles")
@@ -63,9 +59,9 @@ def attempt_hack(viewer: Participant, question_id: int, body: AttemptBody) -> di
 
 
 @router.post("/finish")
-def finish_section(viewer: Participant, body: FinishBody) -> dict[str, bool]:
-    """The explicit finish: records the time used to break ties."""
-    puzzles.finish_section(viewer.id, body.section)
+def finish_phase1(viewer: Participant) -> dict[str, bool]:
+    """The explicit finish, for puzzles and hacking together: the time that breaks ties."""
+    puzzles.finish_phase1(viewer.id)
     return {"ok": True}
 
 

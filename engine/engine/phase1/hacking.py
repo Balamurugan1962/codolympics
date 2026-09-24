@@ -26,7 +26,7 @@ from engine.phase1 import solutions
 from engine.phase1.hack_jobs import send_one
 from engine.schema import p1_hack_attempt, p1_hack_question
 
-VISIBLE_FROM = ("p1_hacking", "review", "auction1", "coding1", "auction2", "final", "ended")
+VISIBLE_FROM = ("p1_puzzles", "review", "auction1", "coding1", "auction2", "final", "ended")
 
 
 def participant_question(q: sa.Row, copies: list[sa.Row]) -> dict[str, Any]:
@@ -62,7 +62,7 @@ def section_for(participant_id: str) -> dict[str, Any]:
     with db.transaction() as conn:
         c = get_contest(conn)
         if c.phase not in VISIBLE_FROM:
-            raise errors.conflict("not_open", "Section B has not opened")
+            raise errors.conflict("not_open", "Phase 1 has not opened")
         questions = conn.execute(
             sa.select(p1_hack_question)
             .where(p1_hack_question.c.published.is_(True), p1_hack_question.c.voided.is_(False))
@@ -74,7 +74,7 @@ def section_for(participant_id: str) -> dict[str, Any]:
             .order_by(p1_hack_attempt.c.id.desc())
         ).all()
         copies = solutions.for_questions(conn, [q.id for q in questions])
-    is_open = c.phase == "p1_hacking" and not (c.phase_ends_at and c.phase_ends_at <= clock.now())
+    is_open = c.phase == "p1_puzzles" and not (c.phase_ends_at and c.phase_ends_at <= clock.now())
     return {
         "open": is_open,
         "phase_ends_at": clock.iso(c.phase_ends_at),
@@ -90,10 +90,10 @@ def submit(participant_id: str, question_id: int, solution_id: int, test_input: 
         raise errors.invalid("input is larger than 256 KB")
     with db.transaction() as conn:
         c = lock_contest(conn)
-        if c.phase != "p1_hacking":
-            raise errors.conflict("section_closed", "Section B is not open")
+        if c.phase != "p1_puzzles":
+            raise errors.conflict("section_closed", "Phase 1 is not open")
         if c.phase_ends_at and c.phase_ends_at <= clock.now():
-            raise errors.conflict("section_closed", "Section B has closed")
+            raise errors.conflict("section_closed", "Phase 1 has closed")
         assert_not_blacked_out(conn, participant_id)
         _check_question(conn, question_id)
         solutions.get(conn, question_id, solution_id)
@@ -131,7 +131,7 @@ def _check_may_attempt(conn: sa.Connection, participant_id: str) -> None:
     if p.disqualified_at:
         raise errors.forbidden("your account is disqualified")
     if p.p1_hacking_finished_at:
-        raise errors.conflict("finished", "you have finished this section")
+        raise errors.conflict("finished", "you have finished Phase 1")
     last = conn.execute(
         sa.select(p1_hack_attempt)
         .where(p1_hack_attempt.c.participant_id == participant_id)

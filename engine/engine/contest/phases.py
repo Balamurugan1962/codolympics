@@ -45,15 +45,12 @@ PHASE_ANNOUNCEMENT: dict[str, str] = {
         "**Registration is open.** Create your account, then wait for the organisers to start."
     ),
     "p1_puzzles": (
-        "**Section A has started: the puzzles.** Answer them in any order. You can change any "
-        "answer until the section closes."
-    ),
-    "p1_hacking": (
-        "**Section B has started: hacking.** Each solution shown is wrong on at least one valid "
-        "input. Find one that obeys the constraints and breaks it."
+        "**Phase 1 has started: puzzles and hacking.** Work on both in any order, on one clock. "
+        "You can change any puzzle answer until the time is up. Each hacking solution is wrong on "
+        "at least one valid input: find one that obeys the constraints and breaks it."
     ),
     "review": (
-        "**Section B is over.** Marking is in progress. The organisers will announce who goes "
+        "**Phase 1 is over.** Marking is in progress. The organisers will announce who goes "
         "through to Phase 2."
     ),
     "auction1": (
@@ -86,8 +83,7 @@ def phase_announcement(phase: str, minutes: int | None) -> str | None:
 
 # How each timed phase is named when its deadline moves.
 PHASE_NAME: dict[str, str] = {
-    "p1_puzzles": "Section A",
-    "p1_hacking": "Section B",
+    "p1_puzzles": "Phase 1",
     "review": "The review",
     "auction1": "Auction 1",
     "coding1": "Coding round 1",

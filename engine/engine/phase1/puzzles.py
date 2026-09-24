@@ -56,7 +56,7 @@ def section_for(participant_id: str) -> dict[str, Any]:
     with db.transaction() as conn:
         c = get_contest(conn)
         if c.phase == "registration":
-            raise errors.conflict("not_open", "Section A has not opened")
+            raise errors.conflict("not_open", "Phase 1 has not opened")
         questions = published(conn)
         mine = conn.execute(
             sa.select(p1_answer).where(p1_answer.c.participant_id == participant_id)
@@ -131,9 +131,9 @@ def save_answer(
 def _check_section_open(conn: sa.Connection, participant_id: str) -> None:
     c = lock_contest(conn)
     if c.phase != "p1_puzzles":
-        raise errors.conflict("section_closed", "Section A is not open")
+        raise errors.conflict("section_closed", "Phase 1 is not open")
     if c.phase_ends_at and c.phase_ends_at <= clock.now():
-        raise errors.conflict("section_closed", "Section A has closed")
+        raise errors.conflict("section_closed", "Phase 1 has closed")
     assert_not_blacked_out(conn, participant_id)
     p = conn.execute(
         sa.select(participant).where(participant.c.user_id == participant_id)
@@ -143,22 +143,17 @@ def _check_section_open(conn: sa.Connection, participant_id: str) -> None:
     if p.disqualified_at:
         raise errors.forbidden("your account is disqualified")
     if p.p1_puzzles_finished_at:
-        raise errors.conflict("finished", "you have finished this section")
+        raise errors.conflict("finished", "you have finished Phase 1")
 
 
-def finish_section(participant_id: str, section: str) -> None:
-    """The explicit finish: records the time used to break ties."""
-    if section == "puzzles":
-        column = "p1_puzzles_finished_at"
-        open_phase = "p1_puzzles"
-    else:
-        column = "p1_hacking_finished_at"
-        open_phase = "p1_hacking"
+def finish_phase1(participant_id: str) -> None:
+    """The explicit finish, for both sections at once: records the time used to break ties."""
     with db.transaction() as conn:
-        if lock_contest(conn).phase != open_phase:
-            raise errors.conflict("section_closed", "that section is not open")
+        if lock_contest(conn).phase != "p1_puzzles":
+            raise errors.conflict("section_closed", "Phase 1 is not open")
+        now = clock.now()
         conn.execute(
             sa.update(participant)
             .where(participant.c.user_id == participant_id)
-            .values(**{column: clock.now()})
+            .values(p1_puzzles_finished_at=now, p1_hacking_finished_at=now)
         )

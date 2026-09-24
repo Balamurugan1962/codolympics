@@ -221,3 +221,11 @@ def test_normalising_enforces_shape_and_format() -> None:
 
 def test_distinct_entries_collapse_case_and_space() -> None:
     assert distinct_entries(Q(kind="set"), ["5239", " 5239 ", "abc", "ABC"]) == ["5239", "abc"]
+
+
+def test_phase_one_is_a_single_window() -> None:
+    from engine.contest.rules import next_phase
+
+    assert next_phase("registration") == "p1_puzzles"
+    assert next_phase("p1_puzzles") == "review"
+    assert next_phase("ended") is None

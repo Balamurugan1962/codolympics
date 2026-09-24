@@ -28,17 +28,16 @@ import { cn } from "@/lib/utils";
 
 /** Six lines, because six is what someone actually reads while waiting. */
 export const RULES: [string, string][] = [
-  ["Two sections, then an auction", "Puzzles and hacking decide who goes through."],
+  ["Phase 1, then an auction", "Puzzles and hacking share one clock and decide who goes through."],
   ["Two currencies", "Coins buy questions, hints and powerups. Points come from solving."],
   ["All or nothing", "A solved problem pays its full points. Wrong submissions cost nothing."],
-  ["Hidden tests stay hidden", "You see which test failed, never what was in it."],
+  ["Hidden tests stay hidden", "You see whether a sample or a hidden test failed, never which one or what was in it."],
   ["One seat, one session", "Signing in elsewhere ends this one. Work saves as you type."],
-  ["Nothing moves by itself", "Organisers open each section. This screen follows."],
+  ["Nothing moves by itself", "Organisers open each phase. This screen follows."],
 ];
 
 const STEPS: [string, string][] = [
-  ["Section A · Puzzles", "Answer in any order. Change anything until it closes."],
-  ["Section B · Hacking", "Each given solution is wrong. Send an input that breaks it."],
+  ["Phase 1 · Puzzles and hacking", "One clock. Answer the puzzles and break the given solutions in any order, and press finish once."],
   ["Auction", "Bid one at a time. Win one and only you can solve it."],
   ["Coding", "Solve what you own. Ties break on total solve time."],
 ];

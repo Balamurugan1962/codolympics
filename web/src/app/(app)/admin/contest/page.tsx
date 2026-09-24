@@ -167,11 +167,8 @@ export default function SettingsPage() {
 
       <div className="space-y-5">
         <Section title="Phase 1" description="The qualifying round." padded={false}>
-          <SettingRow label="Section A duration" description="Answers can be revised until it closes.">
+          <SettingRow label="Phase 1 duration" description="Puzzles and hacking run together on this one clock. Answers can be revised until it closes.">
             {numberField("p1PuzzlesMinutes", "minutes")}
-          </SettingRow>
-          <SettingRow label="Section B duration" description="You open this by hand when Section A is done.">
-            {numberField("p1HackingMinutes", "minutes")}
           </SettingRow>
           <SettingRow label="Selection basis" description="Shown to participants before Phase 1 begins.">
             <Textarea
