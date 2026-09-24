@@ -38,8 +38,23 @@ def test_a_judgement_never_carries_jury_detail() -> None:
         created_at=NOW,
         ended_at=NOW,
     )
-    text = json.dumps(participant_view(row))
+    text = json.dumps(participant_view(row, sample_count=2))
     assert SECRET not in text and "jury" not in text.lower()
+
+
+def test_a_judgement_says_sample_or_hidden_never_which_test() -> None:
+    def view(first_fail: int | None) -> dict:
+        row = SimpleNamespace(
+            id=1, state="done", verdict="WA", passed=3, total=10, first_fail=first_fail,
+            max_time_ms=1.0, max_memory_kb=1, compile_output="", message=None,
+            progress_done=4, progress_total=10, cancelled=False, created_at=NOW, ended_at=NOW,
+        )
+        return participant_view(row, sample_count=2)
+
+    assert "first_fail" not in view(5)
+    assert view(1)["failed_on_sample"] is True
+    assert view(5)["failed_on_sample"] is False
+    assert view(None)["failed_on_sample"] is None
 
 
 def test_a_puzzle_never_carries_its_answer_key_validator_or_model_answer() -> None:

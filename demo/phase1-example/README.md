@@ -26,16 +26,24 @@ puzzles/006-factors-of-36/validator.py
 hacking/001-largest-block/question.json
 hacking/001-largest-block/given.python.py
 hacking/001-largest-block/given.cpp.cpp
+hacking/hack-max-subarray-package/          the judge package 001-largest-block points at
+hacking/hack-max-subarray-package.zip       the same thing, pre-zipped for Admin → Problems
 ```
 
 Folder names are yours; the app renames them on export. A zip holding a single
-`question.json` at its root imports that one question.
+`question.json` at its root imports that one question. The two
+`hack-max-subarray-package` entries are the odd ones out — no `question.json`,
+not read by this importer at all — see [Hacking questions](#hacking-questions).
 
 Rebuild the zip from this folder with:
 
 ```bash
-cd demo/phase1-example && zip -qr ../phase1-example.zip . -x '.*' README.md
+cd demo/phase1-example && zip -qr ../phase1-example.zip . -x '.*' README.md hacking/hack-max-subarray-package.zip
 ```
+
+(The last exclusion is a pre-built convenience zip that would otherwise nest
+inside this one for no reason — see [Hacking questions](#hacking-questions)
+below.)
 
 ## Puzzles
 
@@ -162,6 +170,12 @@ Every copy must be wrong in the **same** way, so the same input breaks all of
 them. Import fails if a listed file is missing; the question lands as a draft
 if `problem_id` names a package this contest does not have.
 
+This question's own package,
+[hack-max-subarray-package/](hacking/hack-max-subarray-package/), sits beside
+it under `hacking/` rather than inside this folder, since it belongs to
+Admin → Problems, not Section B — see its README for why and how to import
+it.
+
 ## Importing
 
 Every question lands **unpublished**, whatever the zip says, and unverified
@@ -197,6 +211,13 @@ them. Hand-written zips should leave both `false`.
 | Why a restarting countdown? | `long_text` | manual | 20 |
 | Largest sum of a contiguous block | hacking, Python + C++ | judge | 25 |
 
-Its hacking question needs the `hack-max-subarray` package, which ships with
-the demo setup. Import that first, or point `problem_id` at a package of your
-own.
+Its hacking question needs the `hack-max-subarray` package — a plain judge
+package (`problem.json`, the correct `solution.py`, `validator.py`, no
+testcases, `hack_only: true`), not something a Section B zip carries on its
+own. It lives at
+[hacking/hack-max-subarray-package/](hacking/hack-max-subarray-package/),
+with its own README; import `hacking/hack-max-subarray-package.zip` (built
+from that folder, sitting beside it) under **Admin → Problems → Import**
+first, or point `problem_id` at a package of your own. Without it, this
+question imports as a draft: the app has the buggy program to show but
+nothing to check a submitted breaking input against.

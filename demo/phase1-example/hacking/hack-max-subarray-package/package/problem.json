@@ -1,0 +1,11 @@
+{
+  "id": "hack-max-subarray",
+  "time_limit_ms": 2000,
+  "memory_limit_mb": 256,
+  "compare": "tokens",
+  "hack_only": true,
+  "reference": {
+    "language": "python",
+    "file": "solution.py"
+  }
+}

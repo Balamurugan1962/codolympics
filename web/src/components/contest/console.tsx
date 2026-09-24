@@ -92,13 +92,12 @@ const STAGE_LABEL: Record<Stage, string> = {
  * vocabulary. Where the failure is on a sample it says so, because that means
  * the output format is wrong rather than the algorithm.
  */
-export function explain(j: { verdict: string | null; first_fail: number | null; total: number | null; cancelled: boolean }, sampleCount: number): string {
+export function explain(j: { verdict: string | null; failed_on_sample: boolean | null; cancelled: boolean }): string {
   if (j.cancelled) return "You cancelled this submission. It was not judged and does not count.";
-  const at = j.first_fail !== null ? `test ${j.first_fail + 1}${j.total ? ` of ${j.total}` : ""}` : "a hidden test";
-  const onSample = j.first_fail !== null && j.first_fail < sampleCount;
+  const at = j.failed_on_sample ? "a sample test" : "a hidden test";
   switch (j.verdict) {
     case "AC": return "Every testcase passed. This question is solved, and it stays solved.";
-    case "WA": return `Wrong answer on ${at}.${onSample ? " That is one of the samples. Check your output format before your logic." : ""}`;
+    case "WA": return `Wrong answer on ${at}.${j.failed_on_sample ? " That is one of the samples. Check your output format before your logic." : ""}`;
     case "TLE": return `Too slow on ${at}. The logic may be right; the complexity is not.`;
     case "MLE": return `Used too much memory on ${at}.`;
     case "OLE": return `Printed far too much on ${at}. Check for a stray debug print or a loop that never ends.`;
@@ -171,7 +170,7 @@ export function Console({ tab, onTab, open, onToggle, tests, verdict }: {
           {tab === "tests" ? (
             <TestCases tests={tests} done={done} running={running} />
           ) : judgement ? (
-            <VerdictBody verdict={{ ...verdict, judgement }} sampleCount={samples.length} />
+            <VerdictBody verdict={{ ...verdict, judgement }} />
           ) : (
             <p className="pt-2 text-white/50">Nothing submitted yet. Try the samples first; Submit when they pass.</p>
           )}
@@ -258,7 +257,7 @@ function TestCases({ tests, done, running }: { tests: Tests; done: Run | null; r
   );
 }
 
-function VerdictBody({ verdict: { judgement: j, stage, stalled, unreachable }, sampleCount }: { verdict: Verdict & { judgement: Judgement }; sampleCount: number }) {
+function VerdictBody({ verdict: { judgement: j, stage, stalled, unreachable } }: { verdict: Verdict & { judgement: Judgement } }) {
   if (stage !== "done") {
     return (
       <p className="pt-2 text-white/60">
@@ -274,7 +273,7 @@ function VerdictBody({ verdict: { judgement: j, stage, stalled, unreachable }, s
   return (
     <div className="pt-2">
       <p className={cn("font-semibold", t?.text ?? "text-white/80")}>{j.cancelled ? "Cancelled" : (t?.label ?? "Pending")}</p>
-      <p className="mt-1 text-white/80">{explain(j, sampleCount)}</p>
+      <p className="mt-1 text-white/80">{explain(j)}</p>
       {j.verdict === "CE" && j.compile_output && <Mono tone="mt-2 text-[#ffcc66]">{j.compile_output}</Mono>}
     </div>
   );

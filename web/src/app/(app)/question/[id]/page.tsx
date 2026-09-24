@@ -31,7 +31,7 @@ import { useJudgement, type Judgement as LiveJudgement } from "@/lib/use-judgeme
 
 const CodeEditor = dynamic(() => import("@/components/editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-full bg-[#1e1e1e]" /> });
 
-type Judgement = { id: number; state: string; verdict: string | null; passed: number | null; total: number | null; first_fail: number | null; max_time_ms: number | null; compile_output: string | null; message: string | null; progress: { done: number; total: number }; cancelled: boolean; created_at: string };
+type Judgement = { id: number; state: string; verdict: string | null; passed: number | null; total: number | null; failed_on_sample: boolean | null; max_time_ms: number | null; compile_output: string | null; message: string | null; progress: { done: number; total: number }; cancelled: boolean; created_at: string };
 type Question = {
   id: string; title: string; difficulty: string; score: number; status: string; statement_md: string;
   time_limit_ms: number | null; memory_limit_mb: number | null; hidden_testcases: number | null; sample_count: number;
@@ -212,7 +212,7 @@ export default function WorkspacePage() {
           <StatementView statementMd={q.statement_md} timeLimitMs={q.time_limit_ms} memoryLimitMb={q.memory_limit_mb} hiddenTestcases={q.hidden_testcases} samples={q.samples}
             onCopied={() => toast({ title: "Copied", tone: "info", duration: 1500 })} />
         )}
-        {tab === "submissions" && <History history={q.history} sampleCount={q.sample_count} onRestore={(h) => { void api.get<{ source?: string }>(`/api/questions/${id}`); void h; }} />}
+        {tab === "submissions" && <History history={q.history} onRestore={(h) => { void api.get<{ source?: string }>(`/api/questions/${id}`); void h; }} />}
         {tab === "hints" && (
           <div className="space-y-3">
             {q.hints.total === 0 ? <EmptyState icon={<Icon.Lightbulb size={22} />} title="No hints for this question" /> : (
@@ -315,14 +315,14 @@ function Workspace({ className, ...props }: React.ComponentProps<"div">) {
   return <div ref={ref} className={cn("workspace", className)} {...props} />;
 }
 
-function History({ history, sampleCount }: { history: Question["history"]; sampleCount: number; onRestore: (h: Question["history"][number]) => void }) {
+function History({ history }: { history: Question["history"]; onRestore: (h: Question["history"][number]) => void }) {
   if (history.length === 0) return <EmptyState icon={<Icon.Code size={22} />} title="No submissions yet" body="Write your solution and press Submit, or Ctrl+Enter." />;
   return (
     <ol className="divide-y divide-line">
       {history.map((h, i) => (
         <li key={h.id} className="py-3 text-sm">
           <div className="flex items-center gap-3"><span className="w-6 text-xs text-faint">#{history.length - i}</span><VerdictBadge verdict={h.judgement.state === "done" ? h.judgement.verdict : null} /><span className="text-faint">{new Date(h.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · {h.language}</span>{h.judgement.max_time_ms ? <span className="ml-auto text-xs text-faint">{h.judgement.max_time_ms.toFixed(0)} ms</span> : null}</div>
-          <div className="mt-1 pl-9 text-muted-foreground">{explain(h.judgement, sampleCount)}</div>
+          <div className="mt-1 pl-9 text-muted-foreground">{explain(h.judgement)}</div>
         </li>
       ))}
     </ol>

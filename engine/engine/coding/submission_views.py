@@ -8,18 +8,21 @@ import sqlalchemy as sa
 
 from engine.coding.submissions import cooldown_ms, in_flight
 from engine.core import clock, db, errors
-from engine.schema import judgement, participant, submission
+from engine.schema import judgement, participant, question, submission
 
 
-def participant_view(j: sa.Row) -> dict[str, Any]:
-    """A judgement as its author may see it. `jury_detail` is deliberately absent."""
+def participant_view(j: sa.Row, sample_count: int) -> dict[str, Any]:
+    """A judgement as its author may see it. `jury_detail` and the exact failing
+    testcase are both deliberately absent -- only whether the failure was on a
+    sample (visible in the statement) or a hidden test."""
+    failed_on_sample = None if j.first_fail is None else j.first_fail < sample_count
     return {
         "id": j.id,
         "state": j.state,
         "verdict": j.verdict,
         "passed": j.passed,
         "total": j.total,
-        "first_fail": j.first_fail,
+        "failed_on_sample": failed_on_sample,
         "max_time_ms": j.max_time_ms,
         "max_memory_kb": j.max_memory_kb,
         "compile_output": j.compile_output,
@@ -33,6 +36,9 @@ def participant_view(j: sa.Row) -> dict[str, Any]:
 
 def history(conn: sa.Connection, participant_id: str, question_id: str) -> list[dict[str, Any]]:
     """A participant's submissions for one question, newest first, with current judgements."""
+    sample_count = conn.execute(
+        sa.select(question.c.sample_count).where(question.c.id == question_id)
+    ).scalar_one()
     found = conn.execute(
         sa.select(
             judgement,
@@ -53,7 +59,7 @@ def history(conn: sa.Connection, participant_id: str, question_id: str) -> list[
             "id": r.sub_id,
             "language": r.language,
             "created_at": clock.iso(r.submitted_at),
-            "judgement": participant_view(r),
+            "judgement": participant_view(r, sample_count),
         }
         for r in found
     ]
@@ -81,8 +87,10 @@ def one_for_participant(participant_id: str, submission_id: int) -> dict[str, An
                 submission.c.question_id,
                 submission.c.language,
                 submission.c.created_at.label("submitted_at"),
+                question.c.sample_count,
             )
             .join(submission, submission.c.id == judgement.c.submission_id)
+            .join(question, question.c.id == submission.c.question_id)
             .where(
                 submission.c.id == submission_id,
                 submission.c.participant_id == participant_id,
@@ -96,6 +104,6 @@ def one_for_participant(participant_id: str, submission_id: int) -> dict[str, An
         "question_id": row.question_id,
         "language": row.language,
         "created_at": clock.iso(row.submitted_at),
-        "judgement": participant_view(row),
+        "judgement": participant_view(row, row.sample_count),
         "server_now": clock.now_ms(),
     }
