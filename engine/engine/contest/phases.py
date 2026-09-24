@@ -65,7 +65,10 @@ PHASE_ANNOUNCEMENT: dict[str, str] = {
         "**Auction 2 has started.** Everything nobody took is offered again at its base price. "
         "You can keep solving while it runs."
     ),
-    "final": "**The final round has started.** Last chance to solve what you own.",
+    "final": (
+        "**The common round has started.** Every question nobody bought is open to everyone, "
+        "all at once. Solve as many as you can. What you bought earlier is closed."
+    ),
     "ended": (
         "**The contest has ended.** No more submissions. The final standings are on the "
         "leaderboard."
@@ -88,7 +91,7 @@ PHASE_NAME: dict[str, str] = {
     "auction1": "Auction 1",
     "coding1": "Coding round 1",
     "auction2": "Auction 2",
-    "final": "The final round",
+    "final": "The common round",
 }
 
 
@@ -135,7 +138,8 @@ def advance(actor_id: str, reason: str, acknowledge_warnings: bool = False) -> s
 def _enter_phase(conn: sa.Connection, c: sa.Row, nxt: str) -> str | None:
     minutes = phase_duration_minutes(c, nxt)
     ends_at = clock.seconds_from_now(minutes * 60) if minutes else None
-    conn.execute(sa.update(contest).values(phase=nxt, phase_ends_at=ends_at))
+    started = {"final_started_at": clock.now()} if nxt == "final" else {}
+    conn.execute(sa.update(contest).values(phase=nxt, phase_ends_at=ends_at, **started))
     announcement_body = phase_announcement(nxt, minutes)
     if announcement_body:
         announce_in(conn, announcement_body)

@@ -1,7 +1,7 @@
 """The contest row and the phase machine.
 
     registration -> p1_puzzles (puzzles and hacking together) -> review
-                 -> auction1 -> coding1 -> auction2 -> final -> ended
+                 -> auction1 -> coding1 -> final (the common round) -> ended
 
 The contest row is also the lock that keeps phase changes and participant
 actions from interleaving. An action whose legality depends on the phase or a
@@ -41,7 +41,7 @@ def lock_contest(conn: sa.Connection, *, exclusive: bool = False) -> sa.Row:
 
 # Phase 1 is one window: puzzles and hacking are open together under the
 # `p1_puzzles` clock, so the separate hacking phase is never entered.
-SKIPPED_PHASES = ("p1_hacking",)
+SKIPPED_PHASES = ("p1_hacking", "auction2")
 
 
 def next_phase(phase: str) -> str | None:

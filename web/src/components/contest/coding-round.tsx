@@ -35,8 +35,9 @@ export function CodingRound() {
     (a, b) => (PROGRESS[a.progress]?.rank ?? 0) - (PROGRESS[b.progress]?.rank ?? 0) || a.title.localeCompare(b.title),
   );
   const solved = mine.filter((q) => q.progress === "solved");
-  const earned = solved.reduce((s, q) => s + q.score, 0);
-  const possible = mine.reduce((s, q) => s + q.score, 0);
+  const common = contest.phase === "final";
+  const earned = solved.reduce((s, q) => s + (q.score ?? 0), 0);
+  const possible = mine.reduce((s, q) => s + (q.score ?? 0), 0);
   const next = mine.find((q) => q.progress !== "solved");
 
   return (
@@ -47,16 +48,16 @@ export function CodingRound() {
           <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <div className="text-[11px] font-semibold tracking-[0.08em] text-brand-deep uppercase">
-                {contest.phase === "final" ? "Final round" : "Coding round"}
+                {common ? "Common round" : "Coding round"}
               </div>
               <h1 className="mt-1 text-[20px] leading-tight font-semibold sm:text-[22px]">
-                {next ? `Solve: ${next.title}` : mine.length ? "Everything you own is solved" : "You own no questions"}
+                {next ? `Solve: ${next.title}` : mine.length ? (common ? "Everything is solved" : "Everything you own is solved") : common ? "No question is left" : "You own no questions"}
               </h1>
               {!next && (
                 <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
                   {mine.length
-                    ? "Nothing left to attempt. Watch the leaderboard, or wait for the next auction."
-                    : "There is nothing to solve this round. Losing every bid is a legitimate outcome."}
+                    ? common ? "Nothing left to attempt. Watch the leaderboard." : "Nothing left to attempt. Watch the leaderboard, or wait for the next auction."
+                    : common ? "Every question was bought in round 1, so none is open in this round." : "There is nothing to solve this round. Losing every bid is a legitimate outcome."}
                 </p>
               )}
 
@@ -77,7 +78,7 @@ export function CodingRound() {
             value={`${solved.length}/${mine.length}`}
             tone={solved.length === mine.length && mine.length > 0 ? "success" : "default"}
             icon={<Icon.Check size={13} />}
-            hint={mine.length ? `${earned} of ${possible} points` : "nothing owned"}
+            hint={common ? "questions still open" : mine.length ? `${earned} of ${possible} points` : "nothing owned"}
           />
           <Stat label="Coins" value={me ? me.balance.toLocaleString() : "—"} icon={<Icon.Coins size={13} />} hint="spend on hints and powerups" />
           <Stat
@@ -89,7 +90,7 @@ export function CodingRound() {
         </StatRow>
 
         <Section
-          title="My questions"
+          title={common ? "Questions" : "My questions"}
           info="Only you can attempt these. Nobody else can read or solve them. Unsolved ones come first. Wrong submissions cost nothing, and hints can be bought at any time."
           padded={false}
           actions={
@@ -103,8 +104,8 @@ export function CodingRound() {
           {mine.length === 0 ? (
             <EmptyState
               icon={<Icon.Gavel />}
-              title="You don't own a question yet"
-              body="Questions are won at auction."
+              title={common ? "No question is open" : "You don't own a question yet"}
+              body={common ? "Every question was bought in round 1." : "Questions are won at auction."}
             />
           ) : (
             <ul className="divide-y">
@@ -117,15 +118,17 @@ export function CodingRound() {
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[13.5px] font-semibold">{q.title}</div>
                         <div className="text-[11.5px] text-faint">
-                          bought for {q.price_paid} coins · {q.attempts} attempt{q.attempts === 1 ? "" : "s"}
+                          {q.common ? "" : `bought for ${q.price_paid} coins · `}{q.attempts} attempt{q.attempts === 1 ? "" : "s"}
                           {q.progress === "solved" ? " · solved" : ""}
                         </div>
                       </div>
                       <div className="hidden items-center gap-2 sm:flex">
-                        <Badge variant={q.difficulty === "hard" ? "destructive" : q.difficulty === "medium" ? "warning" : "success"}>
-                          {q.difficulty}
-                        </Badge>
-                        <Badge variant="neutral">{q.score} pts</Badge>
+                        {q.difficulty && (
+                          <Badge variant={q.difficulty === "hard" ? "destructive" : q.difficulty === "medium" ? "warning" : "success"}>
+                            {q.difficulty}
+                          </Badge>
+                        )}
+                        {q.score !== null && <Badge variant="neutral">{q.score} pts</Badge>}
                         {q.status === "void" && <Badge variant="destructive">voided</Badge>}
                       </div>
                       <Icon.ChevronRight size={16} className="text-faint" />

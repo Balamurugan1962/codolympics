@@ -70,6 +70,15 @@ def _checks_for(
         _hacking_checks(conn, blockers, warnings)
     if nxt == "auction1":
         _auction_checks(conn, packages or {}, blockers, warnings)
+    if nxt == "final":
+        left = _count(conn, question, question.c.status == "unsold")
+        if left == 0:
+            blockers.append("no question is left unsold, the common round would be empty")
+        else:
+            warnings.append(
+                f"{left} unsold question{'s' if left != 1 else ''} will open to everyone at once."
+                " Everything bought in round 1 closes"
+            )
     return blockers, warnings
 
 

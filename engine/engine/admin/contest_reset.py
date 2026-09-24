@@ -109,6 +109,7 @@ def reset(actor_id: str, scope: str, reason: str, confirm: str) -> dict[str, int
         fresh = {
             "phase": "registration",
             "phase_ends_at": None,
+            "final_started_at": None,
             "registration_open": True,
             "leaderboard_frozen_at": None,
             "auction_paused_at": None,

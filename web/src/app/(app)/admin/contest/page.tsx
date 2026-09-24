@@ -250,7 +250,7 @@ export default function SettingsPage() {
           <SettingRow label="Coding Round 1" description="The main solving round after the first auction.">
             {numberField("coding1Minutes", "minutes")}
           </SettingRow>
-          <SettingRow label="Final round" description="The last solving round. The contest ends when it closes.">
+          <SettingRow label="Common round" description="Every question nobody bought, open to everyone at once. The contest ends when it closes.">
             {numberField("finalMinutes", "minutes")}
           </SettingRow>
         </Section>

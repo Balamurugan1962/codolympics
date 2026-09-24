@@ -53,6 +53,8 @@ contest = Table(
     Column("attack_break_seconds", Integer, nullable=False, server_default=text("300")),
     Column("count_absorbed_attacks", Boolean, nullable=False, server_default=text("true")),
     # After a blackout ends, its target cannot be attacked for this long (0: no cooldown).
+    # When the common round began: every solve in it is timed from here.
+    timestamp("final_started_at"),
     Column("attack_cooldown_seconds", Integer, nullable=False, server_default=text("60")),
     # 'break': a timed break that doubles. 'forever': off limits for the rest of the contest.
     Column("after_cap", Text, nullable=False, server_default=text("'break'")),

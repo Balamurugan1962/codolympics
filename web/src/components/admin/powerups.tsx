@@ -57,8 +57,7 @@ const PHASE_CHOICES: [string, string][] = [
   ["p1_puzzles", "Phase 1"],
   ["auction1", "Auction 1"],
   ["coding1", "Coding 1"],
-  ["auction2", "Auction 2"],
-  ["final", "Final"],
+  ["final", "Common round"],
 ];
 
 const PHASE_LABEL = new Map(PHASE_CHOICES);

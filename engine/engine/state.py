@@ -17,7 +17,7 @@ import sqlalchemy as sa
 
 from engine.accounts.viewer import Viewer
 from engine.auction.board import snapshot as auction_snapshot
-from engine.coding.questions import owned_questions
+from engine.coding.questions import working_questions
 from engine.coding.scoring import frozen_at, phase2_standings
 from engine.coding.submission_views import submit_status
 from engine.contest import proctor
@@ -60,7 +60,7 @@ def _participant_state(conn: sa.Connection, c: sa.Row, participant_id: str) -> d
     ).one_or_none()
     return {
         "me": _me(conn, c, p) if p else None,
-        "questions": owned_questions(conn, participant_id),
+        "questions": working_questions(conn, participant_id),
         "rank": _my_rank(conn, c, participant_id),
         "submit": submit_status(conn, participant_id),
         "blackout": blackout_state(conn, participant_id),

@@ -58,8 +58,7 @@ export const PHASE_STEPS: Step[] = [
   { key: "review", label: "Review", short: "Rev" },
   { key: "auction1", label: "Auction 1", short: "A1" },
   { key: "coding1", label: "Coding 1", short: "C1" },
-  { key: "auction2", label: "Auction 2", short: "A2" },
-  { key: "final", label: "Final", short: "F" },
+  { key: "final", label: "Common round", short: "CR" },
   { key: "ended", label: "Ended", short: "End" },
 ];
 export const PHASE_LABEL = Object.fromEntries(PHASE_STEPS.map((s) => [s.key, s.label])) as Record<string, string>;

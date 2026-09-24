@@ -37,7 +37,7 @@ export type ContestState = {
     /** Whether the page must hold full screen, and how many times they have left it. */
     proctor: { enabled: boolean; alerts: number; warnings: number; locked: boolean };
   } | null;
-  questions?: { id: string; title: string; difficulty: string; score: number; status: string; price_paid: number; awarded_at: string; attempts: number; progress: "solved" | "judging" | "attempted" | "unattempted" }[];
+  questions?: { id: string; title: string; difficulty: string | null; score: number | null; common?: boolean; status: string; price_paid: number; awarded_at: string; attempts: number; progress: "solved" | "judging" | "attempted" | "unattempted" }[];
   rank?: { rank: number; score: number; solved: number; total_time_ms: number } | null;
   auction?: AuctionSnapshot | null;
   submit?: { in_flight: boolean; cooldown_ms: number; server_now: number };

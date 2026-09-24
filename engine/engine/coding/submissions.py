@@ -13,13 +13,14 @@ from __future__ import annotations
 import sqlalchemy as sa
 
 from engine.accounts import wallet
+from engine.coding.access import access_to
 from engine.coding.judging import send_one
 from engine.contest.rules import is_phase2, lock_contest
 from engine.core import clock, db, errors, events
 from engine.judge import client as judge_client
 from engine.judge import languages
 from engine.marketplace.blackouts import assert_not_blacked_out
-from engine.schema import judgement, ownership, participant, submission
+from engine.schema import judgement, participant, submission
 
 COOLDOWN_MS = 3_000
 MAX_SOURCE_BYTES = 262_144
@@ -91,19 +92,9 @@ def check_participant(conn: sa.Connection, participant_id: str, question_id: str
         raise errors.forbidden("not a participant")
     if p.disqualified_at:
         raise errors.forbidden("your account is disqualified")
-    if not owns(conn, participant_id, question_id):
-        raise errors.forbidden("you do not own this question")
+    if access_to(conn, participant_id, question_id) is None:
+        raise errors.forbidden("you cannot work on this question")
     return p
-
-
-def owns(conn: sa.Connection, participant_id: str, question_id: str) -> sa.Row | None:
-    return conn.execute(
-        sa.select(ownership).where(
-            ownership.c.question_id == question_id,
-            ownership.c.participant_id == participant_id,
-            ownership.c.voided_at.is_(None),
-        )
-    ).one_or_none()
 
 
 def in_flight(conn: sa.Connection, participant_id: str) -> list[sa.Row]:

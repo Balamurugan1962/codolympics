@@ -37,8 +37,7 @@ export const WHERE: Record<string, { step: number; started: string; todo: string
   review: { step: 1, started: "Phase 1 is over", todo: "Marking in progress. Nothing to do" },
   auction1: { step: 2, started: "Auction 1 has started", todo: "Bid for the questions you want to solve" },
   coding1: { step: 3, started: "Coding round 1 has started", todo: "Solve the questions you own" },
-  auction2: { step: 2, started: "Auction 2 has started", todo: "Bid for what is left, or keep solving" },
-  final: { step: 3, started: "The final round has started", todo: "Last round. Solve what you own" },
+  final: { step: 3, started: "The common round has started", todo: "Every question nobody bought is open to everyone. Solve as many as you can" },
   ended: { step: 4, started: "The contest has ended", todo: "The contest is over" },
 };
 

@@ -33,7 +33,7 @@ const CodeEditor = dynamic(() => import("@/components/editor").then((m) => m.Cod
 
 type Judgement = { id: number; state: string; verdict: string | null; passed: number | null; total: number | null; failed_on_sample: boolean | null; max_time_ms: number | null; compile_output: string | null; message: string | null; progress: { done: number; total: number }; cancelled: boolean; created_at: string };
 type Question = {
-  id: string; title: string; difficulty: string; score: number; status: string; statement_md: string;
+  id: string; title: string; difficulty: string | null; score: number | null; common?: boolean; status: string; statement_md: string;
   time_limit_ms: number | null; memory_limit_mb: number | null; hidden_testcases: number | null; sample_count: number;
   samples: { input: string; output: string }[];
   hints: { total: number; revealed: { idx: number; body_md: string; price: number }[]; next: { idx: number; price: number } | null };
@@ -192,8 +192,8 @@ export default function WorkspacePage() {
       <div className="flex items-center gap-3 border-b border-line px-4 py-2">
         <Link href="/dashboard" className="text-faint hover:text-ink" aria-label="Back to my questions"><Icon.ChevronLeft /></Link>
         <h1 className="truncate text-[15px] font-semibold">{q.title}</h1>
-        <Badge variant={q.difficulty === "hard" ? "destructive" : q.difficulty === "medium" ? "warning" : "success"}>{q.difficulty}</Badge>
-        <Badge variant="neutral">{q.score} pts</Badge>
+        {q.difficulty && <Badge variant={q.difficulty === "hard" ? "destructive" : q.difficulty === "medium" ? "warning" : "success"}>{q.difficulty}</Badge>}
+        {q.score !== null && <Badge variant="neutral">{q.score} pts</Badge>}
         {solved && <Badge variant="success"><Icon.Check size={12} strokeWidth={3} /> Solved</Badge>}
       </div>
       <div className="px-4">

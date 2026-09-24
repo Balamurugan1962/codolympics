@@ -7,7 +7,7 @@ from typing import Any
 import sqlalchemy as sa
 
 from engine.accounts import wallet
-from engine.coding.submissions import owns
+from engine.coding.access import access_to
 from engine.core import db, errors, events
 from engine.core.audit import audit
 from engine.marketplace.blackouts import assert_not_blacked_out
@@ -60,8 +60,8 @@ def buy_hint(participant_id: str, question_id: str, idx: int | None = None) -> d
         p = wallet.lock_participant(conn, participant_id)
         if p is None:
             raise errors.forbidden("not a participant")
-        if owns(conn, participant_id, question_id) is None:
-            raise errors.forbidden("you do not own this question")
+        if access_to(conn, participant_id, question_id) is None:
+            raise errors.forbidden("you cannot work on this question")
         result = _buy_next_hint(conn, p, question_id, idx)
     if not result["replayed"]:
         events.publish("balance", {"balance": result["balance"]}, participant_id)

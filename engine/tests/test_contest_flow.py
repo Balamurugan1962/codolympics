@@ -27,13 +27,13 @@ from engine.schema import announcement, contest, hint, ownership, participant, u
 
 def test_two_organisers_advancing_together_move_the_contest_one_phase() -> None:
     add_user("alice")
-    # coding1 -> auction2 has no checks to wait on
-    set_contest(phase="coding1", registration_open=False)
+    # auction1 -> coding1 has no checks to wait on
+    set_contest(phase="auction1", registration_open=False)
     calls = [lambda: phases.advance("admin", "go", acknowledge_warnings=True) for _ in range(4)]
     results = at_once(calls)
-    assert results.count("auction2") == 1
+    assert results.count("coding1") == 1
     assert set(codes(results)) <= {"phase_changed"}
-    assert rows(sa.select(contest.c.phase))[0].phase == "auction2"
+    assert rows(sa.select(contest.c.phase))[0].phase == "coding1"
 
 
 def test_advancing_is_blocked_while_registration_is_open() -> None:

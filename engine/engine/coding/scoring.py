@@ -58,29 +58,37 @@ def _first_solves(
             submission.c.question_id,
             submission.c.created_at,
             question.c.score,
+            question.c.status,
             ownership.c.awarded_at,
         )
         .join(submission, submission.c.id == judgement.c.submission_id)
         .join(question, question.c.id == submission.c.question_id)
-        .join(
+        .outerjoin(
             ownership,
             sa.and_(
                 ownership.c.question_id == submission.c.question_id,
                 ownership.c.participant_id == submission.c.participant_id,
+                ownership.c.voided_at.is_(None),
             ),
         )
         .where(
             judgement.c.verdict == "AC",
             judgement.c.superseded_at.is_(None),
-            ownership.c.voided_at.is_(None),
             question.c.status != "void",
         )
     )
+    common_start = get_contest(conn).final_started_at
     if frozen_at is not None:
         query = query.where(submission.c.created_at < frozen_at)
     best: dict[tuple[str, str], tuple[int, int]] = {}
     for ac in conn.execute(query):
-        solve_ms = clock.ms(ac.created_at) - clock.ms(ac.awarded_at)
+        if ac.awarded_at is not None:
+            started = ac.awarded_at  # bought in round 1: timed from the purchase
+        elif ac.status == "unsold" and common_start and ac.created_at >= common_start:
+            started = common_start  # the common round: everyone is timed from its start
+        else:
+            continue
+        solve_ms = clock.ms(ac.created_at) - clock.ms(started)
         key = (ac.participant_id, ac.question_id)
         if key not in best or solve_ms < best[key][1]:
             best[key] = (ac.score, solve_ms)

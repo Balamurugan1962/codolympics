@@ -40,6 +40,7 @@ const STEPS: [string, string][] = [
   ["Phase 1 · Puzzles and hacking", "One clock. Answer the puzzles and break the given solutions in any order, and press finish once."],
   ["Auction", "Bid one at a time. Win one and only you can solve it."],
   ["Coding", "Solve what you own. Ties break on total solve time."],
+  ["Common round", "Everything nobody bought opens to everyone at once. What you bought is closed."],
 ];
 
 /** The hall clock. A frozen clock is how you spot a dead tab from the back of a room. */
