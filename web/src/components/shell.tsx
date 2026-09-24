@@ -225,6 +225,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         endsAt={contest.phase_ends_at}
         shield={viewer.role === "participant" ? state.shield ?? null : null}
         attackBreak={viewer.role === "participant" ? state.attack_break ?? null : null}
+        attackCooldown={viewer.role === "participant" ? state.attack_cooldown ?? null : null}
       />
 
       <Sheet open={mobile} onOpenChange={setMobile}>

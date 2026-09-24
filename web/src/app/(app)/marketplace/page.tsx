@@ -54,7 +54,7 @@ type Item = {
 };
 
 /** `off_limits` with no `break_until`: for the rest of the contest. */
-type Target = { id: string; name: string; disqualified: boolean; shielded: boolean; blacked_out: boolean; off_limits: boolean; break_until: string | null };
+type Target = { id: string; name: string; disqualified: boolean; shielded: boolean; blacked_out: boolean; off_limits: boolean; break_until: string | null; cooldown_until: string | null };
 
 type Shield = { active: boolean; ends_at: string | null; queued: number };
 type Market = {
@@ -286,6 +286,7 @@ export default function MarketplacePage() {
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{t.name}</span>
                   {t.blacked_out && <Badge variant="neutral">already out</Badge>}
                   {t.shielded && <Badge variant="info">shielded</Badge>}
+                  {t.cooldown_until && <Badge variant="info">protected for <Countdown until={t.cooldown_until} warnUnderMs={0} /></Badge>}
                   {t.off_limits && <Badge variant="warning">{t.break_until ? <>off limits for <Countdown until={t.break_until} warnUnderMs={0} /></> : "off limits now"}</Badge>}
                   {t.disqualified && <Badge variant="neutral">out of the contest</Badge>}
                   <Icon.ChevronRight size={15} className="shrink-0 text-faint" />

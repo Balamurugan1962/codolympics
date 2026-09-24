@@ -48,6 +48,8 @@ export type ContestState = {
   shield?: { active: boolean; ends_at: string | null; queued: number; server_now: number };
   /** A break from being attacked, after the cap was reached: nobody can attack them until it ends. */
   attack_break?: { active: boolean; ends_at: string | null; number: number; server_now: number };
+  /** Just after a blackout ends, nobody can attack them for a while. */
+  attack_cooldown?: { active: boolean; ends_at: string | null; server_now: number };
 };
 
 export type AuctionSnapshot = {

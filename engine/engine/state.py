@@ -26,6 +26,7 @@ from engine.contest.rules import auction_round, get_contest, is_auction, is_phas
 from engine.core import db, events
 from engine.marketplace.blackouts import blackout_state
 from engine.marketplace.breaks import break_state
+from engine.marketplace.cooldowns import cooldown_state
 from engine.marketplace.shields import shield_state
 from engine.phase1.selection import has_advanced
 from engine.schema import participant
@@ -65,6 +66,7 @@ def _participant_state(conn: sa.Connection, c: sa.Row, participant_id: str) -> d
         "blackout": blackout_state(conn, participant_id),
         "shield": shield_state(conn, participant_id),
         "attack_break": break_state(conn, participant_id),
+        "attack_cooldown": cooldown_state(conn, participant_id),
         "notifications": unread(conn, participant_id),
     }
 

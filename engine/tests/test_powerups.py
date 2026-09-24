@@ -11,8 +11,17 @@ from conftest import add_user, at_once, balance_of, codes, raises_code, rows, sc
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from engine.coding import submissions
-from engine.core import clock, db
-from engine.marketplace import blackouts, breaks, buying, catalogue, shields, storefront, using
+from engine.core import clock, db, errors
+from engine.marketplace import (
+    blackouts,
+    breaks,
+    buying,
+    catalogue,
+    cooldowns,
+    shields,
+    storefront,
+    using,
+)
 from engine.schema import (
     attack_break,
     blackout,
@@ -32,7 +41,7 @@ def rid() -> str:
 
 @pytest.fixture(autouse=True)
 def market() -> dict[str, int]:
-    set_contest(phase="coding1", marketplace_open=True)
+    set_contest(phase="coding1", marketplace_open=True, attack_cooldown_seconds=0)
     for who, name in (("alice", "Alice"), ("bob", "Bob"), ("carol", "Carol")):
         add_user(who, name)
     add_user("admin", "Admin", role="admin")
@@ -231,6 +240,78 @@ def test_a_blackout_expires_with_nothing_running_and_ends_with_the_contest(
     attack("alice", "bob", market)
     set_contest(phase="ended")
     assert not state("bob")["active"]
+
+
+# --- cooldown -------------------------------------------------------------------
+
+
+def _ended_ago(seconds: int) -> None:
+    """Every blackout so far ended this long ago."""
+    with db.transaction() as conn:
+        conn.execute(
+            sa.update(blackout).values(
+                starts_at=clock.now() - timedelta(seconds=seconds + 60),
+                ends_at=clock.now() - timedelta(seconds=seconds),
+            )
+        )
+
+
+def _cooling(who: str) -> dict:
+    with db.transaction() as conn:
+        return cooldowns.cooldown_state(conn, who)
+
+
+def test_the_cooldown_starts_when_the_blackout_ends_and_cancels_attacks(
+    market: dict[str, int],
+) -> None:
+    set_contest(attack_cooldown_seconds=45)
+    give("alice", market["blackout"], 3)
+    attack("alice", "bob", market)
+    assert not _cooling("bob")["active"]  # still blacked out: the cooldown has not begun
+    _ended_ago(10)
+    assert _cooling("bob")["active"] and _cooling("bob")["ends_at"]
+    before = qty("alice", market["blackout"])
+    raises_code("attack_cancelled", lambda: attack("alice", "bob", market))
+    assert qty("alice", market["blackout"]) == before  # nothing was spent
+    try:
+        attack("alice", "bob", market)
+    except errors.EngineError as err:
+        assert "Attack cancelled" in err.message and "protected" in err.message
+
+
+def test_the_cooldown_runs_out_and_can_be_switched_off(market: dict[str, int]) -> None:
+    set_contest(attack_cooldown_seconds=45)
+    give("alice", market["blackout"], 3)
+    attack("alice", "bob", market)
+    _ended_ago(46)
+    assert not _cooling("bob")["active"]
+    attack("alice", "bob", market)
+    _ended_ago(5)
+    assert _cooling("bob")["active"]
+    set_contest(attack_cooldown_seconds=0)
+    assert not _cooling("bob")["active"]
+    attack("alice", "bob", market)
+
+
+def test_an_attack_a_shield_absorbed_starts_no_cooldown(market: dict[str, int]) -> None:
+    set_contest(attack_cooldown_seconds=45)
+    give("alice", market["blackout"], 2)
+    give("bob", market["shield"], 1)
+    assert attack("alice", "bob", market)["outcome"] == "shielded"
+    assert not _cooling("bob")["active"]
+    assert (
+        attack("alice", "bob", market)["outcome"] != "shielded"
+    )  # the shield is spent, and nothing blocks it
+
+
+def test_targets_show_who_is_protected(market: dict[str, int]) -> None:
+    set_contest(attack_cooldown_seconds=45)
+    give("alice", market["blackout"], 2)
+    attack("alice", "bob", market)
+    _ended_ago(5)
+    with db.transaction() as conn:
+        assert "bob" in cooldowns.cooling_now(conn)
+        assert "carol" not in cooldowns.cooling_now(conn)
 
 
 # --- shield ---------------------------------------------------------------------

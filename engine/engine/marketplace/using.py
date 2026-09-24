@@ -25,7 +25,7 @@ from engine.accounts import wallet
 from engine.contest.messages import notify
 from engine.contest.rules import lock_contest
 from engine.core import clock, db, errors, events
-from engine.marketplace import breaks, shields
+from engine.marketplace import breaks, cooldowns, shields
 from engine.marketplace.blackouts import blackout_for, blackout_state
 from engine.marketplace.inventory import event_for, holdings, take_one
 from engine.schema import blackout, powerup, powerup_event, user
@@ -141,6 +141,8 @@ def _land_blackout(
     target_name = names.get(target.user_id)
     # Someone in a break cannot be attacked, and nothing has been spent yet.
     breaks.assert_attackable(conn, target.user_id, target_name)
+    # Or one whose last blackout has only just ended: the attack is cancelled, also unspent.
+    cooldowns.assert_attackable(conn, c, target.user_id, target_name)
 
     if _spend_shield(conn, target.user_id, actor_id, attacker):
         _count_attack(conn, c, target.user_id, absorbed=True)

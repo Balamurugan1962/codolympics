@@ -8,7 +8,7 @@ import sqlalchemy as sa
 
 from engine.contest.rules import get_contest, in_phase2, marketplace_closed_reason
 from engine.core import clock, db, errors
-from engine.marketplace import breaks, shields
+from engine.marketplace import breaks, cooldowns, shields
 from engine.marketplace.catalogue import catalogue
 from engine.schema import blackout, participant, powerup_inventory, user
 
@@ -98,6 +98,7 @@ def _attackable_targets(
     ).all()
     shielded = shields.shielded_now(conn) if reveal_shields else set()
     on_break = breaks.on_break_now(conn)
+    cooling = cooldowns.cooling_now(conn)
     blacked = set(
         conn.execute(
             sa.select(blackout.c.participant_id).where(blackout.c.ends_at > clock.now())
@@ -115,6 +116,8 @@ def _attackable_targets(
             # no end. Shown to all; trying is refused anyway.
             "off_limits": r.user_id in on_break,
             "break_until": on_break.get(r.user_id),
+            # Their last blackout just ended: an attack now is cancelled, and costs nothing.
+            "cooldown_until": cooling.get(r.user_id),
         }
         for r in people
         if r.user_id != actor_id

@@ -142,6 +142,7 @@ type Rules = {
   revealShields: boolean;
   attackCap: number;
   attackBreakSeconds: number;
+  attackCooldownSeconds: number;
   countAbsorbedAttacks: boolean;
   afterCap: AfterCap;
 };
@@ -179,7 +180,7 @@ const SWITCH: Record<Switches, { field: string; label: string; help: string; on:
 export function AttackRules() {
   const { toast } = useToast();
   const [rules, setRules] = useState<Rules | null>(null);
-  const [draft, setDraft] = useState<{ attackCap?: number; attackBreakSeconds?: number; afterCap?: AfterCap }>({});
+  const [draft, setDraft] = useState<{ attackCap?: number; attackBreakSeconds?: number; attackCooldownSeconds?: number; afterCap?: AfterCap }>({});
   const load = useCallback(async () => {
     const c = await api.get<Rules>("/api/admin/contest");
     setRules({
@@ -187,6 +188,7 @@ export function AttackRules() {
       revealShields: c.revealShields,
       attackCap: c.attackCap,
       attackBreakSeconds: c.attackBreakSeconds,
+      attackCooldownSeconds: c.attackCooldownSeconds,
       countAbsorbedAttacks: c.countAbsorbedAttacks,
       afterCap: c.afterCap,
     });
@@ -209,6 +211,7 @@ export function AttackRules() {
       reason: "Changed how often one person can be attacked.",
       attack_cap: draft.attackCap,
       attack_break_seconds: draft.attackBreakSeconds,
+      attack_cooldown_seconds: draft.attackCooldownSeconds,
       after_cap: draft.afterCap,
     });
     toast({ title: "Attack cap saved", description: "Recorded in the audit log.", tone: "success" });
@@ -219,6 +222,7 @@ export function AttackRules() {
   if (!rules) return <SectionSkeleton lines={5} />;
   const cap = draft.attackCap ?? rules.attackCap;
   const seconds = draft.attackBreakSeconds ?? rules.attackBreakSeconds;
+  const cooldown = draft.attackCooldownSeconds ?? rules.attackCooldownSeconds;
   const afterCap = draft.afterCap ?? rules.afterCap;
   const dirty = Object.keys(draft).length > 0;
 
@@ -226,6 +230,22 @@ export function AttackRules() {
     <>
       <Section title="What an attack reveals" description="For the whole contest. Each switch saves at once and is recorded in the audit log.">
         <SwitchRows keys={["revealAttacker", "revealShields"]} rules={rules} onFlip={flip} />
+      </Section>
+
+      <Section
+        title="Cooldown shield after a blackout"
+        description="Once a blackout ends, its target cannot be attacked again for a while."
+        info="The cooldown starts when the blackout ends, so the person gets all of it after they can see their screen again. An attack during it is cancelled before anything is spent. A blackout a shield absorbed never landed, so it starts no cooldown. 0 turns it off."
+        footer={dirty && (
+          <>
+            <Button variant="ghost" onClick={() => setDraft({})}>Discard</Button>
+            <ActionButton label="Save changes" variant="default" icon={<Icon.Save size={14} />} onAct={saveNumbers} />
+          </>
+        )}
+      >
+        <Field label="Cooldown after each blackout" hint="seconds; 0 for none">
+          <Input type="number" min={0} max={7200} value={cooldown} onChange={(e) => setDraft((d) => ({ ...d, attackCooldownSeconds: Number(e.target.value) }))} />
+        </Field>
       </Section>
 
       <Section

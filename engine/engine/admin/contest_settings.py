@@ -20,6 +20,7 @@ SETTINGS = (
     "reveal_shields",
     "attack_cap",
     "attack_break_seconds",
+    "attack_cooldown_seconds",
     "count_absorbed_attacks",
     "after_cap",
     "proctoring",

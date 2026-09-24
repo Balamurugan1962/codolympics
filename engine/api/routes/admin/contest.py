@@ -33,6 +33,7 @@ class ContestPatch(Body):
     reveal_shields: bool | None = None
     attack_cap: Annotated[int | None, Field(ge=0)] = None  # 0 is no cap
     attack_break_seconds: Annotated[int | None, Field(ge=1, le=7200)] = None
+    attack_cooldown_seconds: Annotated[int | None, Field(ge=0, le=7200)] = None
     count_absorbed_attacks: bool | None = None
     after_cap: Literal["break", "forever"] | None = None
     proctoring: bool | None = None

@@ -44,9 +44,10 @@ export const WHERE: Record<string, { step: number; started: string; todo: string
 
 export type ShieldState = { active: boolean; ends_at: string | null; queued: number };
 export type BreakState = { active: boolean; ends_at: string | null; number: number };
+export type CooldownState = { active: boolean; ends_at: string | null };
 
-export function PhaseRail({ phase, endsAt, shield, attackBreak }: {
-  phase: string; endsAt: string | null; shield?: ShieldState | null; attackBreak?: BreakState | null;
+export function PhaseRail({ phase, endsAt, shield, attackBreak, attackCooldown }: {
+  phase: string; endsAt: string | null; shield?: ShieldState | null; attackBreak?: BreakState | null; attackCooldown?: CooldownState | null;
 }) {
   const here = WHERE[phase] ?? { step: 0, started: "", todo: "" };
   return (
@@ -76,6 +77,7 @@ export function PhaseRail({ phase, endsAt, shield, attackBreak }: {
           <span className="font-medium text-foreground sm:hidden">{STEPS[Math.max(0, here.step - 1)]} · </span>
           {here.todo}
         </p>
+        {attackCooldown?.active && <CooldownChip until={attackCooldown.ends_at} />}
         {attackBreak?.active && <BreakChip until={attackBreak.ends_at} />}
         {shield && (shield.active || shield.queued > 0) && <ShieldChip shield={shield} />}
         {endsAt && (
@@ -116,6 +118,24 @@ function ShieldChip({ shield }: { shield: ShieldState }) {
 }
 
 /** Nobody can attack you until this ends (or ever again, with no end): the cap was reached. */
+function CooldownChip({ until }: { until: string | null }) {
+  const { serverNow, refresh } = useContest();
+  useEffect(() => {
+    if (!until) return;
+    const id = setTimeout(() => void refresh(), remainingMs(until, serverNow) + 300);
+    return () => clearTimeout(id);
+  }, [until, serverNow, refresh]);
+  return (
+    <span
+      className="flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-50 px-2.5 py-0.5 text-[12px] font-medium text-emerald-700"
+      title="Your blackout is over. Nobody can attack you until this runs out."
+    >
+      <Icon.Shield size={12} />
+      <span className="tabular-nums">protected <Countdown until={until} warnUnderMs={0} /></span>
+    </span>
+  );
+}
+
 function BreakChip({ until }: { until: string | null }) {
   const { serverNow, refresh } = useContest();
   useEffect(() => {
