@@ -35,7 +35,7 @@ export type Judgement = {
   verdict: string | null;
   passed: number | null;
   total: number | null;
-  first_fail: number | null;
+  failed_on_sample: boolean | null;
   max_time_ms: number | null;
   max_memory_kb: number | null;
   compile_output: string | null;
