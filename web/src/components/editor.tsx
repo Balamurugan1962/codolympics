@@ -29,13 +29,14 @@ if (typeof window !== "undefined") {
 
 const MONACO_LANGUAGE: Record<string, string> = { c: "c", cpp: "cpp", python: "python", pypy: "python", java: "java", javascript: "javascript" };
 
-export function CodeEditor({ value, language, onChange, height = "60vh", readOnly = false, fontSize = 13 }: { value: string; language: string; onChange?: (v: string) => void; height?: string; readOnly?: boolean; fontSize?: number }) {
+/** White by default. The participants' workspace asks for the dark theme by name. */
+export function CodeEditor({ value, language, onChange, height = "60vh", readOnly = false, fontSize = 13, theme = "light" }: { value: string; language: string; onChange?: (v: string) => void; height?: string; readOnly?: boolean; fontSize?: number; theme?: "light" | "dark" }) {
   return (
     <Editor
       height={height}
       language={MONACO_LANGUAGE[language] ?? "plaintext"}
       value={value}
-      theme="vs-dark"
+      theme={theme === "dark" ? "vs-dark" : "vs"}
       onChange={(v) => onChange?.(v ?? "")}
       options={{
         fontSize,

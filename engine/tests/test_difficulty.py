@@ -1,4 +1,4 @@
-"""The four tiers, easiest first."""
+"""The five tiers, easiest first."""
 
 from __future__ import annotations
 
@@ -24,8 +24,9 @@ def _body(tier: str) -> QuestionBody:
     )
 
 
-def test_there_are_four_tiers_and_very_easy_is_the_lowest() -> None:
-    assert DIFFICULTIES == ("very_easy", "easy", "medium", "hard")
-    assert _body("very_easy").difficulty == "very_easy"
+def test_there_are_five_tiers_and_beginner_is_the_lowest() -> None:
+    assert DIFFICULTIES == ("beginner", "easy", "easy_medium", "medium", "hard")
+    assert _body("beginner").difficulty == "beginner"
+    assert _body("easy_medium").difficulty == "easy_medium"
     with pytest.raises(ValidationError):
         _body("trivial")

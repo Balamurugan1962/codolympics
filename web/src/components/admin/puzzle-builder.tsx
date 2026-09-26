@@ -33,7 +33,7 @@ import { api, errorMessage } from "@/lib/client";
 
 import { CATEGORY_LABEL, GRADING_LABEL, KIND_LABEL, stateOf, type Puzzle } from "./phase1-types";
 
-const CodeEditor = dynamic(() => import("../editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-64 bg-[#1e1e1e]" /> });
+const CodeEditor = dynamic(() => import("../editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-64 bg-muted" /> });
 
 type Kind = Puzzle["kind"];
 type Grading = Puzzle["grading"];

@@ -111,17 +111,40 @@ class Judge:
             duration_ms=watch.elapsed_ms(),
         )
 
-    def run_once(self, submission: Submission, input_text: str, answer_text: str | None = None) -> RunOutcome:
+    def run_once(
+        self, submission: Submission, input_text: str, answer_text: str | None = None, *, keep: bool = False
+    ) -> RunOutcome:
         """Run the source against one input supplied by the caller.
 
         With `answer_text`, the output is compared and a verdict produced.
         Without it, an accepted run reports AC and carries its stdout, which
         is how a reference solution's answer is obtained. Used by /hack.
+
+        `keep` is for a program that will be run again and again as it is (the
+        flawed solution of a hack question): a compiled one is compiled once and
+        kept, instead of once per call.
         """
+        if keep:
+            return self._run_once_kept(submission, input_text, answer_text)
         with self.compiler.prepare(submission.language, submission.source) as program:
             if not program.ok:
                 return RunOutcome("CE", program.compile_output)
             return self.execute(submission, program, self.comparator(submission.problem), input_text, answer_text)
+
+    def _run_once_kept(self, submission: Submission, input_text: str, answer_text: str | None) -> RunOutcome:
+        comparator = self.comparator(submission.problem)
+        with self.compiler.prepare_kept(submission.language, submission.source) as (program, reused):
+            if not program.ok:
+                return RunOutcome("CE", program.compile_output)
+            outcome = self.execute(submission, program, comparator, input_text, answer_text)
+        if outcome.verdict != "IE" or not reused:
+            return outcome
+        # A sandbox fault on a kept artefact may just mean the sandbox restarted
+        # and forgot it. Compile afresh and try once more before calling it a fault.
+        with self.compiler.prepare_kept(submission.language, submission.source, fresh=True) as (program, _):
+            if not program.ok:
+                return RunOutcome("CE", program.compile_output)
+            return self.execute(submission, program, comparator, input_text, answer_text)
 
     # --- the testcase loop -------------------------------------------------
 
@@ -163,7 +186,31 @@ class Judge:
 
         `answer_text` of None means "just run it": an accepted run is AC and
         the outcome carries its stdout.
+
+        A run that hits the time limit is run once more, and the second result
+        stands if it does not. The time a program is measured at is not fixed: the
+        same Java solution measures 550 ms alone, about 850 ms with four judged side
+        by side and now and then over 1,000 ms, because the JVM's own compiler and
+        collector compete for the same cores. A program that is really too slow is
+        slow both times and still gets TLE, and one that failed only because the
+        machine was busy is not blamed for it. Nothing else is rerun: a wrong
+        answer, a crash or a memory overrun does not depend on how busy the machine is.
         """
+        outcome = self._execute_once(submission, program, comparator, input_text, answer_text)
+        if outcome.verdict == "TLE":
+            again = self._execute_once(submission, program, comparator, input_text, answer_text)
+            if again.verdict != "TLE":
+                return again
+        return outcome
+
+    def _execute_once(
+        self,
+        submission: Submission,
+        program: Program,
+        comparator: Comparator,
+        input_text: str,
+        answer_text: str | None,
+    ) -> RunOutcome:
         problem = submission.problem
         result = self.sandbox.run([command.build(
             args=submission.language.run_args,

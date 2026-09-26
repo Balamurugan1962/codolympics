@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { CATEGORY_LABEL, GRADING_LABEL, KIND_LABEL, stateOf, type Hack, type Puzzle, type QuestionState, type Standing } from "@/components/admin/phase1-types";
 import { exportMenuItem } from "@/components/admin/phase1-transfer";
+import { PublishAllButton } from "@/components/admin/publish-all";
 import { Icon } from "@/components/icons";
 import { ReasonAction } from "@/components/reason-action";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -178,7 +179,7 @@ export function PuzzleList() {
         </Section>
       ) : (
         <Section padded={false}>
-          <Toolbar actions={<span className="text-[12px] text-muted-foreground">{shown.length} of {rows.length}</span>}>
+          <Toolbar actions={<><PublishAllButton url="/api/admin/phase1/puzzles/publish-all" what="puzzle" onDone={load} disabled={rows.every((r) => stateOf(r) === "live" || stateOf(r) === "void")} /><span className="text-[12px] text-muted-foreground">{shown.length} of {rows.length}</span></>}>
             <SearchInput className="w-64" placeholder="Filter by title" value={filter} onChange={(e) => setFilter(e.target.value)} />
             <FilterChips label="State" value={state} onChange={setState}
               options={(["all", "draft", "ready", "live", "void"] as const).map((v) => ({ value: v, label: v === "all" ? "All" : STATE[v].label, count: v === "all" ? rows.length : rows.filter((r) => stateOf(r) === v).length }))} />
@@ -276,7 +277,7 @@ export function HackList() {
         </Section>
       ) : (
         <Section padded={false}>
-          <Toolbar actions={<span className="text-[12px] text-muted-foreground">{shown.length} of {rows.length}</span>}>
+          <Toolbar actions={<><PublishAllButton url="/api/admin/phase1/hacking/publish-all" what="hacking question" onDone={load} disabled={rows.every((r) => stateOf(r) === "live" || stateOf(r) === "void")} /><span className="text-[12px] text-muted-foreground">{shown.length} of {rows.length}</span></>}>
             <SearchInput className="w-64" placeholder="Filter by title or problem id" value={filter} onChange={(e) => setFilter(e.target.value)} />
             <FilterChips label="State" value={state} onChange={setState}
               options={(["all", "draft", "ready", "live", "void"] as const).map((v) => ({ value: v, label: v === "all" ? "All" : STATE[v].label, count: v === "all" ? rows.length : rows.filter((r) => stateOf(r) === v).length }))} />

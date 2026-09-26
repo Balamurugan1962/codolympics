@@ -1,53 +1,63 @@
 "use client";
 
 /**
- * A problem as a participant reads it: limits, the statement, the samples.
- * The workspace renders this for the owner; the administrator's preview
- * renders the same component, so what is checked is what is shown.
+ * A problem as a participant reads it, set the way LeetCode sets one: a title with
+ * the limits as chips, the statement, then the examples. The workspace renders
+ * this for the owner and the administrator's preview renders the same component,
+ * so what is checked is what is shown.
  */
 import { Icon } from "../icons";
 import { Markdown } from "../markdown";
 import { EmptyState } from "../ui/empty-state";
+import { copyText } from "@/lib/clipboard";
 
-export function StatementView({ statementMd, timeLimitMs, memoryLimitMb, hiddenTestcases, samples, onCopied }: {
-  statementMd: string; timeLimitMs: number | null; memoryLimitMb: number | null; hiddenTestcases: number | null;
+const seconds = (ms: number) => `${ms / 1000} ${ms === 1000 ? "second" : "seconds"}`;
+
+export function StatementView({ title, statementMd, timeLimitMs, memoryLimitMb, hiddenTestcases, samples, onCopied }: {
+  title?: string; statementMd: string; timeLimitMs: number | null; memoryLimitMb: number | null; hiddenTestcases: number | null;
   samples: { input: string; output: string }[]; onCopied?: () => void;
 }) {
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-muted-foreground">
-        <span>Time limit <strong className="text-ink">{timeLimitMs ? `${timeLimitMs / 1000} s` : "—"}</strong></span>
-        <span>Memory <strong className="text-ink">{memoryLimitMb ? `${memoryLimitMb} MB` : "—"}</strong></span>
-        <span>Hidden tests <strong className="text-ink">{hiddenTestcases ?? "—"}</strong></span>
-        <span>Input via <strong className="text-ink">stdin</strong>, output to <strong className="text-ink">stdout</strong></span>
-      </div>
-      {statementMd.trim() ? <Markdown>{statementMd}</Markdown> : <EmptyState compact icon={<Icon.Code size={18} />} title="No statement yet" body="Participants would see nothing here." />}
+    <article>
+      <header className="problem-statement-header">
+        {title && <h2 className="title">{title}</h2>}
+        <div className="chips">
+          <span className="chip"><Icon.Clock size={12} />Time limit <b>{timeLimitMs ? seconds(timeLimitMs) : "—"}</b></span>
+          <span className="chip"><Icon.Cpu size={12} />Memory limit <b>{memoryLimitMb ? `${memoryLimitMb} MB` : "—"}</b></span>
+          <span className="chip">Standard input / output</span>
+        </div>
+      </header>
+      {statementMd.trim()
+        ? <Markdown className="problem-statement">{statementMd}</Markdown>
+        : <EmptyState compact icon={<Icon.Code size={18} />} title="No statement yet" body="Participants would see nothing here." />}
       {samples.length > 0 && (
-        <section>
-          <h3 className="mb-2 text-[13px] font-semibold">Samples</h3>
-          <div className="space-y-3">
-            {samples.map((s, i) => (
-              <div key={i} className="grid grid-cols-2 gap-2">
-                <SampleBox label={`Input ${i + 1}`} text={s.input} onCopied={onCopied} />
-                <SampleBox label={`Output ${i + 1}`} text={s.output} onCopied={onCopied} />
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-[11.5px] text-faint">Hidden tests are never shown, for free or for payment. Failing a sample usually means an output-format mistake.</p>
+        <section className="problem-examples">
+          <h3>{samples.length === 1 ? "Example" : "Examples"}</h3>
+          {samples.map((s, i) => (
+            <div key={i} className="problem-example">
+              <SampleBox label={samples.length > 1 ? `Sample Input ${i + 1}` : "Sample Input"} text={s.input} onCopied={onCopied} />
+              <SampleBox label={samples.length > 1 ? `Sample Output ${i + 1}` : "Sample Output"} text={s.output} onCopied={onCopied} />
+            </div>
+          ))}
+          <p className="mt-3 text-[12px] text-muted-foreground">
+            {hiddenTestcases ? `${hiddenTestcases} more test${hiddenTestcases === 1 ? "" : "s"}` : "Other tests"} stay hidden. Failing an example usually means an output-format mistake.
+          </p>
         </section>
       )}
-    </div>
+    </article>
   );
 }
 
 export function SampleBox({ label, text, onCopied }: { label: string; text: string; onCopied?: () => void }) {
   return (
-    <div className="min-w-0">
-      <div className="mb-1 flex items-center justify-between text-[11.5px] font-semibold text-muted-foreground">
+    <div className="problem-io">
+      <div className="problem-io-title">
         {label}
-        <button type="button" className="flex items-center gap-1 text-brand-deep hover:underline" onClick={() => { void navigator.clipboard?.writeText(text); onCopied?.(); }}><Icon.Copy size={12} /> Copy</button>
+        <button type="button" className="flex items-center gap-1 text-[12px] font-medium text-brand-deep hover:underline" onClick={async () => { if (await copyText(text)) onCopied?.(); }}>
+          <Icon.Copy size={12} /> Copy
+        </button>
       </div>
-      <pre className="max-h-40 overflow-auto rounded-box border border-line bg-muted p-2 text-[12px]">{text || <span className="text-faint">(empty)</span>}</pre>
+      <pre>{text || <span className="text-faint">(empty)</span>}</pre>
     </div>
   );
 }

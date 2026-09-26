@@ -1,8 +1,9 @@
 """Phase 2 standings -- computed on every read, never stored.
 
     score      = sum of question.score over questions the owner has a current AC on
-    solve_time = earliest AC submission time - awarded_at   ("first AC only counts")
-    rank       = score DESC, total time ASC, Phase 1 rank ASC
+    finish     = time of their last first-AC, counted from the start of the round
+                 ("first AC only counts"; there is no sum of per-question times)
+    rank       = score DESC, finish ASC, Phase 1 rank ASC
 
 Because nothing is stored, a rejudge, a void or a take-back changes the
 standings with nothing to recompute and no row that can go stale. There is no
@@ -11,7 +12,7 @@ leaderboard state to race over: concurrent readers just compute the same answer.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import sqlalchemy as sa
@@ -39,7 +40,7 @@ def phase2_standings(
     rows.sort(
         key=lambda r: (
             -r["score"],
-            r["total_time_ms"],
+            r["finish_ms"] if r["finish_ms"] is not None else float("inf"),
             r["phase1_rank"] if r["phase1_rank"] is not None else float("inf"),
             r["name"],
         )
@@ -51,7 +52,7 @@ def phase2_standings(
 def _first_solves(
     conn: sa.Connection, frozen_at: datetime | None
 ) -> dict[str, list[tuple[int, int]]]:
-    """Per participant, one (score, solve_ms) per question: their earliest current AC on it."""
+    """Per participant, one (score, ms since the round began) per question: the earliest AC."""
     query = (
         sa.select(
             submission.c.participant_id,
@@ -77,18 +78,22 @@ def _first_solves(
             question.c.status != "void",
         )
     )
-    common_start = get_contest(conn).final_started_at
+    c = get_contest(conn)
+    common_start = c.final_started_at
+    round_start = coding_start(c)
     if frozen_at is not None:
         query = query.where(submission.c.created_at < frozen_at)
     best: dict[tuple[str, str], tuple[int, int]] = {}
     for ac in conn.execute(query):
         if ac.awarded_at is not None:
-            started = ac.awarded_at  # bought in round 1: timed from the purchase
+            # Bought in round 1: read from the start of Coding 1 (the purchase, if that start
+            # was never recorded).
+            started = round_start or ac.awarded_at
         elif ac.status == "unsold" and common_start and ac.created_at >= common_start:
             started = common_start  # the common round: everyone is timed from its start
         else:
             continue
-        solve_ms = clock.ms(ac.created_at) - clock.ms(started)
+        solve_ms = max(0, clock.ms(ac.created_at) - clock.ms(started))
         key = (ac.participant_id, ac.question_id)
         if key not in best or solve_ms < best[key][1]:
             best[key] = (ac.score, solve_ms)
@@ -98,13 +103,23 @@ def _first_solves(
     return out
 
 
+def coding_start(c: sa.Row) -> datetime | None:
+    """When Coding 1 began; for a contest that never recorded it, worked back from its end."""
+    if c.coding1_started_at:
+        return c.coding1_started_at
+    if c.phase == "coding1" and c.phase_ends_at:
+        return c.phase_ends_at - timedelta(minutes=c.coding1_minutes)
+    return None
+
+
 def _standing(p: sa.Row, solves: list[tuple[int, int]], p1_rank: int | None) -> dict[str, Any]:
     return {
         "participant_id": p.user_id,
         "name": p.name,
         "score": sum(score for score, _ in solves),
         "solved": len(solves),
-        "total_time_ms": sum(ms for _, ms in solves),
+        # The last accepted solve, from the start of the round: the time shown and the tie-break.
+        "finish_ms": max((ms for _, ms in solves), default=None),
         "phase1_rank": p1_rank,
         "rank": 0,
     }
@@ -112,7 +127,7 @@ def _standing(p: sa.Row, solves: list[tuple[int, int]], p1_rank: int | None) -> 
 
 def _assign_ranks(rows: list[dict[str, Any]]) -> None:
     """A shared rank only when everything that breaks ties is equal."""
-    tie_keys = ("score", "total_time_ms", "phase1_rank")
+    tie_keys = ("score", "finish_ms", "phase1_rank")
     for i, r in enumerate(rows):
         prev = rows[i - 1] if i else None
         if prev and all(prev[k] == r[k] for k in tie_keys):

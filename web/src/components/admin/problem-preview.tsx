@@ -29,6 +29,7 @@ export function ProblemPreview({ title, difficulty, score, statementMd, timeLimi
       </div>
       <div className="p-4">
         <StatementView
+          title={title}
           statementMd={statementMd}
           timeLimitMs={timeLimitMs}
           memoryLimitMb={memoryLimitMb}

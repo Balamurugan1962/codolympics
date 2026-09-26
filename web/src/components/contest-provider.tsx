@@ -38,7 +38,7 @@ export type ContestState = {
     proctor: { enabled: boolean; alerts: number; warnings: number; locked: boolean };
   } | null;
   questions?: { id: string; title: string; difficulty: string | null; score: number | null; common?: boolean; status: string; price_paid: number; awarded_at: string; attempts: number; progress: "solved" | "judging" | "attempted" | "unattempted" }[];
-  rank?: { rank: number; score: number; solved: number; total_time_ms: number } | null;
+  rank?: { rank: number; score: number; solved: number; finish_ms: number | null } | null;
   auction?: AuctionSnapshot | null;
   submit?: { in_flight: boolean; cooldown_ms: number; server_now: number };
   notifications?: { id: number; body_md: string; created_at: string }[];
@@ -82,7 +82,15 @@ export type EngineEvent = { id: number; name: string; data: Record<string, unkno
 type Listener = (event: EngineEvent) => void;
 type Poll = { events: EngineEvent[]; cursor: number; reset: boolean; server_now: number };
 
-const POLL_MS = 1_000;
+/**
+ * How often a page asks for news. A live (online) auction is decided by the
+ * second, and an organiser is watching the room, so both poll every second.
+ * Everywhere else, including an auction the room runs out loud, nothing a
+ * participant sees needs to be fresher than this, and with 40 or more people
+ * polling it takes most of the traffic off the engine.
+ */
+const POLL_FAST_MS = 1_000;
+const POLL_CALM_MS = 3_000;
 /** Consecutive failed polls before the chrome reports the connection lost. */
 const LOST_AFTER_FAILURES = 3;
 
@@ -164,7 +172,11 @@ export function ContestProvider({ initial, children }: { initial: ContestState; 
     } else if (["balance", "notify", "announce", "hack", "powerup"].includes(name)) void refresh().catch(() => undefined);
   }, [refresh]);
 
-  useEventPolling(initial.event_cursor, { apply, refresh, setConnection, noteServerNow });
+  const pollMs = useRef(POLL_FAST_MS);
+  const watching = state?.viewer.role !== "participant";
+  pollMs.current = watching || state?.auction?.mode === "online" ? POLL_FAST_MS : POLL_CALM_MS;
+
+  useEventPolling(initial.event_cursor, { apply, refresh, setConnection, noteServerNow, pollMs });
 
   const value = useMemo<Ctx>(() => ({
     state, connection, refresh, subscribe,
@@ -186,9 +198,11 @@ type PollingHandlers = {
   setConnection: React.Dispatch<React.SetStateAction<Connection>>;
   /** Every poll carries the server's clock, so countdowns stay honest even when nothing happens. */
   noteServerNow: (serverNow: unknown) => void;
+  /** Read at every tick, so a change of phase changes the pace without restarting the loop. */
+  pollMs: { current: number };
 };
 
-function useEventPolling(startCursor: number, { apply, refresh, setConnection, noteServerNow }: PollingHandlers) {
+function useEventPolling(startCursor: number, { apply, refresh, setConnection, noteServerNow, pollMs }: PollingHandlers) {
   useEffect(() => {
     let cursor = startCursor;
     let failures = 0;
@@ -214,7 +228,7 @@ function useEventPolling(startCursor: number, { apply, refresh, setConnection, n
           if (failures >= LOST_AFTER_FAILURES) setConnection((c) => (c === "connecting" ? c : "lost"));
         }
       }
-      if (!stopped) timer = setTimeout(() => void tick(), POLL_MS);
+      if (!stopped) timer = setTimeout(() => void tick(), pollMs.current);
     };
 
     void tick();
@@ -224,7 +238,7 @@ function useEventPolling(startCursor: number, { apply, refresh, setConnection, n
     };
     // The cursor starts from the state the page was rendered with, once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apply, refresh, setConnection]);
+  }, [apply, refresh, setConnection, pollMs]);
 }
 
 export function useContest(): Ctx {

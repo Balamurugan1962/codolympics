@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     # --- capacity ----------------------------------------------------------
     concurrency: int = 0          # 0 means "use _default_concurrency()"
     queue_limit: int = 0          # 0 means "2 x concurrency"
+    # Hack attempts run on a pool of their own. Hacking only happens in Phase 1,
+    # when nothing is being timed for score, so this can be larger than
+    # `concurrency` without disturbing Phase 2. 0 means "the same as
+    # `concurrency`", which is the safe default: the sandbox is pinned to a set
+    # of cores (GO_JUDGE_CPUSET), and more slots than cores gains nothing.
+    # Raise the two together.
+    hack_concurrency: int = 0
+    hack_queue_limit: int = 0     # 0 means "2 x hack_concurrency"
 
     # --- limits ------------------------------------------------------------
     max_source_bytes: int = 262_144        # 256 KB, matches the OpenAPI spec
@@ -57,6 +65,12 @@ class Settings(BaseSettings):
 
     def resolved_concurrency(self) -> int:
         return self.concurrency if self.concurrency > 0 else _default_concurrency()
+
+    def resolved_hack_concurrency(self) -> int:
+        return self.hack_concurrency if self.hack_concurrency > 0 else self.resolved_concurrency()
+
+    def resolved_hack_queue_limit(self) -> int:
+        return self.hack_queue_limit if self.hack_queue_limit > 0 else self.resolved_hack_concurrency() * 2
 
     def resolved_queue_limit(self) -> int:
         return self.queue_limit if self.queue_limit > 0 else self.resolved_concurrency() * 2

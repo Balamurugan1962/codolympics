@@ -210,7 +210,7 @@ export default function WorkspacePage() {
       </div>
       <div className="pane min-h-0 flex-1 overflow-auto p-4">
         {tab === "problem" && (
-          <StatementView statementMd={q.statement_md} timeLimitMs={q.time_limit_ms} memoryLimitMb={q.memory_limit_mb} hiddenTestcases={q.hidden_testcases} samples={q.samples}
+          <StatementView title={q.title} statementMd={q.statement_md} timeLimitMs={q.time_limit_ms} memoryLimitMb={q.memory_limit_mb} hiddenTestcases={q.hidden_testcases} samples={q.samples}
             onCopied={() => toast({ title: "Copied", tone: "info", duration: 1500 })} />
         )}
         {tab === "submissions" && <History history={q.history} onRestore={(h) => { void api.get<{ source?: string }>(`/api/questions/${id}`); void h; }} />}
@@ -218,7 +218,7 @@ export default function WorkspacePage() {
           <div className="space-y-3">
             {q.hints.total === 0 ? <EmptyState icon={<Icon.Lightbulb size={22} />} title="No hints for this question" /> : (
               <>
-                {q.hints.revealed.map((h) => <div key={h.idx} className="rounded-box border border-line bg-muted p-3 text-sm"><div className="mb-1 text-xs font-semibold text-faint">Hint {h.idx + 1} · bought for {h.price}</div><Markdown>{h.body_md}</Markdown></div>)}
+                {q.hints.revealed.map((h) => <div key={h.idx} className="rounded-box border border-line bg-muted p-3 text-sm"><div className="mb-1 text-xs font-semibold text-faint">Hint {h.idx + 1} · bought for {h.price}</div><Markdown className="problem-statement compact">{h.body_md}</Markdown></div>)}
                 {q.hints.next ? (
                   <div className="rounded-box border border-dashed border-line-2 p-4 text-center">
                     <div className="text-sm">Hint {q.hints.next.idx + 1} of {q.hints.total}</div>
@@ -259,7 +259,7 @@ export default function WorkspacePage() {
         <span className={`ml-auto text-xs ${saved === "failed" ? "font-semibold text-red" : "text-white/50"}`} aria-live="polite">{saved === "saving" ? "Saving…" : saved === "saved" ? "Saved" : saved === "failed" ? "Not saved!" : ""}</span>
       </div>
       <VerticalSplit storageKey="console" open={consoleOpen}
-        top={<CodeEditor value={source} language={language} onChange={onChange} height="100%" fontSize={fontSize} />}
+        top={<CodeEditor value={source} language={language} onChange={onChange} height="100%" fontSize={fontSize} theme="dark" />}
         bottom={
           <Console tab={consoleTab} onTab={setConsoleTab} open={consoleOpen} onToggle={() => setConsoleOpen((o) => !o)}
             tests={{ run, sending, samples: q.samples, customInput, onCustomInput: setCustomInput }}

@@ -24,6 +24,7 @@ from engine.core import clock, db, errors
 from engine.marketplace.blackouts import assert_not_blacked_out
 from engine.phase1 import solutions
 from engine.phase1.hack_jobs import send_one
+from engine.phase1.shuffle import for_participant
 from engine.schema import p1_hack_attempt, p1_hack_question
 
 VISIBLE_FROM = ("p1_puzzles", "review", "auction1", "coding1", "auction2", "final", "ended")
@@ -68,6 +69,7 @@ def section_for(participant_id: str) -> dict[str, Any]:
             .where(p1_hack_question.c.published.is_(True), p1_hack_question.c.voided.is_(False))
             .order_by(p1_hack_question.c.order_index, p1_hack_question.c.id)
         ).all()
+        questions = for_participant(questions, participant_id, "hacking")
         attempts = conn.execute(
             sa.select(p1_hack_attempt)
             .where(p1_hack_attempt.c.participant_id == participant_id)

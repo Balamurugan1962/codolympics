@@ -69,6 +69,27 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*; \
     /usr/local/bin/pypy3 -c "import sys; print('pypy', sys.version)"
 
+# A precompiled <bits/stdc++.h>. Most C++ solutions start with that one include,
+# and reading it is nearly all of what a compile costs: about 2 s and a lot of
+# memory bandwidth for one compile, and with several going at once they slow each
+# other down far more than proportionally (7 at once took 25-45 s each; with the
+# header precompiled, 4 at once take under 1 s each). Compiling it once here makes
+# every submission's compile several times cheaper and, more to the point, keeps
+# a burst of submissions from timing out.
+#
+# It must be built with the same flags the judge compiles with, or GCC ignores it
+# (silently: the compile just gets slow again). Those flags are cpp's
+# compile_args in judge/app/core/languages.py, and a judge test keeps the two in
+# step. The last line fails the build if the header would not be used.
+RUN set -eux; \
+    hdr="$(find /usr/include -name stdc++.h -path '*bits*' | head -1)"; \
+    test -n "$hdr"; \
+    mkdir -p "$hdr.gch"; \
+    g++ -O2 -std=gnu++20 -x c++-header "$hdr" -o "$hdr.gch/O2-gnu++20"; \
+    printf '#include <bits/stdc++.h>\nint main(){}\n' > /tmp/pch-check.cpp; \
+    g++ -O2 -std=gnu++20 -H -c /tmp/pch-check.cpp -o /tmp/pch-check.o 2>&1 | grep -q '^!'; \
+    rm -f /tmp/pch-check.cpp /tmp/pch-check.o
+
 # -cgroup-fd / systemd dbus is unavailable inside Docker Desktop, so the
 # container must be started with --cgroupns=host --privileged.
 EXPOSE 5050

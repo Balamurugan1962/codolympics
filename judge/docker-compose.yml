@@ -43,6 +43,8 @@ services:
       JUDGE_SERVICE_TOKEN: "${JUDGE_SERVICE_TOKEN:?set JUDGE_SERVICE_TOKEN in .env}"
       JUDGE_CONCURRENCY: "${JUDGE_CONCURRENCY:-0}"
       JUDGE_QUEUE_LIMIT: "${JUDGE_QUEUE_LIMIT:-0}"
+      JUDGE_HACK_CONCURRENCY: "${JUDGE_HACK_CONCURRENCY:-0}"
+      JUDGE_HACK_QUEUE_LIMIT: "${JUDGE_HACK_QUEUE_LIMIT:-0}"
       JUDGE_JOB_TTL_S: "${JUDGE_JOB_TTL_S:-600}"
     volumes:
       # Read-only: the judge never writes to the problem set. Validation

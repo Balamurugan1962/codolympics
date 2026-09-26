@@ -1,0 +1,16 @@
+{
+  "name": "engine",
+  "version": "1.0.0",
+  "description": "Every rule of Codolympics, and all of its state, in plain Python. A thin FastAPI layer exposes it; the Next.js web app is only a client.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

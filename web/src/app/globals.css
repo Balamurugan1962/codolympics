@@ -326,6 +326,56 @@
 .prose-statement strong { font-weight: 650; }
 .prose-statement img { max-width: 100%; }
 
+/* --- a problem statement, set the way LeetCode sets one -------------------
+ * A left-aligned title with the limits as small chips, calm sans-serif prose,
+ * bold section headings, inline code as grey chips, maths a touch larger than
+ * the words around it, and examples as rounded cards. Applied on top of
+ * .prose-statement.
+ */
+.problem-statement-header { margin: 0 0 1.25rem; }
+.problem-statement-header .title { font-size: 1.5rem; font-weight: 650; line-height: 1.25; letter-spacing: -0.01em; margin: 0 0 .7rem; }
+.problem-statement-header .chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.problem-statement-header .chip { display: inline-flex; align-items: center; gap: .35rem; font-size: .75rem; line-height: 1; padding: .38rem .6rem; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); }
+.problem-statement-header .chip b { font-weight: 600; color: var(--foreground); }
+
+.prose-statement.problem-statement { font-size: 15px; line-height: 1.75; color: var(--foreground); }
+.prose-statement.problem-statement p { margin: .8em 0; }
+.prose-statement.problem-statement h1,
+.prose-statement.problem-statement h2,
+.prose-statement.problem-statement h3,
+.prose-statement.problem-statement h4 { font-size: 1.05rem; font-weight: 700; line-height: 1.35; margin: 1.7em 0 .5em; letter-spacing: 0; }
+.prose-statement.problem-statement strong { font-weight: 650; }
+.prose-statement.problem-statement ul, .prose-statement.problem-statement ol { margin: .7em 0; padding-left: 1.6em; }
+.prose-statement.problem-statement li { margin: .3em 0; }
+.prose-statement.problem-statement li::marker { color: var(--muted-foreground); }
+.prose-statement.problem-statement .katex { font-size: 1.12em; color: var(--foreground); text-rendering: geometricPrecision; }
+.prose-statement.problem-statement .katex-display { margin: 1em 0; text-align: center; }
+.prose-statement.problem-statement .katex-display > .katex { font-size: 1.2em; }
+.prose-statement.problem-statement code { background: var(--muted); border: 1px solid var(--border); border-radius: 2px; padding: .08em .38em; font-size: .88em; font-weight: 500; }
+.prose-statement.problem-statement pre { background: var(--muted); border: 1px solid var(--line-2); border-radius: 2px; padding: .8rem 1rem; font-size: 13px; line-height: 1.6; }
+.prose-statement.problem-statement pre code { background: none; border: 0; padding: 0; font-weight: 400; font-size: inherit; }
+.prose-statement.problem-statement table { display: table; margin: 1em 0; font-size: 14px; width: auto; }
+.prose-statement.problem-statement th, .prose-statement.problem-statement td { border: 1px solid var(--border); padding: .4em .8em; text-align: left; }
+.prose-statement.problem-statement th { background: var(--muted); font-weight: 650; }
+.prose-statement.problem-statement blockquote { border-left: 3px solid var(--line-2); font-style: normal; color: var(--muted-foreground); }
+.prose-statement.problem-statement img { margin: 1.1em auto; }
+
+.prose-statement.problem-statement.compact { font-size: 14px; line-height: 1.65; }
+.prose-statement.problem-statement.compact .katex { font-size: 1.08em; }
+.prose-statement.problem-statement.compact p { margin: .5em 0; }
+
+.problem-examples { margin-top: 1.8rem; container-type: inline-size; }
+.problem-examples h3 { font-size: 1.05rem; font-weight: 700; margin: 0 0 .7rem; }
+/* Each sample is two separate boxes, input and output, side by side when the pane is wide
+   enough and stacked when it is not (the workspace pane can be dragged narrow). Square-ish
+   corners and a real border, the way HackerRank sets them. */
+.problem-example { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+.problem-example + .problem-example { margin-top: 1.1rem; }
+@container (min-width: 26rem) { .problem-example { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.problem-io { min-width: 0; border: 1px solid var(--line-2); border-radius: 2px; background: var(--card); }
+.problem-io-title { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .3rem .7rem; font-size: .75rem; font-weight: 700; color: var(--foreground); background: var(--muted); border-bottom: 1px solid var(--line-2); }
+.problem-io pre { margin: 0; padding: .65rem .8rem; font-size: 13px; line-height: 1.55; overflow: auto; max-height: 22rem; background: var(--card); white-space: pre; }
+
 /* --- motion, focus, scroll --------------------------------------------- */
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

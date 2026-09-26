@@ -266,7 +266,7 @@ export default function MarketplacePage() {
         onClose={() => setAiming(null)}
         title={aiming ? `Use ${aiming.name} on…` : ""}
         description={[
-          "They lose their screen for the duration. If they have a Shield up it absorbs this instead, and your powerup is still spent.",
+          "They lose their screen for the duration. Someone who is already blacked out cannot be attacked, so blackouts never stack. If they have a Shield up it absorbs this instead, and your powerup is still spent.",
           market.reveal_shields ? null : "Shields are hidden in this contest, so you will not know until you try.",
           market.attack_cap > 0 ? `After ${market.attack_cap} attacks on one person nobody can attack them for a while; trying then is refused and costs nothing.` : null,
         ].filter(Boolean).join(" ")}
@@ -279,12 +279,12 @@ export default function MarketplacePage() {
               <li key={t.id}>
                 <button
                   type="button"
-                  disabled={t.disqualified || t.off_limits || busy !== null}
+                  disabled={t.disqualified || t.off_limits || t.blacked_out || busy !== null}
                   onClick={() => aiming && attack(aiming, t)}
                   className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
                 >
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{t.name}</span>
-                  {t.blacked_out && <Badge variant="neutral">already out</Badge>}
+                  {t.blacked_out && <Badge variant="neutral">blacked out, cannot be attacked</Badge>}
                   {t.shielded && <Badge variant="info">shielded</Badge>}
                   {t.cooldown_until && <Badge variant="info">protected for <Countdown until={t.cooldown_until} warnUnderMs={0} /></Badge>}
                   {t.off_limits && <Badge variant="warning">{t.break_until ? <>off limits for <Countdown until={t.break_until} warnUnderMs={0} /></> : "off limits now"}</Badge>}

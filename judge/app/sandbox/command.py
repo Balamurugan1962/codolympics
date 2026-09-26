@@ -16,12 +16,15 @@ STDERR_BYTES = 65_536
 class Limits:
     """What one command may use. Wall-clock is derived: double the CPU budget,
     so a program that blocks or sleeps is still caught without failing one
-    that merely gets descheduled under load."""
+    that merely gets descheduled under load. A caller that knows better, such
+    as the compiler, which is CPU-bound and slows several times over when many
+    compile at once, sets `clock_ms` itself."""
 
     time_ms: int
     memory_mb: int
     stdout_bytes: int
     processes: int = 64
+    clock_ms: int | None = None
 
 
 def build(
@@ -42,7 +45,7 @@ def build(
             {"name": "stderr", "max": STDERR_BYTES},
         ],
         "cpuLimit": limits.time_ms * NS_PER_MS,
-        "clockLimit": limits.time_ms * 2 * NS_PER_MS,
+        "clockLimit": (limits.clock_ms or limits.time_ms * 2) * NS_PER_MS,
         "memoryLimit": limits.memory_mb * 1024 * 1024,
         "procLimit": limits.processes,
         "copyIn": copy_in or {},

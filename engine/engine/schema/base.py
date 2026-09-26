@@ -26,7 +26,7 @@ PHASES = (
 )
 LEADERBOARD_MODES = ("live", "frozen", "hidden")
 AUCTION_MODES = ("online", "offline")
-DIFFICULTIES = ("very_easy", "easy", "medium", "hard")
+DIFFICULTIES = ("beginner", "easy", "easy_medium", "medium", "hard")
 P1_CATEGORIES = ("pattern", "detective", "constraint")
 P1_KINDS = ("mcq_single", "mcq_multi", "fill_blank", "numeric", "sequence", "set", "long_text")
 P1_GRADING = ("auto", "validator", "manual")

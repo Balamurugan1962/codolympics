@@ -39,6 +39,7 @@ class Services:
 
     def close(self) -> None:
         self.queue.shutdown()
+        self.judge.compiler.release_all()
         self.python.release_all()
         self.sandbox.close()
 
@@ -70,5 +71,8 @@ def build(settings: Settings, sandbox: Sandbox | None = None) -> Services:
         scorer=AnswerScorer(python),
         validator=Validator(store, judge, python, registry),
         registry=registry,
-        queue=JobQueue(settings.resolved_concurrency(), settings.resolved_queue_limit(), settings.job_ttl_s),
+        queue=JobQueue(
+            settings.resolved_concurrency(), settings.resolved_queue_limit(), settings.job_ttl_s,
+            settings.resolved_hack_concurrency(), settings.resolved_hack_queue_limit(),
+        ),
     )

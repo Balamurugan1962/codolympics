@@ -22,7 +22,7 @@ from ...common import Body, ReasonBody, download, in_thread, read_upload
 router = APIRouter(prefix="/api/admin/problems")
 
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
-MAX_IMPORT_BYTES = 64 * 1024 * 1024
+MAX_IMPORT_BYTES = 256 * 1024 * 1024
 
 Version = Annotated[str, Field(pattern=r"^v\d+$")]
 
@@ -91,6 +91,12 @@ async def import_problems(
         problem_zip.import_problems, viewer.id, data, reason.strip(), problem_id
     )
     return {"imported": imported}
+
+
+@router.post("/publish-all")
+def publish_all(viewer: Admin, body: ReasonBody) -> dict[str, Any]:
+    """Every package's newest version that can go live without anyone confirming a rejudge."""
+    return publishing.publish_all(viewer.id, body.reason)
 
 
 @router.post("/validate-all")

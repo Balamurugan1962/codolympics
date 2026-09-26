@@ -55,6 +55,12 @@ async def import_section(
     )
 
 
+@router.post("/{section}/publish-all")
+def publish_all(viewer: Admin, section: str, body: ReasonBody) -> dict[str, Any]:
+    authoring.table_for(section)
+    return authoring.publish_all(viewer.id, section, body.reason)
+
+
 @router.post("/{section}/order")
 def reorder_questions(viewer: Staff, section: str, body: OrderBody) -> dict[str, bool]:
     authoring.reorder(viewer.id, section, body.ids, body.reason)

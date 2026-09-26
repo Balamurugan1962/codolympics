@@ -180,3 +180,23 @@ def test_alerts_are_not_counted_while_supervision_is_off() -> None:
         conn.execute(sa.text("update contest set proctoring = false"))
     state = post("/api/proctor/alert", sign_in("alice"), {"kind": "blur"}).json()
     assert state == {"enabled": False, "alerts": 0, "warnings": 3, "locked": False}
+
+
+def test_the_screen_exit_log_names_everyone_newest_first_and_is_for_staff() -> None:
+    add_user("alice")
+    add_user("bob")
+    add_user("root", role="admin", balance=None)
+    alice, bob, root = sign_in("alice"), sign_in("bob"), sign_in("root")
+    post("/api/proctor/alert", alice, {"kind": "fullscreen"})
+    post("/api/proctor/alert", bob, {"kind": "blur"})
+    post("/api/proctor/alert", alice, {"kind": "hidden"})
+
+    assert get("/api/admin/proctoring", alice).status_code == 403
+    events = get("/api/admin/proctoring", root).json()["events"]
+    assert [(e["name"], e["kind"]) for e in events] == [
+        ("alice", "hidden"),
+        ("bob", "blur"),
+        ("alice", "fullscreen"),
+    ]
+    assert events[0]["locked"] is False
+    assert events[0]["created_at"]

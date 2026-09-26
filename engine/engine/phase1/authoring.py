@@ -224,6 +224,34 @@ def set_published(
     _changed(section)
 
 
+def publish_all(actor_id: str, section: str, reason: str) -> dict[str, object]:
+    """Publish every question in a section that is ready and not yet live; name the rest."""
+    table = table_for(section)
+    noun = "puzzle" if section == "puzzles" else "hack"
+    with db.transaction() as conn:
+        rows = conn.execute(
+            sa.select(table.c.id, table.c.title, table.c.ready)
+            .where(table.c.published.is_(False), table.c.voided.is_(False))
+            .order_by(table.c.order_index, table.c.id)
+            .with_for_update()
+        ).all()
+        ready = [r.id for r in rows if r.ready]
+        skipped = [{"id": r.id, "title": r.title} for r in rows if not r.ready]
+        if ready:
+            conn.execute(sa.update(table).where(table.c.id.in_(ready)).values(published=True))
+            audit(
+                conn,
+                actor_id=actor_id,
+                action=f"p1.{noun}.publish_all",
+                target=section,
+                reason=reason,
+                detail={"published": ready},
+            )
+    if ready:
+        _changed(section)
+    return {"published": len(ready), "skipped": skipped}
+
+
 def void(actor_id: str, section: str, question_id: int, reason: str) -> None:
     table = table_for(section)
     with db.transaction() as conn:

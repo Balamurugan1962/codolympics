@@ -17,7 +17,7 @@ from ...common import download, in_thread, read_upload
 
 router = APIRouter(prefix="/api/admin/setup")
 
-MAX_SETUP_BYTES = 128 * 1024 * 1024
+MAX_SETUP_BYTES = 512 * 1024 * 1024
 
 
 @router.get("")

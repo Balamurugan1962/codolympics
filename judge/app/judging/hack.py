@@ -58,7 +58,7 @@ class Hacker:
 
         # 2. The correct answer, from the stored reference solution.
         language, source = self.store.reference_solution(problem)
-        reference = self.judge.run_once(Submission(problem, language, source), input_text)
+        reference = self.judge.run_once(Submission(problem, language, source), input_text, keep=True)
         if not reference.accepted:
             raise ProblemBroken(f"reference solution got {reference.verdict} on this input")
 
@@ -66,7 +66,7 @@ class Hacker:
         return self._judge_given(given, input_text, reference.stdout)
 
     def _judge_given(self, given: Submission, input_text: str, answer: str) -> HackResult:
-        outcome = self.judge.run_once(given, input_text, answer)
+        outcome = self.judge.run_once(given, input_text, answer, keep=True)
         if outcome.verdict == "CE":
             raise ProblemBroken("the given solution does not compile")
         if outcome.verdict == "IE":

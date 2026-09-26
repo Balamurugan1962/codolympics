@@ -8,6 +8,11 @@
 # Only the web app publishes a port. go-judge, judge-api and the engine are
 # reachable only from other containers on the internal network.
 
+# Fixed, so that `docker compose` in any checkout uses the same containers and the same
+# data volumes (codolympics_pgdata, codolympics_problems). Without it the project takes
+# the folder's name, and a differently named folder would quietly start on empty volumes.
+name: codolympics
+
 services:
   postgres:
     image: postgres:16.6
@@ -36,6 +41,9 @@ services:
     cgroup: host
     cpuset: "${GO_JUDGE_CPUSET:-0-3}"   # pinning keeps timings comparable; do not remove
     command: ["-http-addr=0.0.0.0:5050", "-release", "-silent"]
+    # go-judge keeps every cached file in /dev/shm. Docker's 64 MB default filled up
+    # mid-contest (two compiled artefacts of 37 and 29 MB) and every upload then failed.
+    shm_size: 1gb
     networks: [internal]
 
   judge-api:
@@ -47,6 +55,15 @@ services:
       JUDGE_GO_JUDGE_URL: http://go-judge:5050
       JUDGE_PROBLEMS_DIR: /problems
       JUDGE_SERVICE_TOKEN: ${JUDGE_SERVICE_TOKEN:?set JUDGE_SERVICE_TOKEN in .env}
+      # Phase 1 only: how many hack attempts may run at once. 0 keeps it equal to
+      # the timed-job limit. To use more of the hall server, raise this together
+      # with GO_JUDGE_CPUSET above (e.g. GO_JUDGE_CPUSET=0-6, JUDGE_HACK_CONCURRENCY=7).
+      # How many timed jobs (submissions, runs) the judge runs at once. 0 lets the judge
+      # pick (up to 4). On the 8 GB MacBook Air, 3 keeps one fast core free for the engine,
+      # website and database, which measured far steadier timing than 4 (see docs/deployment.md).
+      JUDGE_CONCURRENCY: "${JUDGE_CONCURRENCY:-0}"
+      JUDGE_QUEUE_LIMIT: "${JUDGE_QUEUE_LIMIT:-0}"
+      JUDGE_HACK_CONCURRENCY: "${JUDGE_HACK_CONCURRENCY:-0}"
     volumes:
       - problems:/problems:ro          # read-only: the judge never writes here
     networks: [internal]

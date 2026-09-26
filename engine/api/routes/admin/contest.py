@@ -11,7 +11,7 @@ from pydantic import Field
 
 from engine.admin import contest_reset, contest_settings, overview
 from engine.coding import scoring
-from engine.contest import messages, phase_checks, phases, readiness
+from engine.contest import messages, phase_checks, phases, proctor, readiness
 from engine.core import clock
 from engine.schema import AUCTION_MODES, LEADERBOARD_MODES
 
@@ -137,6 +137,12 @@ def post_announcement(viewer: Admin, body: AnnouncementBody) -> dict[str, bool]:
 @router.get("/audit")
 def read_audit_log(_: Staff) -> dict[str, Any]:
     return {"entries": overview.recent_audit()}
+
+
+@router.get("/proctoring")
+def read_proctoring_log(_: Staff) -> dict[str, Any]:
+    """Every time a participant left full screen, switched window or hid the tab."""
+    return {"events": proctor.log()}
 
 
 @router.get("/health")

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { ProblemTransferActions, problemExportMenuItem } from "@/components/admin/problem-transfer";
+import { PublishAllButton } from "@/components/admin/publish-all";
 import { ValidateAllButton } from "@/components/admin/validate-all";
 import { DifficultyBadge } from "@/components/admin/question-details-form";
 import { Icon } from "@/components/icons";
@@ -143,6 +144,7 @@ export default function ProblemsPage() {
         actions={
           <>
             <ValidateAllButton onDone={load} />
+            <PublishAllButton url="/api/admin/problems/publish-all" what="problem" onDone={load} />
             <Button variant="outline" asChild>
               <Link href="/admin/problems/order">
                 <Icon.Sort size={14} /> Order

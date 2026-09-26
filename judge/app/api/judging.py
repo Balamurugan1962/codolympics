@@ -36,7 +36,7 @@ def hack(body: HackRequest, services: Svc) -> JobHandle:
     if not problem.has_reference:
         raise errors.invalid_request(f"{body.problem_id} has no reference solution, so it cannot be hacked")
     submission = Submission(problem, language, body.source, body.submission_id)
-    return _enqueue(services, HackTask(services.hacker, submission, body.input))
+    return _enqueue(services, HackTask(services.hacker, submission, body.input), pool="hack")
 
 
 @router.post("/run", response_model=JobHandle, status_code=202)
@@ -81,10 +81,10 @@ def cancel_job(job_id: str, services: Svc) -> Response:
     return Response(status_code=204)
 
 
-def _enqueue(services: Services, task: Task) -> JobHandle:
+def _enqueue(services: Services, task: Task, pool: str = "main") -> JobHandle:
     """Queue a task once the request is known to be runnable."""
-    require_capacity(services)
-    job = services.queue.submit(task)
+    require_capacity(services, pool)
+    job = services.queue.submit(task, pool)
     return JobHandle(job_id=job.job_id, submission_id=job.submission_id)
 
 

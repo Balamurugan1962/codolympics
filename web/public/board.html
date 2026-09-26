@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 2 Standings</title>
+<!--
+  The hall screen: the top of the Phase 2 leaderboard, full screen, refreshing itself.
+  It reads the same /api/leaderboard participants do, so the organisers' hidden
+  and frozen settings apply here too. Open it in a signed-in browser.
+-->
+<style>
+  :root {
+    --bg: #0f1115;
+    --text: #f2f3f5;
+    --muted: #8a8f98;
+    --rule: #262a31;
+    --accent: #818cf8;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-feature-settings: "tnum";
+    display: flex;
+    flex-direction: column;
+    padding: 5vh 6vw;
+    overflow: hidden;
+  }
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-bottom: 2.4vh;
+    border-bottom: 2px solid var(--text);
+  }
+  .eyebrow {
+    font-size: 1.6vh;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.8vh;
+  }
+  h1 { margin: 0; font-size: 4.6vh; font-weight: 700; letter-spacing: -0.02em; }
+  .right { text-align: right; }
+  #phase { font-size: 1.6vh; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4vh; }
+  #timer { font-size: 6vh; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+  #timer.low { color: #f87171; }
+  #status { font-size: 1.6vh; color: var(--muted); margin-top: 0.8vh; }
+
+  table { width: 100%; border-collapse: collapse; flex: 1; }
+  thead th {
+    font-size: 1.5vh;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 1.8vh 0 1.2vh;
+  }
+  tbody td {
+    font-size: 3.2vh;
+    padding: 0;
+    height: calc((100vh - 26vh) / 11);
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  .rank { width: 9%; color: var(--muted); font-weight: 500; }
+  .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
+  .n { width: 12%; text-align: right; }
+  .score { font-weight: 700; }
+  tbody tr:first-child .rank { color: var(--accent); }
+  .dim { color: var(--muted); font-weight: 400; }
+
+  .message { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .message strong { font-size: 3.6vh; font-weight: 600; margin-bottom: 1.2vh; }
+  .message span { font-size: 2.2vh; color: var(--muted); }
+  .message a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="eyebrow">Codolympics</div>
+    <h1>Phase 2 Standings</h1>
+  </div>
+  <div class="right">
+    <div id="phase"></div>
+    <div id="timer"></div>
+    <div id="status">Connecting</div>
+  </div>
+</header>
+<div id="board" class="message"></div>
+
+<script>
+  const REFRESH_MS = 1000;
+  const SHOWN = 11;
+  const statusLine = document.getElementById("status");
+  let board = document.getElementById("board");
+  let lastKey = null;
+
+  function duration(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const mm = String(m).padStart(2, "0"), ss = String(sec).padStart(2, "0");
+    return h ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+  }
+
+  function el(tag, cls, ...children) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    e.append(...children.map((c) => (c instanceof Node ? c : String(c))));
+    return e;
+  }
+
+  function show(next, key) {
+    lastKey = key;
+    board.replaceWith(next);
+    board = next;
+  }
+
+  function message(title, ...body) {
+    const key = "msg:" + title;
+    if (key === lastKey) return;
+    show(el("div", "message", el("strong", "", title), el("span", "", ...body)), key);
+  }
+
+  function row(r) {
+    const none = !r.solved;
+    return el("tr", "",
+      el("td", "rank", r.rank),
+      el("td", "name", r.name),
+      el("td", "n score" + (r.score ? "" : " dim"), r.score),
+      el("td", "n" + (none ? " dim" : ""), r.solved),
+      el("td", "n" + (none ? " dim" : ""), none || r.finish_ms === null ? "–" : duration(r.finish_ms)),
+    );
+  }
+
+  function render(standings) {
+    const rows = standings.slice(0, SHOWN);
+    if (rows.length === 0) {
+      message("No standings yet", "The board fills once Phase 2 begins.");
+      return;
+    }
+    // Polling every second: only touch the page when something changed.
+    const key = JSON.stringify(rows);
+    if (key === lastKey) return;
+    const head = el("tr", "",
+      el("th", "rank", "Rank"), el("th", "", "Participant"),
+      el("th", "n", "Score"), el("th", "n", "Solved"), el("th", "n", "Time"));
+    show(el("table", "", el("thead", "", head), el("tbody", "", ...rows.map(row))), key);
+  }
+
+  function clock(d) {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  // The contest timer: counts down to the phase's end on the server's clock, not the projector's.
+  const PHASES = {
+    p1_puzzles: "Phase 1", review: "Review", auction1: "Auction", coding1: "Coding round",
+    auction2: "Auction 2", final: "Common round", ended: "Contest over",
+  };
+  const phaseLine = document.getElementById("phase");
+  const timer = document.getElementById("timer");
+  let endsAt = null;   // ms since epoch, on the server's clock
+  let skew = null;     // server time minus this machine's time
+
+  // `sent` and `got` bracket the request: the server's now is placed at its midpoint.
+  // The offset only moves when it is really off, so network jitter never makes the
+  // countdown jump back and forth.
+  function setClock(c, sent, got) {
+    if (!c) return;
+    phaseLine.textContent = PHASES[c.phase] ?? c.phase;
+    const measured = new Date(c.now).getTime() - (sent + got) / 2;
+    if (skew === null || Math.abs(measured - skew) > 1000) skew = measured;
+    endsAt = c.ends_at ? new Date(c.ends_at).getTime() : null;
+    tick();
+  }
+
+  function tick() {
+    if (endsAt === null) { timer.textContent = ""; return; }
+    const left = endsAt - (Date.now() + (skew ?? 0));
+    timer.textContent = duration(Math.max(0, Math.ceil(left / 1000) * 1000));
+    timer.classList.toggle("low", left < 5 * 60 * 1000);
+  }
+
+  async function refresh() {
+    try {
+      const sent = Date.now();
+      const res = await fetch("/api/leaderboard", { credentials: "same-origin", cache: "no-store" });
+      if (res.status === 401 || res.status === 403) {
+        const a = el("a", "", "/login");
+        a.href = "/login";
+        statusLine.textContent = "Not signed in";
+        message("Sign in to show the standings", "Sign in at ", a, " in this browser, then return here.");
+        return;
+      }
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      setClock(data.clock, sent, Date.now());
+      if (data.mode === "hidden") {
+        statusLine.textContent = "";
+        message("Standings are hidden", "They will be shown again shortly.");
+        return;
+      }
+      statusLine.textContent = data.mode === "frozen" && data.frozen_at
+        ? "Frozen at " + clock(new Date(data.frozen_at))
+        : "Top " + SHOWN + " · Live";
+      render(data.standings);
+    } catch {
+      // Keep the last good board on screen; only the status line says something is wrong.
+      statusLine.textContent = "Reconnecting";
+    }
+  }
+
+  refresh();
+  setInterval(refresh, REFRESH_MS);
+  setInterval(tick, 250);
+</script>
+</body>
+</html>

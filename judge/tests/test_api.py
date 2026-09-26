@@ -121,7 +121,7 @@ class TestSubmit:
         assert sandbox.runs == 0
 
     def test_queue_full_is_429_with_retry_after(self, client, monkeypatch):
-        monkeypatch.setattr(client.app.state.services.queue, "has_room", lambda: False)
+        monkeypatch.setattr(client.app.state.services.queue, "has_room", lambda pool="main": False)
         response = submit(client)
         assert response.status_code == 429
         assert response.json()["error"] == "busy"

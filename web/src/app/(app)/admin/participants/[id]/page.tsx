@@ -63,7 +63,7 @@ type Dossier = {
     }[];
   };
   phase2: {
-    standing: { rank: number; score: number; solved: number; total_time_ms: number } | null;
+    standing: { rank: number; score: number; solved: number; finish_ms: number | null } | null;
     of: number;
     owned: {
       question_id: string; title: string; difficulty: string; score: number; price_paid: number;
@@ -292,7 +292,7 @@ export default function ParticipantPage() {
             <Section
               title="Questions they own"
               description="What each one cost, and every submission against it."
-              actions={p2.standing && <span className="text-[12px] text-muted-foreground tabular-nums">{p2.standing.solved} solved, {duration(p2.standing.total_time_ms)} in total</span>}
+              actions={p2.standing && <span className="text-[12px] text-muted-foreground tabular-nums">{p2.standing.solved} solved, solve time {duration(p2.standing.finish_ms)}</span>}
               padded={false}
             >
               {p2.owned.length === 0 ? (
@@ -488,7 +488,7 @@ function OwnedRow({ o, participantId }: { o: Dossier["phase2"]["owned"][number];
   return (
     <LinkRow
       href={`/admin/participants/${participantId}/questions/${o.question_id}`}
-      lead={<span className={cn("mt-1 block size-2.5 rounded-full", o.difficulty === "hard" ? "bg-red" : o.difficulty === "medium" ? "bg-amber" : "bg-green")} title={o.difficulty} />}
+      lead={<span className={cn("mt-1 block size-2.5 rounded-full", o.difficulty === "hard" ? "bg-red" : (o.difficulty === "medium" || o.difficulty === "easy_medium") ? "bg-amber" : "bg-green")} title={o.difficulty} />}
       title={o.title}
       chips={
         <>

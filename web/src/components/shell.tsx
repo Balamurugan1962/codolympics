@@ -115,6 +115,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <LiveToasts />
+      <PhaseRedirect />
+      <EditorPrefetch />
       <AnnouncementOverlay />
       <a
         href="#main"
@@ -280,6 +282,57 @@ export function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Fetch the code editor in the background, so that opening a question is
+ * instant instead of a 1.7 MB download. Everybody opens their first question in
+ * the same minute, and on a shared network that is a wait for the last of the
+ * room; here each machine asks once, at a random moment in the first 20 seconds
+ * it is on the page, when the browser has nothing better to do. Nothing is
+ * mounted: the editor is only loaded, so it is already cached when needed.
+ */
+function EditorPrefetch() {
+  const { state } = useContest();
+  const participant = state?.viewer.role === "participant";
+
+  useEffect(() => {
+    if (!participant) return;
+    const load = () => void import("./editor").catch(() => undefined);
+    const timer = window.setTimeout(() => {
+      if (document.hidden) return;
+      if ("requestIdleCallback" in window) window.requestIdleCallback(load, { timeout: 5000 });
+      else load();
+    }, 3000 + Math.random() * 17000);
+    return () => window.clearTimeout(timer);
+  }, [participant]);
+
+  return null;
+}
+
+/**
+ * On every phase change a participant is taken to the contest screen, which
+ * shows whatever is now open. It watches the phase value rather than the
+ * "phase" event, so a change that arrives as a full re-read moves them too.
+ * Organisers stay put; they are the ones who moved it.
+ */
+function PhaseRedirect() {
+  const { state } = useContest();
+  const router = useRouter();
+  const pathname = usePathname();
+  const phase = state?.contest.phase;
+  const role = state?.viewer.role;
+  const last = useRef(phase);
+  const here = useRef(pathname);
+  here.current = pathname;
+
+  useEffect(() => {
+    if (last.current === phase) return;
+    last.current = phase;
+    if (role === "participant" && here.current !== "/dashboard") router.replace("/dashboard");
+  }, [phase, role, router]);
+
+  return null;
+}
+
 /** Turns live events into feedback the participant actually notices. */
 function LiveToasts() {
   const { state } = useContest();
@@ -299,7 +352,7 @@ function LiveToasts() {
         const now = lot?.current_bidder_id ?? null;
         // Only the moment of losing the lead is worth interrupting for.
         if (prevBidder.current === me && now && now !== me) {
-          toast({ title: "You have been outbid", description: `${lot?.title} is now at ${lot?.current_bid}.`, tone: "warning" });
+          toast({ title: "You have been outbid", description: `The highest bid is now ${lot?.current_bid}.`, tone: "warning" });
         }
         prevBidder.current = lot ? now : undefined;
         break;

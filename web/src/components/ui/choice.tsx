@@ -33,12 +33,12 @@ export function ChoiceCards<T extends string>({
   value: T;
   onChange: (v: T) => void;
   options: Choice<T>[];
-  cols?: 1 | 2 | 3 | 4;
+  cols?: 1 | 2 | 3 | 4 | 5;
   size?: "sm" | "md";
   name?: string;
   className?: string;
 }) {
-  const grid = { 1: "", 2: "sm:grid-cols-2", 3: "sm:grid-cols-2 lg:grid-cols-3", 4: "sm:grid-cols-2 lg:grid-cols-4" }[cols];
+  const grid = { 1: "", 2: "sm:grid-cols-2", 3: "sm:grid-cols-2 lg:grid-cols-3", 4: "sm:grid-cols-2 lg:grid-cols-4", 5: "sm:grid-cols-2 lg:grid-cols-5" }[cols];
   return (
     <div role="radiogroup" aria-label={name} className={cn("grid grid-cols-1 gap-2", grid, className)}>
       {options.map((o) => {

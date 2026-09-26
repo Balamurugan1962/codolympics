@@ -89,7 +89,7 @@ def test_the_common_list_shows_every_unsold_question_and_hides_topic_tier_and_po
     assert "topic" not in shown
 
 
-def test_common_solves_add_to_round_1_points_and_are_timed_from_the_round_start(
+def test_common_solves_add_to_round_1_points_and_the_finish_is_the_last_solve(
     judge: FakeJudge,  # noqa: F811
 ) -> None:
     add_question("open", order=2, score=300)
@@ -107,9 +107,10 @@ def test_common_solves_add_to_round_1_points_and_are_timed_from_the_round_start(
     judging.poll_in_flight()
     standing = next(s for s in scoring.for_staff()["phase2"] if s["participant_id"] == "alice")
     assert standing["score"] == 100 + 300 and standing["solved"] == 2
-    # 3 hours from the purchase for one solve, 15 minutes from the round start for the other
-    expected_ms = (3 * 3600 + 900) * 1000
-    assert abs(standing["total_time_ms"] - expected_ms) < 60_000
+    # 3 hours from the purchase for one solve (Coding 1's start was not recorded), 15 minutes from
+    # the round start for the other: the finish is the later of the two, not their sum
+    expected_ms = 3 * 3600 * 1000
+    assert abs(standing["finish_ms"] - expected_ms) < 60_000
 
 
 def test_entering_the_common_round_needs_an_unsold_question_and_says_what_closes() -> None:

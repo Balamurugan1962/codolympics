@@ -33,6 +33,12 @@ from engine.schema import blackout, powerup, powerup_event, user
 
 def use(actor_id: str, powerup_id: int, target_id: str | None, request_id: str) -> dict[str, Any]:
     """Use a powerup. Blackout needs a target and may be eaten by their Shield."""
+    # A retried request answers with what the first copy did. Checked before anything else,
+    # because the first copy's own blackout would otherwise refuse the retry as a new attack.
+    with db.transaction() as conn:
+        seen = event_for(conn, actor_id, request_id) is not None
+    if seen:
+        return _replay_use(actor_id, request_id)
     try:
         with db.transaction() as conn:
             result = _use(conn, actor_id, powerup_id, target_id, request_id)

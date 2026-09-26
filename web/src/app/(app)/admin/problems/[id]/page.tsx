@@ -5,6 +5,7 @@
  * published. The strip at the top says which stage it is at; the tabs below
  * hold the work for each. Publishing mid-contest rejudges, and says so.
  */
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -23,7 +24,6 @@ import { FormGrid } from "@/components/ui/field";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { SimpleCombobox } from "@/components/ui/combobox";
-import { Textarea } from "@/components/ui/textarea";
 import { PageBody, Section } from "@/components/ui/page";
 import { AsideBlock, Facts, RecordBody, RecordHeader } from "@/components/ui/record";
 import { DetailSkeleton } from "@/components/ui/skeleton";
@@ -34,6 +34,8 @@ import { useToast } from "@/components/ui/toast";
 import { api, errorMessage } from "@/lib/client";
 
 import type { P, Q } from "../page";
+
+const CodeEditor = dynamic(() => import("@/components/editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-[280px] bg-muted" /> });
 import { Markdown } from "@/components/markdown";
 
 type Report = { ok: boolean; issues: string[]; reference: { verdict: string; first_fail: number | null; passed: number; max_time_ms: number } | null; wrong_solution: { verdict: string } | null; checker: { compiled: boolean; output: string } | null };
@@ -307,10 +309,10 @@ function Package({ id, problem, question, version: live, onChange }: { id: strin
           <CollapsibleContent className="mt-3">
             <FormGrid cols={2}>
               <Field label={problem.has_reference ? "Reference solution (overrides the package's)" : "Reference solution"} help="Must be accepted on every test.">
-                <Textarea rows={7} className="font-mono text-[12px]" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Paste source…" />
+                <div className="overflow-hidden rounded-box border border-line"><CodeEditor value={reference} language={lang} onChange={setReference} height="280px" /></div>
               </Field>
               <Field label="Wrong solution" hint="optional" help="Should fail at least one test; otherwise the tests are too weak.">
-                <Textarea rows={7} className="font-mono text-[12px]" value={wrong} onChange={(e) => setWrong(e.target.value)} placeholder="Paste a deliberately wrong source…" />
+                <div className="overflow-hidden rounded-box border border-line"><CodeEditor value={wrong} language={lang} onChange={setWrong} height="280px" /></div>
               </Field>
             </FormGrid>
             <div className="mt-3 max-w-xs">
@@ -461,7 +463,7 @@ function Preview({ id, problem, question }: { id: string; problem: P | null; que
             {question.hints.map((h) => (
               <li key={h.idx} className="flex gap-4 py-2.5 text-[13px]">
                 <span className="w-24 shrink-0 font-semibold tabular-nums text-muted-foreground">Hint {h.idx + 1} · {h.price}</span>
-                <div className="min-w-0 flex-1"><Markdown className="prose-sm">{h.bodyMd}</Markdown></div>
+                <div className="min-w-0 flex-1"><Markdown className="problem-statement compact">{h.bodyMd}</Markdown></div>
               </li>
             ))}
           </ol>

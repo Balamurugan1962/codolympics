@@ -114,6 +114,7 @@ const NAV: Group[] = [
     items: [
       { href: "/admin/judge", label: "Judge" },
       { href: "/admin/submissions", label: "Submissions" },
+      { href: "/admin/proctoring", label: "Screen exits" },
       { href: "/admin/audit", label: "Audit log" },
     ],
   },

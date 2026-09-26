@@ -187,14 +187,16 @@ def test_a_blackout_lands_names_the_attacker_and_locks_the_target_out(
     assert not state("alice")["active"]
 
 
-def test_blackouts_arriving_together_stack_end_to_end(market: dict[str, int]) -> None:
+def test_blackouts_do_not_stack_a_second_attack_is_refused_and_costs_nothing(
+    market: dict[str, int],
+) -> None:
     give("alice", market["blackout"], 1)
     give("carol", market["blackout"], 1)
-    started = clock.now_ms()
-    at_once([lambda: attack("alice", "bob", market), lambda: attack("carol", "bob", market)])
+    attack("alice", "bob", market)
+    raises_code("target_blacked_out", lambda: attack("carol", "bob", market))
+    assert qty("carol", market["blackout"]) == 1
     s = state("bob")
-    total_ms = clock.ms(datetime.fromisoformat(s["ends_at"])) - started
-    assert s["count"] == 2 and 118_000 < total_ms < 123_000
+    assert s["count"] == 1 and s["by"] == ["Alice"]
 
 
 def test_two_people_attacking_each_other_at_once_do_not_deadlock(market: dict[str, int]) -> None:
@@ -202,7 +204,10 @@ def test_two_people_attacking_each_other_at_once_do_not_deadlock(market: dict[st
     give("bob", market["blackout"], 5)
     calls = [lambda: attack("alice", "bob", market), lambda: attack("bob", "alice", market)] * 5
     results = at_once(calls)
-    assert all(isinstance(r, dict) for r in results), results
+    # Every call finishes: it lands, or is refused because its target is already blacked out.
+    assert all(isinstance(r, dict) for r in results if not isinstance(r, errors.EngineError))
+    assert set(codes(results)) <= {"target_blacked_out"}, results
+    assert sum(isinstance(r, dict) for r in results) >= 1
 
 
 def test_invalid_attacks_spend_nothing(market: dict[str, int]) -> None:
@@ -341,8 +346,12 @@ def test_shields_never_go_negative_under_a_burst(market: dict[str, int]) -> None
     give("alice", market["blackout"], 5)
     give("bob", market["shield"], 2)
     results = at_once([lambda: attack("alice", "bob", market) for _ in range(5)])
-    assert sorted(r["outcome"] for r in results) == ["blackout"] * 3 + ["shielded"] * 2
-    assert qty("bob", market["shield"]) == 0 and state("bob")["count"] == 3
+    # Two shields absorb two attacks, one blackout lands, and the rest are refused unspent.
+    landed = sorted(r["outcome"] for r in results if isinstance(r, dict))
+    assert landed == ["blackout", "shielded", "shielded"]
+    assert codes(results) == ["target_blacked_out", "target_blacked_out"]
+    assert qty("bob", market["shield"]) == 0 and state("bob")["count"] == 1
+    assert qty("alice", market["blackout"]) == 2
 
 
 def test_a_shield_cannot_be_activated(market: dict[str, int]) -> None:
@@ -440,13 +449,24 @@ def end_break(who: str) -> None:
         )
 
 
+def end_blackout(who: str) -> None:
+    """Every blackout this person has is over now."""
+    with db.transaction() as conn:
+        conn.execute(
+            sa.update(blackout)
+            .where(blackout.c.participant_id == who)
+            .values(ends_at=clock.now() - timedelta(seconds=1))
+        )
+
+
 def test_the_cap_starts_a_break_and_the_next_attack_is_refused_unspent(
     market: dict[str, int],
 ) -> None:
-    set_contest(attack_cap=2, attack_break_seconds=120)
+    set_contest(attack_cap=2, attack_break_seconds=120, attack_cooldown_seconds=0)
     give("alice", market["blackout"], 3)
     assert attack("alice", "bob", market)["outcome"] == "blackout"
     assert not break_of("bob")["active"]
+    end_blackout("bob")
     assert attack("alice", "bob", market)["outcome"] == "blackout"
     b = break_of("bob")
     assert (b["active"], b["number"]) == (True, 1)
@@ -459,7 +479,7 @@ def test_the_cap_starts_a_break_and_the_next_attack_is_refused_unspent(
     assert targets["bob"]["break_until"] == b["ends_at"] and targets["alice"]["break_until"] is None
 
 
-def test_n_plus_one_attacks_at_once_land_n_and_refuse_one(market: dict[str, int]) -> None:
+def test_attacks_at_once_land_one_and_refuse_the_rest_unspent(market: dict[str, int]) -> None:
     set_contest(attack_cap=2, attack_break_seconds=120)
     add_user("dave", "Dave")
     attackers = ["alice", "carol", "dave"]
@@ -467,24 +487,26 @@ def test_n_plus_one_attacks_at_once_land_n_and_refuse_one(market: dict[str, int]
         give(who, market["blackout"], 1)
     results = at_once([lambda who=who: attack(who, "bob", market) for who in attackers])
     landed = [r for r in results if isinstance(r, dict)]
-    assert len(landed) == 2 and codes(results) == ["target_on_break"]
-    assert state("bob")["count"] == 2
-    # The refused attacker keeps their Blackout; the two that landed spent theirs.
-    assert sorted(qty(who, market["blackout"]) for who in attackers) == [0, 0, 1]
+    assert len(landed) == 1 and codes(results) == ["target_blacked_out", "target_blacked_out"]
+    assert state("bob")["count"] == 1
+    # The refused attackers keep their Blackout; the one that landed spent it.
+    assert sorted(qty(who, market["blackout"]) for who in attackers) == [0, 1, 1]
 
 
 def test_each_break_for_the_same_person_is_twice_as_long(market: dict[str, int]) -> None:
-    set_contest(attack_cap=1, attack_break_seconds=60)
+    set_contest(attack_cap=1, attack_break_seconds=60, attack_cooldown_seconds=0)
     give("alice", market["blackout"], 3)
     attack("alice", "bob", market)
     first = rows(sa.select(attack_break))[0]
     assert (first.number, first.seconds) == (1, 60)
     end_break("bob")
+    end_blackout("bob")
     attack("alice", "bob", market)
     second = rows(sa.select(attack_break).order_by(attack_break.c.number.desc()))[0]
     assert (second.number, second.seconds) == (2, 120)
     assert break_of("bob")["number"] == 2
     end_break("bob")
+    end_blackout("bob")
     attack("alice", "bob", market)
     assert rows(sa.select(attack_break).order_by(attack_break.c.number.desc()))[0].seconds == 240
 

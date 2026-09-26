@@ -13,7 +13,7 @@ import { Icon } from "@/components/icons";
 import { LocalTime } from "@/components/local-time";
 import { cn } from "@/lib/utils";
 
-const CodeEditor = dynamic(() => import("@/components/editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-64 rounded-md bg-navy" /> });
+const CodeEditor = dynamic(() => import("@/components/editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-64 rounded-md bg-muted" /> });
 
 export type Tone = "neutral" | "success" | "warning" | "destructive" | "info";
 

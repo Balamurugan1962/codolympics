@@ -138,7 +138,11 @@ def advance(actor_id: str, reason: str, acknowledge_warnings: bool = False) -> s
 def _enter_phase(conn: sa.Connection, c: sa.Row, nxt: str) -> str | None:
     minutes = phase_duration_minutes(c, nxt)
     ends_at = clock.seconds_from_now(minutes * 60) if minutes else None
-    started = {"final_started_at": clock.now()} if nxt == "final" else {}
+    started = {}
+    if nxt == "final":
+        started["final_started_at"] = clock.now()
+    elif nxt == "coding1":
+        started["coding1_started_at"] = clock.now()
     conn.execute(sa.update(contest).values(phase=nxt, phase_ends_at=ends_at, **started))
     announcement_body = phase_announcement(nxt, minutes)
     if announcement_body:

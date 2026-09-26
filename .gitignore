@@ -54,5 +54,9 @@ judge/.venv/
 demo/codolympics-setup-*.zip
 *.sql
 /questions/
+/phase1/
 /current-question.txt
 /judge/problems/
+
+# Contest-day database dumps: participant data, never committed.
+/backups/

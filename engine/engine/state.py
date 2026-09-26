@@ -11,6 +11,8 @@ missed, and anything just before it is already reflected in the state.
 
 from __future__ import annotations
 
+import threading
+import time
 from typing import Any
 
 import sqlalchemy as sa
@@ -51,17 +53,19 @@ def state_for(viewer: Viewer) -> dict[str, Any]:
         }
         if viewer.role != "participant":
             return base
-        return base | _participant_state(conn, c, viewer.id)
+        return base | _participant_state(conn, c, viewer.id, cursor)
 
 
-def _participant_state(conn: sa.Connection, c: sa.Row, participant_id: str) -> dict[str, Any]:
+def _participant_state(
+    conn: sa.Connection, c: sa.Row, participant_id: str, cursor: int
+) -> dict[str, Any]:
     p = conn.execute(
         sa.select(participant).where(participant.c.user_id == participant_id)
     ).one_or_none()
     return {
         "me": _me(conn, c, p) if p else None,
         "questions": working_questions(conn, participant_id),
-        "rank": _my_rank(conn, c, participant_id),
+        "rank": _my_rank(conn, c, participant_id, cursor),
         "submit": submit_status(conn, participant_id),
         "blackout": blackout_state(conn, participant_id),
         "shield": shield_state(conn, participant_id),
@@ -84,8 +88,37 @@ def _me(conn: sa.Connection, c: sa.Row, p: sa.Row) -> dict[str, Any]:
     }
 
 
-def _my_rank(conn: sa.Connection, c: sa.Row, participant_id: str) -> dict[str, Any] | None:
+def _my_rank(
+    conn: sa.Connection, c: sa.Row, participant_id: str, cursor: int
+) -> dict[str, Any] | None:
     if not is_phase2(c.phase) or c.leaderboard_mode == "hidden":
         return None
-    standings = phase2_standings(conn, frozen_at(c))
+    standings = _shared_standings(conn, c, cursor)
     return next((s for s in standings if s["participant_id"] == participant_id), None)
+
+
+# Everyone reads the same standings, and each read costs a pass over every
+# solve, so when the whole room refreshes at once (an announcement, a phase
+# change) it is worked out once for that second, not once per person. The key is
+# the event cursor as well as the time: anything that publishes an event (a
+# verdict, a correction, a phase change) moves the cursor and so ends the
+# reuse at once, and the freeze point is part of the key. The one-second limit
+# is only the backstop for a change that publishes nothing. Only the shared
+# standings are held; each person's own balance, blackout and questions are
+# always read fresh.
+_STANDINGS_TTL_S = 1.0
+_standings_held: tuple[float, tuple[int, object], list[dict[str, Any]]] | None = None
+_standings_lock = threading.Lock()
+
+
+def _shared_standings(conn: sa.Connection, c: sa.Row, cursor: int) -> list[dict[str, Any]]:
+    global _standings_held
+    key = (cursor, frozen_at(c))
+    with _standings_lock:
+        held = _standings_held
+    if held is not None and held[1] == key and time.monotonic() - held[0] < _STANDINGS_TTL_S:
+        return held[2]
+    rows = phase2_standings(conn, frozen_at(c))
+    with _standings_lock:
+        _standings_held = (time.monotonic(), key, rows)
+    return rows

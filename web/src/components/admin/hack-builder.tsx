@@ -32,7 +32,7 @@ import { ApiClientError, api, errorMessage } from "@/lib/client";
 
 import { stateOf, type Hack, type HackSolution } from "./phase1-types";
 
-const CodeEditor = dynamic(() => import("../editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-80 bg-[#1e1e1e]" /> });
+const CodeEditor = dynamic(() => import("../editor").then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-80 bg-muted" /> });
 
 type JudgeProblem = { problem_id: string; testcases: number; validated: boolean; has_reference: boolean; hack_only: boolean; time_limit_ms: number; memory_limit_mb: number; current: string | null };
 

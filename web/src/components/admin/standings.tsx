@@ -45,7 +45,7 @@ export type P2Row = {
   name: string;
   score: number;
   solved: number;
-  total_time_ms: number;
+  finish_ms: number | null;
   phase1_rank: number | null;
   rank: number;
 };
@@ -77,7 +77,7 @@ function duration(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m ${String(s % 60).padStart(2, "0")}s`;
+  return h ? `${h}h ${String(m).padStart(2, "0")}m ${String(s % 60).padStart(2, "0")}s` : `${m}m ${String(s % 60).padStart(2, "0")}s`;
 }
 
 export function Phase1Standings({ rows, compact = false }: { rows: P1Row[] | null; compact?: boolean }) {
@@ -205,7 +205,7 @@ export function Phase2Standings({ rows, compact = false }: { rows: P2Row[] | nul
             <TableHead>Participant</TableHead>
             <TableHead className="text-right">Score</TableHead>
             <TableHead className="text-right">Solved</TableHead>
-            {!compact && <TableHead className="hidden text-right sm:table-cell">Total solve time</TableHead>}
+            {!compact && <TableHead className="hidden text-right sm:table-cell">Solve time</TableHead>}
             {!compact && <TableHead className="hidden text-right md:table-cell">Phase 1</TableHead>}
           </TableRow>
         </TableHeader>
@@ -224,7 +224,7 @@ export function Phase2Standings({ rows, compact = false }: { rows: P2Row[] | nul
               <TableCell className={cn("text-right tabular-nums", r.solved === 0 && "text-faint")}>{r.solved}</TableCell>
               {!compact && (
                 <TableCell className="hidden text-right tabular-nums sm:table-cell">
-                  {r.solved ? duration(r.total_time_ms) : <span className="text-faint">—</span>}
+                  {r.solved && r.finish_ms !== null ? duration(r.finish_ms) : <span className="text-faint">—</span>}
                 </TableCell>
               )}
               {!compact && (
@@ -239,7 +239,7 @@ export function Phase2Standings({ rows, compact = false }: { rows: P2Row[] | nul
       {!compact && <Pagination paged={paged} unit="participants" />}
       {!compact && (
         <p className="border-t px-4 py-2.5 text-[11.5px] text-muted-foreground">
-          Ties break on total solve time, measured from the moment each question was won, then on Phase 1 rank.
+          Ties break on solve time (the first accepted solve of the last-solved question, counted from the start of the round), then on Phase 1 rank.
         </p>
       )}
     </>

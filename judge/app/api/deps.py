@@ -53,7 +53,7 @@ def check_size(text: str, limit: int, make_error: Callable[[int, int], ApiError]
         raise make_error(size, limit)
 
 
-def require_capacity(services: Services) -> None:
+def require_capacity(services: Services, pool: str = "main") -> None:
     """Refuse rather than accept a job we cannot run.
 
     A verdict must never be recorded against a participant because the sandbox
@@ -61,5 +61,5 @@ def require_capacity(services: Services) -> None:
     """
     if not services.sandbox.reachable():
         raise errors.sandbox_unavailable(services.sandbox.url)
-    if not services.queue.has_room():
-        raise errors.busy(services.queue.counts()[1], services.queue.queue_limit)
+    if not services.queue.has_room(pool):
+        raise errors.busy(services.queue.counts(pool)[1], services.queue.limit(pool))

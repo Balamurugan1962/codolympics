@@ -126,6 +126,36 @@ def alerts_for(conn: sa.Connection, participant_id: str) -> list[dict[str, Any]]
     return [{"id": r.id, "kind": r.kind, "created_at": clock.iso(r.created_at)} for r in found]
 
 
+def log(limit: int = 5000) -> list[dict[str, Any]]:
+    """Everyone's every exit from the page, newest first, for the organisers' Monitor page."""
+    with db.transaction() as conn:
+        found = conn.execute(
+            sa.select(
+                proctor_event.c.id,
+                proctor_event.c.participant_id,
+                proctor_event.c.kind,
+                proctor_event.c.created_at,
+                user.c.name,
+                participant.c.proctor_locked_at,
+            )
+            .join(user, user.c.id == proctor_event.c.participant_id)
+            .join(participant, participant.c.user_id == proctor_event.c.participant_id)
+            .order_by(proctor_event.c.id.desc())
+            .limit(limit)
+        ).all()
+    return [
+        {
+            "id": r.id,
+            "participant_id": r.participant_id,
+            "name": r.name,
+            "kind": r.kind,
+            "created_at": clock.iso(r.created_at),
+            "locked": r.proctor_locked_at is not None,
+        }
+        for r in found
+    ]
+
+
 def _name(conn: sa.Connection, participant_id: str) -> str:
     return conn.execute(sa.select(user.c.name).where(user.c.id == participant_id)).scalar_one()
 

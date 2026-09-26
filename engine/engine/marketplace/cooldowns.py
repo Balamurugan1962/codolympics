@@ -1,10 +1,10 @@
-"""The shield that follows a blackout: nobody can be attacked again straight after one ends.
+"""Nobody can be attacked while blacked out, or straight after it ends.
 
-A blackout that lands ends at some moment; from then until `attack_cooldown_seconds`
-later its target cannot be attacked, and the attack is cancelled before anything is
-spent. Attacks that arrive while the blackout is still running stack as they always
-have, and the cooldown starts when the last of them ends. A blackout a shield
-absorbed never landed, so it starts nothing. Expiry is a comparison with now.
+Someone whose blackout is still running cannot be attacked at all: blackouts do not stack,
+and the attack is cancelled before anything is spent. When the blackout ends, its target
+cannot be attacked for `attack_cooldown_seconds` more, and again the attack is cancelled
+before anything is spent. A blackout a shield absorbed never landed, so it starts nothing.
+Expiry is a comparison with now.
 """
 
 from __future__ import annotations
@@ -68,7 +68,21 @@ def cooling_now(conn: sa.Connection) -> dict[str, str]:
 def assert_attackable(
     conn: sa.Connection, c: sa.Row, target_id: str, target_name: str | None
 ) -> None:
-    """Cancel an attack on someone in their cooldown. Nothing has been spent yet."""
+    """Cancel an attack on someone blacked out, or in the cooldown after it. Nothing is spent."""
+    now = clock.now()
+    running = conn.execute(
+        sa.select(sa.func.max(blackout.c.ends_at)).where(
+            blackout.c.participant_id == target_id, blackout.c.ends_at > now
+        )
+    ).scalar()
+    if running is not None:
+        left = math.ceil((running - now).total_seconds())
+        who = target_name or "They"
+        unit = "second" if left == 1 else "seconds"
+        raise errors.conflict(
+            "target_blacked_out",
+            f"Attack cancelled: {who} is already blacked out for another {left} {unit}",
+        )
     window = _window(conn, c.attack_cooldown_seconds, target_id)
     if window is None:
         return

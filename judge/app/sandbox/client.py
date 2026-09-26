@@ -22,6 +22,12 @@ class SandboxUnavailable(RuntimeError):
     """go-judge could not be reached. Never the contestant's fault."""
 
 
+class CompilerOverloaded(SandboxUnavailable):
+    """The compiler was starved of CPU by a busy machine, twice, and ran out of
+    wall-clock time without using its CPU budget. Never the contestant's fault:
+    their program did not do this, the load did."""
+
+
 @dataclass
 class Result:
     status: str          # "Accepted", "Time Limit Exceeded", "Signalled", ...

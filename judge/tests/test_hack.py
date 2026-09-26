@@ -103,11 +103,13 @@ class TestHacking:
         assert response.status_code == 400
         assert response.json()["error"] == "input_too_large"
 
-    def test_artefacts_released_for_both_programs(self, client, sandbox, problems_dir):
+    def test_artefacts_are_kept_between_attempts_and_released_at_shutdown(self, client, sandbox, problems_dir):
         hackable_problem(problems_dir)
         sandbox.programs = {REFERENCE: correct, FLAWED: flawed}
         hack(client, FLAWED, "-1 5\n")
-        assert len(sandbox.deleted) == 2
+        assert sandbox.deleted == []          # kept for the next attempt (see test_compile_cache.py)
+        client.app.state.services.judge.compiler.release_all()
+        assert len(sandbox.deleted) == 2      # both programs given back
 
 
 class TestReferenceInValidation:

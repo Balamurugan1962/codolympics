@@ -39,7 +39,7 @@ from engine.packages.zips import bundle_dirs, check_format, json_bytes, read_zip
 from engine.schema import DIFFICULTIES, hint, question
 
 FORMAT = 1
-MAX_PACKAGE_BYTES = 64 * 1024 * 1024
+MAX_PACKAGE_BYTES = 256 * 1024 * 1024
 
 
 def _read_version(problem_id: str, version: str) -> dict[str, bytes]:
@@ -52,7 +52,8 @@ def _read_version(problem_id: str, version: str) -> dict[str, bytes]:
         data = path.read_bytes()
         total += len(data)
         if total > MAX_PACKAGE_BYTES:
-            raise errors.invalid("that package is larger than 64 MB")
+            limit_mb = MAX_PACKAGE_BYTES // (1024 * 1024)
+            raise errors.invalid(f"that package is larger than {limit_mb} MB")
         out[path.relative_to(base).as_posix()] = data
     return out
 
@@ -275,7 +276,8 @@ def _import_details(
     reason: str,
     result: ProblemImport,
 ) -> None:
-    difficulty = str(details.get("difficulty", "")).strip().lower().replace(" ", "_")
+    difficulty = str(details.get("difficulty", "")).strip().lower()
+    difficulty = difficulty.replace(" ", "_").replace("-", "_")
     if difficulty not in DIFFICULTIES:
         raise errors.invalid(f'unknown difficulty "{difficulty}"')
     hints = details.get("hints")

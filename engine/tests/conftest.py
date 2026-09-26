@@ -41,6 +41,7 @@ if (
 
 import sqlalchemy as sa  # noqa: E402
 
+from engine import state  # noqa: E402
 from engine.core import db, errors  # noqa: E402
 from engine.migrate import main as migrate  # noqa: E402
 from engine.schema import contest, participant, question, user  # noqa: E402
@@ -64,6 +65,8 @@ def schema() -> None:
 
 @pytest.fixture(autouse=True)
 def clean(schema: None) -> Iterator[None]:
+    # The event counter restarts below, so a held answer could match by accident.
+    state._standings_held = None
     with db.transaction() as conn:
         names = ", ".join(f'"{t}"' for t in RUN_TABLES)
         conn.execute(sa.text(f"truncate table {names} restart identity cascade"))
@@ -73,6 +76,8 @@ def clean(schema: None) -> Iterator[None]:
             sa.update(contest).values(
                 phase="registration",
                 phase_ends_at=None,
+                coding1_started_at=None,
+                final_started_at=None,
                 registration_open=True,
                 auction_paused_at=None,
                 auction_mode="online",

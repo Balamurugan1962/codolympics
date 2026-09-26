@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel
 
 from app.jobs.control import POLL_QUEUED_MS, POLL_RUNNING_MS, Cancelled, Task
-from app.sandbox.client import SandboxUnavailable
+from app.sandbox.client import CompilerOverloaded, SandboxUnavailable
 
 log = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ class Job:
     result: BaseModel | None = None
     cancelled: bool = False
     finished_at: float | None = None
+    pool: str = "main"
 
     def report(self, done: int) -> None:
         self.done = done
@@ -49,44 +50,54 @@ class Job:
 
 
 class JobQueue:
-    """Bounded work queue over a fixed thread pool.
+    """Bounded work queues over fixed thread pools.
 
     The pool size is the concurrency cap (US-J6-03): judging never uses more
     CPUs than it was given, which is what keeps timings comparable between
-    submissions.
+    submissions. Hack attempts have a pool of their own ("hack"): they only
+    happen in Phase 1, so a larger pool there cannot disturb the timed jobs of
+    Phase 2, which stay on the "main" pool.
     """
 
-    def __init__(self, concurrency: int, queue_limit: int, ttl_s: int):
+    def __init__(self, concurrency: int, queue_limit: int, ttl_s: int,
+                 hack_concurrency: int | None = None, hack_queue_limit: int | None = None):
         self.concurrency = concurrency
         self.queue_limit = queue_limit
+        self.hack_concurrency = hack_concurrency or concurrency
+        self.hack_queue_limit = hack_queue_limit or queue_limit
         self.ttl_s = ttl_s
         self._jobs: dict[str, Job] = {}
         self._lock = threading.Lock()
-        self._pool = ThreadPoolExecutor(max_workers=concurrency, thread_name_prefix="judge")
+        self._pools = {
+            "main": ThreadPoolExecutor(max_workers=concurrency, thread_name_prefix="judge"),
+            "hack": ThreadPoolExecutor(max_workers=self.hack_concurrency, thread_name_prefix="judge-hack"),
+        }
 
     # --- capacity ----------------------------------------------------------
 
-    def counts(self) -> tuple[int, int]:
-        """(running, queued)"""
+    def limit(self, pool: str = "main") -> int:
+        return self.hack_queue_limit if pool == "hack" else self.queue_limit
+
+    def counts(self, pool: str | None = None) -> tuple[int, int]:
+        """(running, queued), across every pool unless one is named."""
         with self._lock:
-            running = sum(1 for job in self._jobs.values() if job.state == "running")
-            queued = sum(1 for job in self._jobs.values() if job.state == "queued")
-        return running, queued
+            jobs = [job for job in self._jobs.values() if pool is None or job.pool == pool]
+        return sum(job.state == "running" for job in jobs), sum(job.state == "queued" for job in jobs)
 
     def busy(self) -> int:
         return self.counts()[0]
 
-    def has_room(self) -> bool:
-        return self.counts()[1] < self.queue_limit
+    def has_room(self, pool: str = "main") -> bool:
+        return self.counts(pool)[1] < self.limit(pool)
 
     # --- lifecycle ---------------------------------------------------------
 
-    def submit(self, task: Task) -> Job:
+    def submit(self, task: Task, pool: str = "main") -> Job:
         self._sweep_expired()
-        job = Job(job_id="job_" + uuid.uuid4().hex[:12], submission_id=task.submission_id, total=task.steps)
+        job = Job(job_id="job_" + uuid.uuid4().hex[:12], submission_id=task.submission_id, total=task.steps, pool=pool)
         with self._lock:
             self._jobs[job.job_id] = job
-        self._pool.submit(self._execute, job, task)
+        self._pools[pool].submit(self._execute, job, task)
         return job
 
     def get(self, job_id: str) -> Job | None:
@@ -107,7 +118,8 @@ class JobQueue:
             return True
 
     def shutdown(self) -> None:
-        self._pool.shutdown(wait=False, cancel_futures=True)
+        for pool in self._pools.values():
+            pool.shutdown(wait=False, cancel_futures=True)
 
     # --- the worker --------------------------------------------------------
 
@@ -120,6 +132,10 @@ class JobQueue:
             result = task.run(job)
         except Cancelled:
             result = task.cancelled()
+        except CompilerOverloaded as exc:
+            # A busy machine, not their code. Never a compile error, never scored.
+            log.warning("compile starved during %s: %s", job.job_id, exc)
+            result = task.failed("the judge was too busy to compile this in time. This is not your fault: submit it again")
         except SandboxUnavailable as exc:
             # The sandbox died mid-job. IE, never scored against anyone (US-J2-02).
             log.error("sandbox unavailable during %s: %s", job.job_id, exc)

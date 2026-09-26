@@ -16,7 +16,7 @@ import { MarkdownEditor } from "../ui/markdown-editor";
 import { difficultyLabel, difficultyVariant } from "@/lib/difficulty";
 
 export type QuestionDetails = {
-  title: string; topic: string; difficulty: "very_easy" | "easy" | "medium" | "hard"; score: number; base_price: number; auction_order: number;
+  title: string; topic: string; difficulty: "beginner" | "easy" | "easy_medium" | "medium" | "hard"; score: number; base_price: number; auction_order: number;
   statement_md: string; sample_count: number; hints: { price: number; body_md: string }[];
 };
 
@@ -65,11 +65,12 @@ export function QuestionBasicsFields({ d, onChange, testcases }: { d: QuestionDe
         <ChoiceCards
           value={d.difficulty}
           onChange={(v) => set("difficulty", v)}
-          cols={4}
+          cols={5}
           size="sm"
           options={[
-            { value: "very_easy", label: "Very easy", description: "Nearly everyone solves it. The cheapest, the lowest score." },
+            { value: "beginner", label: "Beginner", description: "Nearly everyone solves it. The cheapest, the lowest score." },
             { value: "easy", label: "Easy", description: "Most finalists solve it. Cheap, low score." },
+            { value: "easy_medium", label: "Easy-medium", description: "Most solve it with a little thought. Between easy and medium." },
             { value: "medium", label: "Medium", description: "A real problem. The middle of the auction." },
             { value: "hard", label: "Hard", description: "Few will solve it. Expensive, high score." },
           ]}

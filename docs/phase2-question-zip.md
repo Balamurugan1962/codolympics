@@ -96,7 +96,7 @@ The contest half. Everything a bidder is told, and everything the winner reads.
 | `id` | yes, unless you type the id in the import dialog | letters, digits, `.` `_` `-` | The import is refused |
 | `details.title` | in practice yes | 1 to 200 characters | Falls back to the problem id |
 | `details.topic` | yes in the app's own form | up to 80 characters | Empty, and the auction floor reads "Topic not set" |
-| `details.difficulty` | yes | `easy`, `medium` or `hard` | The import is refused |
+| `details.difficulty` | yes | `beginner`, `easy`, `easy_medium`, `medium` or `hard` (`easy-medium` is accepted too) | The import is refused |
 | `details.score` | yes in practice | whole number, 0 or more | 0, so solving it pays nothing |
 | `details.base_price` | yes in practice | whole number, 0 or more | 0, so bidding opens at nothing |
 | `details.statement_md` | yes | up to 200,000 characters, Markdown | Empty, and the owner sees a blank problem |
@@ -280,7 +280,7 @@ be refused from what is worth a second look.
 - `compare` is `"checker"` and there is no `checker.py`
 - The reference file named in `problem.json` is not in the package
 - There are no testcases under `tests/`
-- `difficulty` is not `easy`, `medium` or `hard`
+- `difficulty` is not `beginner`, `easy`, `easy_medium`, `medium` or `hard`
 - The problem id has anything other than letters, digits, `.`, `_` or `-`
 - The zip was written by a newer exporter than this install understands
 
@@ -302,9 +302,9 @@ Every message below is the whole message, and each means one thing.
 | `the package has no problem.json at its root` | The package files are inside a wrapper folder, or `package/problem.json` is missing | Zip the contents, not the folder |
 | `the zip has no id, give one, or export the problem from this app` | A plain judge package with no `question.json`, and no id typed | Type the id in the import dialog |
 | `problem id: letters, digits, . _ - only` | An id with a space or a slash in it | Rename the problem |
-| `unknown difficulty "tricky"` | `details.difficulty` is not `easy`, `medium` or `hard` | Use one of the three |
+| `unknown difficulty "tricky"` | `details.difficulty` is not one of the five tiers | Use `beginner`, `easy`, `easy_medium`, `medium` or `hard` |
 | `that zip was made by a newer version (format 99)` | The zip came from a newer install | Export it again from this one |
-| `that zip is larger than 64 MB` | Too many or too large testcases | Trim the testcases, or upload the package on its own |
+| `that zip is larger than 256 MB` | Too many or too large testcases | Trim the testcases, or upload the package on its own |
 
 ## Limits
 
@@ -315,9 +315,9 @@ screen that shows it. Keep to them anyway.
 
 | Thing | Limit | Enforced on import |
 |---|---|---|
-| Import of a question zip or a bundle | 64 MB | yes, refused above it |
+| Import of a question zip or a bundle | 256 MB | yes, refused above it |
 | Upload of a plain judge package | 200 MB | yes, refused above it |
-| Export of one problem | 64 MB of package files | yes, the export fails |
+| Export of one problem | 256 MB of package files | yes, the export fails |
 | Title | 200 characters | no |
 | Topic | 80 characters | no |
 | Statement | 200,000 characters | no |

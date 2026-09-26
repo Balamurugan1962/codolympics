@@ -13,7 +13,7 @@ import { BoardSkeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/client";
 
-type Row = { participant_id: string; name: string; score: number; solved: number; total_time_ms: number; rank: number };
+type Row = { participant_id: string; name: string; score: number; solved: number; finish_ms: number | null; rank: number };
 type Board = { mode: string; frozen_at: string | null; standings: Row[] };
 
 /** Phase 2 standings: the questions solved, and how fast. */
@@ -40,12 +40,12 @@ export function Phase2Board() {
             <div className="flex items-center gap-4 rounded-box border border-brand/40 bg-brand-tint px-4 py-3 text-[13px]">
               <Icon.Trophy size={18} className="text-brand-deep" />
               <span className="font-semibold">You are #{mine.rank}</span>
-              <span className="text-muted-foreground">{mine.score} points · {mine.solved} solved · {fmt(mine.total_time_ms)}</span>
+              <span className="text-muted-foreground">{mine.score} points · {mine.solved} solved · {mine.finish_ms === null ? "no solves yet" : `solve time ${fmt(mine.finish_ms)}`}</span>
             </div>
           )}
           <Section padded={false}>
             <Table>
-              <TableHeader><TableRow><TableHead className="w-16 text-right">Rank</TableHead><TableHead>Participant</TableHead><TableHead className="text-right tabular-nums">Points</TableHead><TableHead className="hidden sm:table-cell text-right tabular-nums">Solved</TableHead><TableHead className="hidden md:table-cell text-right tabular-nums">Total solve time</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead className="w-16 text-right">Rank</TableHead><TableHead>Participant</TableHead><TableHead className="text-right tabular-nums">Points</TableHead><TableHead className="hidden sm:table-cell text-right tabular-nums">Solved</TableHead><TableHead className="hidden md:table-cell text-right tabular-nums">Solve time</TableHead></TableRow></TableHeader>
               <TableBody>
                 {paged.rows.map((s) => (
                   <TableRow key={s.participant_id} data-state={s.participant_id === me ? "selected" : undefined}>
@@ -53,7 +53,7 @@ export function Phase2Board() {
                     <TableCell className="font-medium">{s.name}{s.participant_id === me && <span className="ml-1.5 text-[11.5px] font-semibold text-brand-deep">you</span>}</TableCell>
                     <TableCell className="font-semibold text-right tabular-nums">{s.score}</TableCell>
                     <TableCell className="hidden sm:table-cell text-right tabular-nums">{s.solved}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right tabular-nums">{fmt(s.total_time_ms)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right tabular-nums">{s.finish_ms === null ? <span className="text-faint">—</span> : fmt(s.finish_ms)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -67,4 +67,5 @@ export function Phase2Board() {
   );
 }
 
-function fmt(ms: number) { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`; }
+/** h:mm:ss from the start of the round to the first accepted solve of their last-solved question. */
+function fmt(ms: number) { const s = Math.floor(ms / 1000); return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; }

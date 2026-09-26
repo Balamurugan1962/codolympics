@@ -19,7 +19,7 @@ export default function Phase2LeaderboardPage() {
     <PageBody width="wide">
       <PageHeader
         title="Phase 2 standings"
-        description="Points from solved questions, ranked by total points then by total solve time. Coins are never points: what someone paid for a question makes no difference to their place."
+        description="Points from solved questions, ranked by total points, then by solve time (when the last-solved question was first solved, from the start of the round). Coins are never points: what someone paid for a question makes no difference to their place."
       />
       {notYet ? (
         <Alert variant="info">

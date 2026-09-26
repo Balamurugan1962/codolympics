@@ -94,18 +94,18 @@ export function HackQuestionView({ q, index, total, hacked = false, eyebrowExtra
         </span>
       </div>
       <div className="overflow-hidden rounded-box border border-line">
-        <CodeEditor key={solution.id} value={solution.source} language={solution.language} readOnly height={height} />
+        <CodeEditor key={solution.id} value={solution.source} language={solution.language} readOnly height={height} theme="dark" />
       </div>
     </div>
   );
 
   const statement = (
     <div className={cn("space-y-4", wide && "min-w-0")}>
-      {q.statement_md.trim() ? <Markdown>{q.statement_md}</Markdown> : <p className="text-[13px] text-faint">The problem statement goes here.</p>}
+      {q.statement_md.trim() ? <Markdown className="problem-statement">{q.statement_md}</Markdown> : <p className="text-[13px] text-faint">The problem statement goes here.</p>}
       {q.constraints_md.trim() && (
         <div className="rounded-box border border-line bg-muted p-3 text-[13px]">
           <div className="mb-1 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">Constraints</div>
-          <Markdown>{q.constraints_md}</Markdown>
+          <Markdown className="problem-statement">{q.constraints_md}</Markdown>
         </div>
       )}
     </div>

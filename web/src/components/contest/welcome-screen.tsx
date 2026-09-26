@@ -26,10 +26,9 @@ import { PHASE_LABEL } from "@/components/shell";
 import { PageBody, Section } from "@/components/ui/page";
 import { cn } from "@/lib/utils";
 
-/** Six lines, because six is what someone actually reads while waiting. */
+/** A handful of lines, because that is what someone actually reads while waiting. */
 export const RULES: [string, string][] = [
   ["Phase 1, then an auction", "Puzzles and hacking share one clock and decide who goes through."],
-  ["Two currencies", "Coins buy questions, hints and powerups. Points come from solving."],
   ["All or nothing", "A solved problem pays its full points. Wrong submissions cost nothing."],
   ["Hidden tests stay hidden", "You see whether a sample or a hidden test failed, never which one or what was in it."],
   ["One seat, one session", "Signing in elsewhere ends this one. Work saves as you type."],
@@ -39,7 +38,7 @@ export const RULES: [string, string][] = [
 const STEPS: [string, string][] = [
   ["Phase 1 · Puzzles and hacking", "One clock. Answer the puzzles and break the given solutions in any order, and press finish once."],
   ["Auction", "Bid one at a time. Win one and only you can solve it."],
-  ["Coding", "Solve what you own. Ties break on total solve time."],
+  ["Coding", "Solve what you own. Ties break on solve time."],
   ["Common round", "Everything nobody bought opens to everyone at once. What you bought is closed."],
 ];
 
@@ -129,7 +128,7 @@ export function WelcomeScreen({ forwarding = false }: { forwarding?: boolean }) 
         </ol>
       </Section>
 
-      <Section title="Rules" description="The six that change how you play." className="mt-5">
+      <Section title="Rules" description="What changes how you play." className="mt-5">
         <ul className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
           {RULES.map(([t, b]) => (
             <li key={t} className="min-w-0">

@@ -43,8 +43,8 @@ def create_app(settings: Settings | None = None, sandbox: Sandbox | None = None)
                 "rejected. Set it to the shared secret the backend uses."
             )
         log.info(
-            "judge ready: concurrency=%d queue_limit=%d problems_dir=%s",
-            services.queue.concurrency, services.queue.queue_limit, settings.problems_dir,
+            "judge ready: concurrency=%d queue_limit=%d hack_concurrency=%d problems_dir=%s",
+            services.queue.concurrency, services.queue.queue_limit, services.queue.hack_concurrency, settings.problems_dir,
         )
         yield
         services.close()

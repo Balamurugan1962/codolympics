@@ -19,7 +19,13 @@ from engine.contest.rules import get_contest, is_phase2
 from engine.core import clock, db, errors
 from engine.core.audit import audit
 from engine.packages.validation import validation_of
-from engine.packages.volume import dir_for, versions_of
+from engine.packages.volume import (
+    current_version,
+    dir_for,
+    packages_on_disk,
+    read_problem_json,
+    versions_of,
+)
 from engine.schema import question
 
 
@@ -67,3 +73,33 @@ def _swap_current(problem_id: str, version: str) -> None:
     tmp = dir_for(problem_id, f".current.{clock.now_ms()}")
     os.symlink(version, tmp)
     os.replace(tmp, link)
+
+
+def publish_all(actor_id: str, reason: str) -> dict[str, object]:
+    """Make the newest version of every package live, where that is safe to do unattended.
+
+    A package is skipped, and named in the answer, when its newest version is already live,
+    when it has no passing validation (a hacking package is proven by its question instead),
+    or when publishing would rejudge submissions, which needs a person to confirm the count.
+    """
+    published: list[str] = []
+    skipped: list[dict[str, str]] = []
+    for info in packages_on_disk():
+        problem_id = info["problem_id"]
+        versions = versions_of(problem_id)
+        if not versions:
+            continue
+        newest = versions[-1]
+        if current_version(problem_id) == newest:
+            continue
+        hack_only = bool((read_problem_json(problem_id, newest) or {}).get("hack_only"))
+        if not hack_only and not (validation_of(problem_id, newest) or {}).get("ok"):
+            skipped.append({"id": problem_id, "why": "not validated"})
+            continue
+        try:
+            publish_version(actor_id, problem_id, newest, reason, 0)
+        except errors.EngineError as err:
+            skipped.append({"id": problem_id, "why": err.message})
+            continue
+        published.append(problem_id)
+    return {"published": len(published), "skipped": skipped}

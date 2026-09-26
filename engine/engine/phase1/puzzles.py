@@ -21,6 +21,7 @@ from engine.contest.rules import get_contest, lock_contest
 from engine.core import clock, db, errors
 from engine.marketplace.blackouts import assert_not_blacked_out
 from engine.phase1.answers import normalise_answer, score_auto
+from engine.phase1.shuffle import for_participant
 from engine.schema import p1_answer, p1_question, participant
 
 
@@ -57,7 +58,7 @@ def section_for(participant_id: str) -> dict[str, Any]:
         c = get_contest(conn)
         if c.phase == "registration":
             raise errors.conflict("not_open", "Phase 1 has not opened")
-        questions = published(conn)
+        questions = for_participant(published(conn), participant_id, "puzzles")
         mine = conn.execute(
             sa.select(p1_answer).where(p1_answer.c.participant_id == participant_id)
         ).all()
