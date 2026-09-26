@@ -49,10 +49,11 @@ judge/.venv/
 .claude/
 
 # The real contest's questions and answers, and exports that carry password hashes:
-# this repository is public, so none of it may be committed.
+# this repository is public, so none of it may be committed. (Not a blanket *.sql:
+# that also caught real source files, e.g. web/scripts/board-partial.sql. Every
+# actual dump lives under /backups/, which is covered below.)
 /actual/
 demo/codolympics-setup-*.zip
-*.sql
 /questions/
 /phase1/
 /current-question.txt
